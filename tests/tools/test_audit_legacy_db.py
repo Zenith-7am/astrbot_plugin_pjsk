@@ -107,47 +107,48 @@ def _build_legacy_db(path: Path) -> None:
     now = int(time.time())
 
     # ── Insert normal data ──
+    # scores.game_id is the QQ number in the legacy schema
     conn.execute(
         "INSERT INTO users(qq_id, game_id, created_at, updated_at) VALUES (?, ?, ?, ?)",
-        ("111111", "player_a", now - 86400, now),
+        ("111111", "pid_a", now - 86400, now),
     )
     conn.execute(
         "INSERT INTO users(qq_id, game_id, created_at, updated_at) VALUES (?, ?, ?, ?)",
-        ("222222", "player_b", now - 172800, now - 3600),
+        ("222222", "pid_b", now - 172800, now - 3600),
     )
-    # Duplicate game_id
+    # Duplicate PJSK game_id (same pid assigned to two QQ)
     conn.execute(
         "INSERT INTO users(qq_id, game_id, created_at, updated_at) VALUES (?, ?, ?, ?)",
-        ("333333", "player_a", now, now),
+        ("333333", "pid_a", now, now),
     )
-    # Null game_id
+    # Null PJSK game_id
     conn.execute(
         "INSERT INTO users(qq_id, game_id, created_at, updated_at) VALUES (?, ?, ?, ?)",
         ("444444", None, now, now),
     )
 
-    # Scores — normal
+    # Scores — game_id field is actually QQ number
     conn.execute(
         "INSERT INTO scores(game_id, song_id, difficulty, perfect, great, good, bad, miss, accuracy, power, uploaded_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ("player_a", 1, "master", 1000, 0, 0, 0, 0, 101.0, 3100.0, now),
+        ("111111", 1, "master", 1000, 0, 0, 0, 0, 101.0, 3100.0, now),
     )
     conn.execute(
         "INSERT INTO scores(game_id, song_id, difficulty, perfect, great, good, bad, miss, accuracy, power, uploaded_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ("player_a", 2, "expert", 900, 100, 0, 0, 0, 100.5, 2800.0, now - 3600),
+        ("111111", 2, "expert", 900, 100, 0, 0, 0, 100.5, 2800.0, now - 3600),
     )
-    # Orphan score — game_id not in users
+    # Orphan score — QQ number not in users
     conn.execute(
         "INSERT INTO scores(game_id, song_id, difficulty, perfect, great, good, bad, miss, accuracy, power, uploaded_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ("orphan_player", 3, "hard", 500, 0, 0, 0, 0, 80.0, 1000.0, now),
+        ("999999", 3, "hard", 500, 0, 0, 0, 0, 80.0, 1000.0, now),
     )
     # Invalid score — negative perfect
     conn.execute(
         "INSERT INTO scores(game_id, song_id, difficulty, perfect, great, good, bad, miss, accuracy, power, uploaded_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ("player_b", 1, "master", -1, 0, 0, 0, 0, 0.0, 0.0, now),
+        ("222222", 1, "master", -1, 0, 0, 0, 0, 0.0, 0.0, now),
     )
 
     # Song data
@@ -248,10 +249,9 @@ class TestAuditDatabase:
         _build_legacy_db(db)
         report = audit_database(db)
         output = str(report.__dict__)
-        # Row-level values must never appear
-        assert "player_a" not in output
-        assert "player_b" not in output
-        assert "orphan_player" not in output
+        # PJSK game IDs must never appear
+        assert "pid_a" not in output
+        assert "pid_b" not in output
         # QQ numbers must never appear
         assert "111111" not in output
         assert "222222" not in output

@@ -21,6 +21,7 @@ class AuditReport:
     columns: dict[str, list[str]] = field(default_factory=dict)
     duplicate_game_ids: int = 0
     orphan_scores: int = 0
+    qq_score_linkage: int = 0
     null_identity_count: int = 0
     invalid_scores: int = 0
     min_timestamp: int | None = None
@@ -82,14 +83,21 @@ def audit_database(path: Path) -> AuditReport:
     """).fetchall()
     report.duplicate_game_ids = len(dupes)
 
-    # Orphan scores (scores.game_id not in users.game_id)
+    # Orphan scores (scores.game_id is QQ number — check against users.qq_id)
     orphans = conn.execute("""
         SELECT COUNT(*) FROM scores
-        WHERE game_id NOT IN (SELECT game_id FROM users WHERE game_id IS NOT NULL)
+        WHERE game_id NOT IN (SELECT qq_id FROM users)
     """).fetchone()[0]
     report.orphan_scores = orphans
 
-    # Null identities (users with NULL or empty game_id)
+    # QQ-to-score linkage coverage
+    linked = conn.execute("""
+        SELECT COUNT(*) FROM scores s
+        JOIN users u ON s.game_id = u.qq_id
+    """).fetchone()[0]
+    report.qq_score_linkage = linked
+
+    # Null PJSK game_ids (users.game_id is separate field, often unset)
     null_ids = conn.execute("""
         SELECT COUNT(*) FROM users
         WHERE game_id IS NULL OR game_id = ''
