@@ -1,0 +1,5 @@
+name: pjsk-astrbot
+desc: PJSK score tracking, B20, and chart rankings via multi-model vision OCR.
+version: 0.0.0
+author: leoviria
+astrbot_version: ">=4.16"
