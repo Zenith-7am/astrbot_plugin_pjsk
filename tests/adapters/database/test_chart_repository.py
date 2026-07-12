@@ -1,5 +1,6 @@
 """SQLite ChartRepository contract tests."""
 
+import asyncio
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -161,6 +162,30 @@ class TestSongCatalog:
         catalog = await repo.get_song_catalog()
         c = next(c for c in catalog.candidates if c.song_id == 88)
         assert c.aliases == ()
+
+    async def test_concurrent_cold_cache_catalog(
+        self, repo: SqliteChartRepository,
+    ) -> None:
+        """All concurrent calls succeed when cache is cold — regression for P0.
+
+        Three concurrent ``get_song_catalog()`` calls on the same repository
+        instance must all succeed without ``OperationalError``.  Before the
+        fix, a cache miss wrapped two SELECTs in explicit ``BEGIN``, causing
+        ``cannot start a transaction within a transaction`` when multiple
+        tasks hit the cold cache simultaneously.
+        """
+        await _seed_song_and_chart(repo._conn, song_id=1)
+        # Ensure cache is cold
+        repo._catalog_cache = None
+
+        tasks = [
+            asyncio.create_task(repo.get_song_catalog())
+            for _ in range(3)
+        ]
+        results = await asyncio.gather(*tasks)
+        assert len(results) == 3
+        for catalog in results:
+            assert len(catalog.candidates) >= 1
 
 
 class TestGetBySongAndDifficulty:

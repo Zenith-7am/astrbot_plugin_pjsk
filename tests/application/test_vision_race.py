@@ -146,13 +146,14 @@ def _obs(
     good: int = 0,
     bad: int = 0,
     miss: int = 0,
+    engine: str = "test",
 ) -> OcrObservation:
     return OcrObservation(
         title,
         Difficulty.MASTER,
         30,
         Judgements(perfect, great, good, bad, miss),
-        engine="test",
+        engine=engine,
         elapsed_ms=100,
     )
 
@@ -345,7 +346,7 @@ class TestVisionRace:
         assert any(r.engine_id == "z" for r in outcome.circuit_rejects)
 
     async def test_all_circuit_rejected(self) -> None:
-        """All engines rejected by breaker -> ALL_FAILED."""
+        """All engines rejected by breaker -> NO_AVAILABLE_ENGINES, not ALL_FAILED."""
 
         class AllClosedBreaker(FakeBreaker):
             async def acquire(self, engine_id: str) -> CircuitPermit | None:
@@ -369,7 +370,7 @@ class TestVisionRace:
             policy=policy,
         )
         outcome = await race.run(b"fake_image")
-        assert outcome.decision == VisionRaceDecision.ALL_FAILED
+        assert outcome.decision == VisionRaceDecision.NO_AVAILABLE_ENGINES
 
     async def test_circuit_open_recovers_via_acquire(self) -> None:
         """OPEN circuit recovers when acquire() transitions to HALF_OPEN.
@@ -592,26 +593,29 @@ class TestVisionRace:
         assert tracker.successes == 2
         # Neither validation error touched the breaker
         assert tracker.failures == 0
-        # Both produced FAILED results (validation failed)
+        # Both produced FAILED results (validation failed).
+        # FAILED status means observation=None per spec (the vendor
+        # data is already recorded via breaker success, not lost).
         for r in outcome.results:
             assert r.status == EngineResultStatus.FAILED
-            assert r.observation is not None  # vendor call succeeded
+            assert r.observation is None  # per spec invariant
             assert r.validated is None  # validation failed
 
     # ── Consensus selection determinism (P1#8) ─────────────────────────
 
     async def test_consensus_winner_selected_by_priority(self) -> None:
-        """Consensus winner should be the highest-priority engine in the group."""
-        # "s" (stepfun) has priority 3 (lowest), "g" (google) has priority 1 (highest)
+        """Consensus winner uses priority not alphabetical order.
+
+        Engine IDs are chosen so alphabetical order ("a-engine" < "b-engine")
+        is OPPOSITE to priority order ("b-engine" has priority 1, "a-engine"
+        has priority 2).  The winner must be the high-priority engine.
+        """
         runtimes = [
-            _runtime("s", "stepfun", [_obs("Song A")], priority=3),
-            _runtime("g", "google", [_obs("Song A")], priority=1),
-            _runtime("z", "zhipu", [_obs("Song A")], priority=2),
+            _runtime("a-engine", "stepfun", [_obs("Song A", engine="a-engine")], priority=2),
+            _runtime("b-engine", "google", [_obs("Song A", engine="b-engine")], priority=1),
         ]
         race = self._race(runtimes)
         outcome = await race.run(b"fake_image")
         assert outcome.decision == VisionRaceDecision.CONSENSUS
         assert outcome.consensus is not None
-        # The highest-priority engine (engine_id "g", priority 1) should be
-        # first in sorted supporting_engines and thus the consensus winner.
-        assert outcome.consensus.supporting_engines[0].engine_id == "g"
+        assert outcome.consensus.selected.observation.engine == "b-engine"

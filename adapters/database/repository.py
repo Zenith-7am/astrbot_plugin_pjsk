@@ -90,43 +90,46 @@ class SqliteChartRepository:
                 "SELECT MAX(chart_data_version) AS v FROM charts"
             )
         )
-        current_version = version_rows[0]["v"] if version_rows else "unknown"
+        current_version = (
+            version_rows[0]["v"] if version_rows and version_rows[0]["v"] is not None
+            else "unknown"
+        )
 
         if (self._catalog_cache is not None
                 and self._catalog_cache.version == current_version):
             return self._catalog_cache
 
-        # Cache miss: take a consistent snapshot inside a transaction so
-        # the version and data come from the same point in time.
-        await self._conn.execute("BEGIN")
-        try:
-            version_rows = list(
-                await self._conn.execute_fetchall(
-                    "SELECT MAX(chart_data_version) AS v FROM charts"
-                )
+        # Cache miss: load data.  No explicit transaction — SQLite in WAL
+        # mode gives consistent reads without one, and the catalog is
+        # best-effort, not transaction-critical.  Between the quick
+        # version check and the data SELECT a concurrent import could
+        # complete; the next cache check will reload.
+        version_rows = list(
+            await self._conn.execute_fetchall(
+                "SELECT MAX(chart_data_version) AS v FROM charts"
             )
-            current_version = version_rows[0]["v"] if version_rows else "unknown"
+        )
+        current_version = (
+            version_rows[0]["v"] if version_rows and version_rows[0]["v"] is not None
+            else "unknown"
+        )
 
-            rows = await self._conn.execute_fetchall(
-                "SELECT id, title_ja, title_cn, title_en, aliases FROM songs ORDER BY id"
+        rows = await self._conn.execute_fetchall(
+            "SELECT id, title_ja, title_cn, title_en, aliases FROM songs ORDER BY id"
+        )
+        candidates = tuple(
+            SongCandidate(
+                song_id=r["id"],
+                title_ja=r["title_ja"],
+                title_cn=r["title_cn"],
+                title_en=r["title_en"],
+                aliases=self._parse_aliases(r["aliases"]),
             )
-            candidates = tuple(
-                SongCandidate(
-                    song_id=r["id"],
-                    title_ja=r["title_ja"],
-                    title_cn=r["title_cn"],
-                    title_en=r["title_en"],
-                    aliases=self._parse_aliases(r["aliases"]),
-                )
-                for r in rows
-            )
-            catalog = SongCatalog(version=current_version, candidates=candidates)
-            self._catalog_cache = catalog
-            await self._conn.execute("COMMIT")
-            return catalog
-        except Exception:
-            await self._conn.execute("ROLLBACK")
-            raise
+            for r in rows
+        )
+        catalog = SongCatalog(version=current_version, candidates=candidates)
+        self._catalog_cache = catalog
+        return catalog
 
     async def get_by_song_and_difficulty(
         self, song_id: int, difficulty: Difficulty,

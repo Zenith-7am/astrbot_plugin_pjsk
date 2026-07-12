@@ -354,8 +354,8 @@ class VisionRace:
 
         return None, None
 
-    @staticmethod
     def _select_consensus_winner(
+        self,
         provider_votes: dict[str, tuple[EngineIdentity, ValidatedObservation]],
     ) -> ValidatedObservation:
         """Select the consensus winner deterministically.
@@ -363,11 +363,16 @@ class VisionRace:
         Prefers the provider whose engine has the highest priority (lowest
         priority number), with engine_id as tiebreaker.
         """
-        # Use engine_id as sole sort key since all engines have unique
-        # engine_ids and the priority order is encoded in the ids.
+        priority_map = {
+            r.engine.identity.engine_id: r.policy.priority
+            for r in self._runtimes
+        }
         sorted_votes = sorted(
             provider_votes.values(),
-            key=lambda pair: pair[0].engine_id,
+            key=lambda pair: (
+                priority_map.get(pair[0].engine_id, 99),
+                pair[0].engine_id,
+            ),
         )
         return sorted_votes[0][1]
 
@@ -389,8 +394,13 @@ class VisionRace:
         )
 
         if not successes:
+            decision = (
+                VisionRaceDecision.NO_AVAILABLE_ENGINES
+                if ctx.rejects
+                else VisionRaceDecision.ALL_FAILED
+            )
             return VisionRaceOutcome(
-                decision=VisionRaceDecision.ALL_FAILED,
+                decision=decision,
                 selected=None,
                 consensus=None,
                 results=all_results,
@@ -463,9 +473,9 @@ class VisionRace:
             circuit_rejects=tuple(ctx.rejects),
         )
 
-    async def _cancel_all(self, ctx: _RaceContext) -> None:
+    async def _cancel_all(self, ctx: _RaceContext, reason: str = "caller") -> None:
         """Cancel all active worker tasks and drain them."""
-        ctx.cancel_reason = "global_timeout"
+        ctx.cancel_reason = reason
         for t in ctx.active_tasks:
             if not t.done():
                 t.cancel()
@@ -529,7 +539,7 @@ class VisionRace:
                         result = EngineResult(
                             identity=runtime.engine.identity,
                             status=EngineResultStatus.FAILED,
-                            observation=observation,
+                            observation=None,
                             validated=None,
                             error=VisionResponseError(
                                 f"Validation error from "
@@ -630,6 +640,12 @@ class VisionRace:
                     )
                     ctx.worker_results.append(result)
                     return result
+
+                finally:
+                    # Safety net: if record_success / record_failure threw
+                    # before marking the permit as settled, release it.
+                    if permit is not None and not settled:
+                        await self._breaker.release(permit)
 
         except asyncio.CancelledError:
             # Cancelled during semaphore or breaker acquire — no permit held.
