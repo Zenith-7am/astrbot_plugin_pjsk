@@ -484,10 +484,9 @@ class TestVisionRace:
         outcome = await race.run(b"fake_image")
         assert outcome.decision == VisionRaceDecision.GLOBAL_TIMEOUT
 
-    async def test_no_available_engines(self) -> None:
-        """All engines disabled -> NO_AVAILABLE_ENGINES."""
-        # Policy must have at least one enabled engine to pass validation,
-        # but the actual runtime passed to VisionRace is disabled.
+    async def test_policy_runtime_mismatch_raises(self) -> None:
+        """Extra engine in policy without corresponding runtime raises."""
+        import pytest
         policy = VisionRacePolicy(
             engines=(
                 EnginePolicy("g", 1, True, 15.0, 3),
@@ -496,28 +495,14 @@ class TestVisionRace:
             global_timeout_seconds=30.0,
             consensus_threshold=2,
         )
-        disabled = EngineRuntime(
-            engine=FakeEngine(
-                EngineIdentity("g", "google", "g"), [_obs("Song A")]
-            ),
-            policy=EnginePolicy(
-                "g",
-                priority=1,
-                enabled=False,
-                timeout_seconds=15.0,
-                max_concurrency=3,
-            ),
-            semaphore=asyncio.Semaphore(3),
-        )
-        race = VisionRace(
-            runtimes=[disabled],
-            breaker=FakeBreaker(),
-            validator=FakeValidator({"Song A": 1}),
-            policy=policy,
-        )
-        outcome = await race.run(b"fake_image")
-        assert outcome.decision == VisionRaceDecision.NO_AVAILABLE_ENGINES
-        assert len(outcome.results) == 0
+        only_g = _runtime("g", "google", [_obs("Song A")])
+        with pytest.raises(ValueError, match="Mismatch"):
+            VisionRace(
+                runtimes=[only_g],
+                breaker=FakeBreaker(),
+                validator=FakeValidator({"Song A": 1}),
+                policy=policy,
+            )
 
     # ── Consensus match structural tests ────────────────────────────────
 
@@ -552,3 +537,81 @@ class TestVisionRace:
         statuses = {r.identity.engine_id: r.status for r in outcome.results}
         assert statuses["g"] == EngineResultStatus.SUCCESS
         assert statuses["z"] == EngineResultStatus.FAILED
+
+    # ── Permit double-settlement prevention (P1#1) ─────────────────────
+
+    async def test_validation_error_does_not_touch_breaker(self) -> None:
+        """Validation failure after vendor success should not trigger breaker failure.
+
+        The breaker should have exactly 2 record_success calls and 0 record_failure
+        calls -- validation errors are local, not vendor faults.
+        """
+
+        class ThrowingValidator:
+            async def validate(
+                self, observation: OcrObservation,
+            ) -> ValidatedObservation:
+                raise ValueError("Local validation failure")
+
+        class TrackingBreaker(FakeBreaker):
+            def __init__(self) -> None:
+                super().__init__()
+                self.successes = 0
+                self.failures = 0
+
+            async def record_success(self, permit: CircuitPermit) -> None:
+                self.successes += 1
+
+            async def record_failure(
+                self, permit: CircuitPermit, failure: CircuitFailure,
+            ) -> None:
+                self.failures += 1
+
+        tracker = TrackingBreaker()
+        validator = ThrowingValidator()
+        policy = VisionRacePolicy(
+            engines=(
+                EnginePolicy("g", 1, True, 15.0, 3),
+                EnginePolicy("z", 2, True, 15.0, 3),
+            ),
+            global_timeout_seconds=30.0,
+            consensus_threshold=2,
+        )
+        race = VisionRace(
+            runtimes=[
+                _runtime("g", "google", [_obs("Song A")]),
+                _runtime("z", "zhipu", [_obs("Song A")]),
+            ],
+            breaker=tracker,
+            validator=validator,
+            policy=policy,
+        )
+        outcome = await race.run(b"fake_image")
+
+        # Both vendor calls succeeded
+        assert tracker.successes == 2
+        # Neither validation error touched the breaker
+        assert tracker.failures == 0
+        # Both produced FAILED results (validation failed)
+        for r in outcome.results:
+            assert r.status == EngineResultStatus.FAILED
+            assert r.observation is not None  # vendor call succeeded
+            assert r.validated is None  # validation failed
+
+    # ── Consensus selection determinism (P1#8) ─────────────────────────
+
+    async def test_consensus_winner_selected_by_priority(self) -> None:
+        """Consensus winner should be the highest-priority engine in the group."""
+        # "s" (stepfun) has priority 3 (lowest), "g" (google) has priority 1 (highest)
+        runtimes = [
+            _runtime("s", "stepfun", [_obs("Song A")], priority=3),
+            _runtime("g", "google", [_obs("Song A")], priority=1),
+            _runtime("z", "zhipu", [_obs("Song A")], priority=2),
+        ]
+        race = self._race(runtimes)
+        outcome = await race.run(b"fake_image")
+        assert outcome.decision == VisionRaceDecision.CONSENSUS
+        assert outcome.consensus is not None
+        # The highest-priority engine (engine_id "g", priority 1) should be
+        # first in sorted supporting_engines and thus the consensus winner.
+        assert outcome.consensus.supporting_engines[0].engine_id == "g"

@@ -79,6 +79,10 @@ class SqliteChartRepository:
         Uses an instance-level cache keyed on ``MAX(chart_data_version)``.
         A cheap version-only query avoids the full table scan when the
         catalog has not changed since the last call.
+
+        On cache miss, the version and data queries are wrapped in a
+        transaction so they form a consistent snapshot — no risk of
+        seeing a version from one import with data from another.
         """
         # Quick version check — no need to load everything if catalog is fresh
         version_rows = list(
@@ -92,22 +96,37 @@ class SqliteChartRepository:
                 and self._catalog_cache.version == current_version):
             return self._catalog_cache
 
-        rows = await self._conn.execute_fetchall(
-            "SELECT id, title_ja, title_cn, title_en, aliases FROM songs ORDER BY id"
-        )
-        candidates = tuple(
-            SongCandidate(
-                song_id=r["id"],
-                title_ja=r["title_ja"],
-                title_cn=r["title_cn"],
-                title_en=r["title_en"],
-                aliases=self._parse_aliases(r["aliases"]),
+        # Cache miss: take a consistent snapshot inside a transaction so
+        # the version and data come from the same point in time.
+        await self._conn.execute("BEGIN")
+        try:
+            version_rows = list(
+                await self._conn.execute_fetchall(
+                    "SELECT MAX(chart_data_version) AS v FROM charts"
+                )
             )
-            for r in rows
-        )
-        catalog = SongCatalog(version=current_version, candidates=candidates)
-        self._catalog_cache = catalog
-        return catalog
+            current_version = version_rows[0]["v"] if version_rows else "unknown"
+
+            rows = await self._conn.execute_fetchall(
+                "SELECT id, title_ja, title_cn, title_en, aliases FROM songs ORDER BY id"
+            )
+            candidates = tuple(
+                SongCandidate(
+                    song_id=r["id"],
+                    title_ja=r["title_ja"],
+                    title_cn=r["title_cn"],
+                    title_en=r["title_en"],
+                    aliases=self._parse_aliases(r["aliases"]),
+                )
+                for r in rows
+            )
+            catalog = SongCatalog(version=current_version, candidates=candidates)
+            self._catalog_cache = catalog
+            await self._conn.execute("COMMIT")
+            return catalog
+        except Exception:
+            await self._conn.execute("ROLLBACK")
+            raise
 
     async def get_by_song_and_difficulty(
         self, song_id: int, difficulty: Difficulty,

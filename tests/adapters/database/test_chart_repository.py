@@ -180,3 +180,40 @@ class TestGetBySongAndDifficulty:
     async def test_nonexistent_song(self, repo: SqliteChartRepository) -> None:
         chart = await repo.get_by_song_and_difficulty(999, Difficulty.MASTER)
         assert chart is None
+
+
+class TestCatalogCache:
+    """Catalog cache — hit/miss and atomic snapshot."""
+
+    async def test_catalog_cache_serves_repeat_calls(self, repo: SqliteChartRepository) -> None:
+        await _seed_song_and_chart(repo._conn, song_id=1)
+        # First call: cache miss, loads from DB
+        c1 = await repo.get_song_catalog()
+        assert len(c1.candidates) == 1
+        # Second call: cache hit, returns same data
+        c2 = await repo.get_song_catalog()
+        assert c2 is c1  # Same cached object
+        assert len(c2.candidates) == 1
+
+    async def test_catalog_cache_invalidated_on_version_change(
+        self, repo: SqliteChartRepository,
+    ) -> None:
+        await _seed_song_and_chart(repo._conn, song_id=1)
+        c1 = await repo.get_song_catalog()
+        assert c1.version != ""
+
+        # Insert new song+chart with a different chart_data_version
+        await repo._conn.execute(
+            "INSERT INTO songs(id, title_ja) VALUES (2, 'New Song')"
+        )
+        await repo._conn.execute(
+            "INSERT INTO charts(song_id, difficulty, official_level, "
+            "community_constant, note_count, chart_data_version) "
+            "VALUES (2, 'master', 30, '30.0', 1000, '2026-07-13')"
+        )
+        await repo._conn.commit()
+
+        # Cache should detect version change and reload
+        c2 = await repo.get_song_catalog()
+        assert c2 is not c1  # Different object (cache was invalidated)
+        assert len(c2.candidates) == 2

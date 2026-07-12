@@ -1,7 +1,11 @@
 """Tests for RecognizeScore use case — score construction and recording."""
 
+from datetime import datetime, timezone
+
 from pjsk_core.application.recognize_score import RecognizeScore
 from pjsk_core.application.vision_race import (
+    EngineResult,
+    EngineResultStatus,
     VisionRaceDecision,
     VisionRaceOutcome,
 )
@@ -11,7 +15,10 @@ from pjsk_core.application.validate_ocr import (
     ValidationStatus,
 )
 from pjsk_core.domain.charts import Chart, Difficulty
-from pjsk_core.domain.ocr import OcrObservation
+from pjsk_core.domain.ocr import (
+    EngineIdentity,
+    OcrObservation,
+)
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
 from pjsk_core.domain.song_matcher import SongMatch, SongMatchMethod, TitleSource
 from pjsk_core.domain.users import UserId
@@ -244,3 +251,132 @@ class TestRecognizeScore:
 
         assert result.score_attempt is None
         assert len(repo.recorded) == 0
+
+    async def test_clock_injection_used_for_created_at(self) -> None:
+        """A custom clock should produce the expected created_at timestamp."""
+        fixed_time = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        validated = _make_validated_strong()
+        outcome = _make_outcome(
+            VisionRaceDecision.CONSENSUS, selected=validated,
+        )
+
+        repo = _FakeScoreRepo()
+        race = _FakeVisionRace(outcome)
+        recognize = RecognizeScore(race, repo, clock=lambda: fixed_time)  # type: ignore[arg-type]
+        result = await recognize.recognize(
+            UserId(1), b"img", source_gateway="astrbot",
+        )
+
+        assert result.score_attempt is not None
+        assert result.score_attempt.created_at == fixed_time
+
+    async def test_global_timeout_returns_partial_candidates(self) -> None:
+        """GLOBAL_TIMEOUT without STRONG result should return candidates."""
+        obs = OcrObservation(
+            "Song A", Difficulty.MASTER, 30,
+            Judgements(perfect=1000, great=0, good=0, bad=0, miss=0),
+            engine="g", elapsed_ms=100,
+        )
+        chart = _make_chart()
+        sm = SongMatch(
+            song_id=1, score=0.9,
+            method=SongMatchMethod.FUZZY,
+            source=TitleSource.JAPANESE,
+        )
+        vc = ValidatedCandidate(
+            song_match=sm, chart=chart, note_distance=0,
+            note_validated=True, level_validated=True,
+            status=ValidationStatus.CANDIDATE,
+        )
+        valid = ValidatedObservation(
+            observation=obs, primary=None,
+            candidates=(vc,), status=ValidationStatus.CANDIDATE,
+        )
+        results = (
+            EngineResult(
+                identity=EngineIdentity("g", "google", "g"),
+                status=EngineResultStatus.SUCCESS,
+                observation=obs, validated=valid,
+                error=None, elapsed_ms=100,
+            ),
+        )
+        outcome = VisionRaceOutcome(
+            decision=VisionRaceDecision.GLOBAL_TIMEOUT,
+            selected=None, consensus=None,
+            results=results, circuit_rejects=(),
+        )
+
+        repo = _FakeScoreRepo()
+        race = _FakeVisionRace(outcome)
+        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        result = await recognize.recognize(
+            UserId(1), b"img", source_gateway="astrbot",
+        )
+
+        assert result.score_attempt is None
+        assert len(result.candidates_for_user) == 1
+
+    async def test_disagreement_candidates_grouped_by_full_key(self) -> None:
+        """Different judgements for same song_id produce separate candidates."""
+        obs1 = OcrObservation(
+            "Song A", Difficulty.MASTER, 30,
+            Judgements(perfect=1000, great=0, good=0, bad=0, miss=0),
+            engine="g", elapsed_ms=100,
+        )
+        obs2 = OcrObservation(
+            "Song A", Difficulty.MASTER, 30,
+            Judgements(perfect=500, great=500, good=0, bad=0, miss=0),
+            engine="z", elapsed_ms=100,
+        )
+        chart = _make_chart()
+        sm = SongMatch(
+            song_id=1, score=1.0,
+            method=SongMatchMethod.EXACT,
+            source=TitleSource.JAPANESE,
+        )
+        vc1 = ValidatedCandidate(
+            song_match=sm, chart=chart, note_distance=0,
+            note_validated=True, level_validated=True,
+            status=ValidationStatus.STRONG,
+        )
+        vc2 = ValidatedCandidate(
+            song_match=sm, chart=chart, note_distance=0,
+            note_validated=True, level_validated=True,
+            status=ValidationStatus.STRONG,
+        )
+        valid1 = ValidatedObservation(
+            observation=obs1, primary=vc1,
+            candidates=(vc1,), status=ValidationStatus.STRONG,
+        )
+        valid2 = ValidatedObservation(
+            observation=obs2, primary=vc2,
+            candidates=(vc2,), status=ValidationStatus.STRONG,
+        )
+        results = (
+            EngineResult(
+                identity=EngineIdentity("g", "google", "g"),
+                status=EngineResultStatus.SUCCESS,
+                observation=obs1, validated=valid1,
+                error=None, elapsed_ms=100,
+            ),
+            EngineResult(
+                identity=EngineIdentity("z", "zhipu", "z"),
+                status=EngineResultStatus.SUCCESS,
+                observation=obs2, validated=valid2,
+                error=None, elapsed_ms=100,
+            ),
+        )
+        outcome = VisionRaceOutcome(
+            decision=VisionRaceDecision.DISAGREEMENT,
+            selected=None, consensus=None,
+            results=results, circuit_rejects=(),
+        )
+
+        repo = _FakeScoreRepo()
+        race = _FakeVisionRace(outcome)
+        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        result = await recognize.recognize(
+            UserId(1), b"img", source_gateway="astrbot",
+        )
+
+        assert len(result.candidates_for_user) == 2

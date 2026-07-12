@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from datetime import datetime, timezone
 from dataclasses import dataclass
 
@@ -22,7 +23,9 @@ from pjsk_core.domain.ocr import (
     OcrObservation,
     rank_candidates,
 )
+from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.scores import (
+    Judgements,
     ScoreAttempt,
     calculate_accuracy,
     classify_status,
@@ -58,9 +61,12 @@ class RecognizeScore:
         self,
         race: VisionRace,
         scores: ScoreRepository,
+        *,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._race = race
         self._scores = scores
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     async def recognize(
         self,
@@ -103,9 +109,11 @@ class RecognizeScore:
                 return await self._adopt_timeout_result(
                     outcome, user_id, image_sha256, source_gateway,
                 )
+            # Return partial candidates from completed results even on timeout
+            candidates = self._collect_candidates(outcome)
             return RecognizeResult(
                 outcome=outcome, validated=None,
-                candidates_for_user=(), score_attempt=None,
+                candidates_for_user=candidates, score_attempt=None,
             )
 
         # ALL_FAILED, NO_AVAILABLE_ENGINES — no score
@@ -121,14 +129,16 @@ class RecognizeScore:
         """Collect, dedup, and rank candidates from all engine results on disagreement.
 
         Iterates over every Successful engine result, flattens their
-        :class:`ValidatedCandidate` entries, groups by ``song_id``,
-        counts model support (number of unique engine identities that
-        agree on that song), and ranks via the domain
+        :class:`ValidatedCandidate` entries, groups by
+        ``(matched_chart_id, difficulty, judgements)`` to avoid merging
+        different judgements for the same song, counts model support
+        (number of unique engine identities that agree on that tuple),
+        and ranks via the domain
         :func:`~pjsk_core.domain.ocr.rank_candidates` function.
         """
-        # Group by song_id: {(song_id): [(identity, vc, observation), ...]}
-        song_groups: dict[
-            int,
+        # Group by (chart_id_or_song_id, difficulty, judgements)
+        groups: dict[
+            tuple[int, Difficulty, Judgements],
             list[tuple[EngineIdentity, ValidatedCandidate, OcrObservation]],
         ] = {}
         for result in outcome.results:
@@ -136,25 +146,29 @@ class RecognizeScore:
                 continue
             if result.validated is None or result.observation is None:
                 continue
+            obs = result.observation
             for vc in result.validated.candidates:
-                sid = vc.song_match.song_id
-                if sid not in song_groups:
-                    song_groups[sid] = []
-                song_groups[sid].append(
-                    (result.identity, vc, result.observation)
+                chart_id = (
+                    vc.chart.id
+                    if vc.chart is not None
+                    else vc.song_match.song_id
                 )
+                key = (chart_id, obs.difficulty, obs.judgements)
+                if key not in groups:
+                    groups[key] = []
+                groups[key].append((result.identity, vc, obs))
 
-        if not song_groups:
+        if not groups:
             return ()
 
-        # Dedup by song_id — keep the highest-scoring match per song
+        # Dedup per group — keep the highest-scoring match
         candidate_list: list[Candidate] = []
-        for _sid, entries in song_groups.items():
+        for _key, entries in groups.items():
             # Sort by match score descending within the group
             entries.sort(key=lambda e: -e[1].song_match.score)
             best_vc = entries[0][1]
             obs = entries[0][2]
-            # Count unique engine identities supporting this song
+            # Count unique engine identities supporting this group
             supporting = {e[0].engine_id for e in entries}
             candidate_list.append(Candidate(
                 observation=obs,
@@ -197,7 +211,7 @@ class RecognizeScore:
             chart.official_level, chart.community_constant,
             status, accuracy, chart.difficulty,
         )
-        now = datetime.now(timezone.utc)
+        now = self._clock()
         attempt = ScoreAttempt(
             id=None, user_id=user_id, chart_id=chart.id,
             judgements=judgements, accuracy=accuracy,

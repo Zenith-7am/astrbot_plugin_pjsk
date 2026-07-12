@@ -97,6 +97,7 @@ class _RaceContext:
     worker_results: list[EngineResult] = field(default_factory=list)
     rejects: list[EngineIdentity] = field(default_factory=list)
     active_tasks: set[asyncio.Task[EngineResult]] = field(default_factory=set)
+    cancel_reason: str | None = None
 
 
 class ObservationValidator(Protocol):
@@ -182,6 +183,16 @@ class VisionRace:
                 f"got {len(set(enabled_providers))}"
             )
 
+        # Verify policy engines correspond to runtimes
+        policy_ids = {e.engine_id for e in policy.engines if e.enabled}
+        runtime_ids = {r.engine.identity.engine_id for r in enabled}
+        if policy_ids != runtime_ids:
+            raise ValueError(
+                f"Mismatch between policy engines and runtimes: "
+                f"policy has {sorted(policy_ids)}, "
+                f"runtimes have {sorted(runtime_ids)}"
+            )
+
         self._runtimes = tuple(runtimes)
         self._breaker = breaker
         self._validator = validator
@@ -259,6 +270,7 @@ class VisionRace:
                 # Cancel remaining workers first, then drain so their
                 # CANCELLED_BY_CONSENSUS results are collected into
                 # ctx.worker_results before building the final outcome.
+                ctx.cancel_reason = "consensus"
                 for t in pending:
                     t.cancel()
                 if pending:
@@ -321,7 +333,7 @@ class VisionRace:
                     )
                 )
                 supporting_providers = tuple(sorted(provider_votes.keys()))
-                selected_v = next(iter(provider_votes.values()))[1]
+                selected_v = self._select_consensus_winner(provider_votes)
 
                 return VisionRaceDecision.CONSENSUS, VisionRaceOutcome(
                     decision=VisionRaceDecision.CONSENSUS,
@@ -341,6 +353,23 @@ class VisionRace:
                 )
 
         return None, None
+
+    @staticmethod
+    def _select_consensus_winner(
+        provider_votes: dict[str, tuple[EngineIdentity, ValidatedObservation]],
+    ) -> ValidatedObservation:
+        """Select the consensus winner deterministically.
+
+        Prefers the provider whose engine has the highest priority (lowest
+        priority number), with engine_id as tiebreaker.
+        """
+        # Use engine_id as sole sort key since all engines have unique
+        # engine_ids and the priority order is encoded in the ids.
+        sorted_votes = sorted(
+            provider_votes.values(),
+            key=lambda pair: pair[0].engine_id,
+        )
+        return sorted_votes[0][1]
 
     def _final_decision(self, ctx: _RaceContext) -> VisionRaceOutcome:
         """Produce final decision when all workers finished without consensus."""
@@ -393,6 +422,7 @@ class VisionRace:
         Cancels remaining workers and collects whatever completed results
         are available.
         """
+        ctx.cancel_reason = "global_timeout"
         # Cancel still-running workers
         for t in ctx.active_tasks:
             if not t.done():
@@ -435,6 +465,7 @@ class VisionRace:
 
     async def _cancel_all(self, ctx: _RaceContext) -> None:
         """Cancel all active worker tasks and drain them."""
+        ctx.cancel_reason = "global_timeout"
         for t in ctx.active_tasks:
             if not t.done():
                 t.cancel()
@@ -458,118 +489,164 @@ class VisionRace:
         ``CancelledError`` releases the permit only if it was never
         settled (cleanup safety net).
         """
-        async with runtime.semaphore:
-            permit = await self._breaker.acquire(
-                runtime.engine.identity.engine_id,
-            )
-            if permit is None:
-                ctx.rejects.append(runtime.engine.identity)
-                result = EngineResult(
-                    identity=runtime.engine.identity,
-                    status=EngineResultStatus.FAILED,
-                    observation=None,
-                    validated=None,
-                    error=None,
-                    elapsed_ms=0,
-                )
-                ctx.worker_results.append(result)
-                return result
-
-            settled = False
+        try:
             started = _time.monotonic()
-            try:
-                async with asyncio.timeout(runtime.policy.timeout_seconds):
-                    observation = await runtime.engine.recognize(
-                        image, timeout=runtime.policy.timeout_seconds,
+            async with runtime.semaphore:
+                permit = await self._breaker.acquire(
+                    runtime.engine.identity.engine_id,
+                )
+                if permit is None:
+                    ctx.rejects.append(runtime.engine.identity)
+                    result = EngineResult(
+                        identity=runtime.engine.identity,
+                        status=EngineResultStatus.FAILED,
+                        observation=None,
+                        validated=None,
+                        error=None,
+                        elapsed_ms=0,
                     )
+                    ctx.worker_results.append(result)
+                    return result
 
-                # Breaker success recorded BEFORE validation
-                # (vendor health != match quality)
-                await self._breaker.record_success(permit)
-                settled = True
+                settled = False
+                try:
+                    async with asyncio.timeout(runtime.policy.timeout_seconds):
+                        observation = await runtime.engine.recognize(
+                            image, timeout=runtime.policy.timeout_seconds,
+                        )
 
-                validated = await self._validator.validate(observation)
-                elapsed = int((_time.monotonic() - started) * 1000)
-                result = EngineResult(
-                    identity=runtime.engine.identity,
-                    status=EngineResultStatus.SUCCESS,
-                    observation=observation,
-                    validated=validated,
-                    error=None,
-                    elapsed_ms=elapsed,
-                )
-                ctx.worker_results.append(result)
-                return result
-
-            except asyncio.TimeoutError:
-                await self._breaker.record_failure(
-                    permit, CircuitFailure.TIMEOUT,
-                )
-                settled = True
-                elapsed = int((_time.monotonic() - started) * 1000)
-                result = EngineResult(
-                    identity=runtime.engine.identity,
-                    status=EngineResultStatus.TIMED_OUT,
-                    observation=None,
-                    validated=None,
-                    error=VisionEngineError("timeout"),
-                    elapsed_ms=elapsed,
-                )
-                ctx.worker_results.append(result)
-                return result
-
-            except VisionEngineError as e:
-                await self._breaker.record_failure(
-                    permit, _error_to_failure(e),
-                )
-                settled = True
-                elapsed = int((_time.monotonic() - started) * 1000)
-                result = EngineResult(
-                    identity=runtime.engine.identity,
-                    status=EngineResultStatus.FAILED,
-                    observation=None,
-                    validated=None,
-                    error=e,
-                    elapsed_ms=elapsed,
-                )
-                ctx.worker_results.append(result)
-                return result
-
-            except Exception as e:
-                # Catch non-VisionEngineError exceptions (e.g. TypeError,
-                # ValueError from unexpected data) and wrap them as a
-                # VisionResponseError so the worker returns a FAILED result
-                # instead of silently vanishing.
-                await self._breaker.record_failure(
-                    permit, _error_to_failure(VisionEngineError(str(e))),
-                )
-                settled = True
-                elapsed = int((_time.monotonic() - started) * 1000)
-                result = EngineResult(
-                    identity=runtime.engine.identity,
-                    status=EngineResultStatus.FAILED,
-                    observation=None,
-                    validated=None,
-                    error=VisionResponseError(
-                        f"Unexpected error from {runtime.engine.identity.engine_id}: {e}"
-                    ),
-                    elapsed_ms=elapsed,
-                )
-                ctx.worker_results.append(result)
-                return result
-
-            except asyncio.CancelledError:
-                if not settled:
-                    await self._breaker.release(permit)
+                    # Breaker success recorded BEFORE validation
+                    # (vendor health != match quality)
+                    await self._breaker.record_success(permit)
                     settled = True
-                elapsed = int((_time.monotonic() - started) * 1000)
-                result = EngineResult(
-                    identity=runtime.engine.identity,
-                    status=EngineResultStatus.CANCELLED_BY_CONSENSUS,
-                    observation=None,
-                    validated=None,
-                    error=None,
-                    elapsed_ms=elapsed,
-                )
-                ctx.worker_results.append(result)
-                return result
+
+                    # Validation errors do NOT touch the breaker — the vendor
+                    # call succeeded, so the circuit stays healthy.
+                    try:
+                        validated = await self._validator.validate(observation)
+                    except Exception as e:
+                        elapsed = int((_time.monotonic() - started) * 1000)
+                        result = EngineResult(
+                            identity=runtime.engine.identity,
+                            status=EngineResultStatus.FAILED,
+                            observation=observation,
+                            validated=None,
+                            error=VisionResponseError(
+                                f"Validation error from "
+                                f"{runtime.engine.identity.engine_id}: {e}"
+                            ),
+                            elapsed_ms=elapsed,
+                        )
+                        ctx.worker_results.append(result)
+                        return result
+
+                    elapsed = int((_time.monotonic() - started) * 1000)
+                    result = EngineResult(
+                        identity=runtime.engine.identity,
+                        status=EngineResultStatus.SUCCESS,
+                        observation=observation,
+                        validated=validated,
+                        error=None,
+                        elapsed_ms=elapsed,
+                    )
+                    ctx.worker_results.append(result)
+                    return result
+
+                except asyncio.TimeoutError:
+                    await self._breaker.record_failure(
+                        permit, CircuitFailure.TIMEOUT,
+                    )
+                    settled = True
+                    elapsed = int((_time.monotonic() - started) * 1000)
+                    result = EngineResult(
+                        identity=runtime.engine.identity,
+                        status=EngineResultStatus.TIMED_OUT,
+                        observation=None,
+                        validated=None,
+                        error=VisionEngineError("timeout"),
+                        elapsed_ms=elapsed,
+                    )
+                    ctx.worker_results.append(result)
+                    return result
+
+                except VisionEngineError as e:
+                    await self._breaker.record_failure(
+                        permit, _error_to_failure(e),
+                    )
+                    settled = True
+                    elapsed = int((_time.monotonic() - started) * 1000)
+                    result = EngineResult(
+                        identity=runtime.engine.identity,
+                        status=EngineResultStatus.FAILED,
+                        observation=None,
+                        validated=None,
+                        error=e,
+                        elapsed_ms=elapsed,
+                    )
+                    ctx.worker_results.append(result)
+                    return result
+
+                except Exception as e:
+                    # Catch non-VisionEngineError exceptions (e.g. TypeError,
+                    # ValueError from unexpected data) and wrap them as a
+                    # VisionResponseError so the worker returns a FAILED result
+                    # instead of silently vanishing.
+                    await self._breaker.record_failure(
+                        permit, _error_to_failure(VisionEngineError(str(e))),
+                    )
+                    settled = True
+                    elapsed = int((_time.monotonic() - started) * 1000)
+                    result = EngineResult(
+                        identity=runtime.engine.identity,
+                        status=EngineResultStatus.FAILED,
+                        observation=None,
+                        validated=None,
+                        error=VisionResponseError(
+                            f"Unexpected error from "
+                            f"{runtime.engine.identity.engine_id}: {e}"
+                        ),
+                        elapsed_ms=elapsed,
+                    )
+                    ctx.worker_results.append(result)
+                    return result
+
+                except asyncio.CancelledError:
+                    if not settled:
+                        await self._breaker.release(permit)
+                        settled = True
+                    elapsed = int((_time.monotonic() - started) * 1000)
+                    cancel_status = (
+                        EngineResultStatus.CANCELLED_BY_CONSENSUS
+                        if ctx.cancel_reason == "consensus"
+                        else EngineResultStatus.CANCELLED_BY_CALLER
+                    )
+                    result = EngineResult(
+                        identity=runtime.engine.identity,
+                        status=cancel_status,
+                        observation=None,
+                        validated=None,
+                        error=None,
+                        elapsed_ms=elapsed,
+                    )
+                    ctx.worker_results.append(result)
+                    return result
+
+        except asyncio.CancelledError:
+            # Cancelled during semaphore or breaker acquire — no permit held.
+            # Produce an EngineResult so the orchestrator sees every worker.
+            elapsed = int((_time.monotonic() - started) * 1000)
+            cancel_status = (
+                EngineResultStatus.CANCELLED_BY_CONSENSUS
+                if ctx.cancel_reason == "consensus"
+                else EngineResultStatus.CANCELLED_BY_CALLER
+            )
+            result = EngineResult(
+                identity=runtime.engine.identity,
+                status=cancel_status,
+                observation=None,
+                validated=None,
+                error=None,
+                elapsed_ms=elapsed,
+            )
+            ctx.worker_results.append(result)
+            return result

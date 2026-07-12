@@ -21,6 +21,13 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["pjsk_core", "pjsk_core.*", "adapters", "adapters.*"]
 
+[tool.setuptools.package-data]
+"adapters.database.migrations" = ["*.sql"]
+# chart_data JSON files are external deployment data imported at deploy-time via
+# tools/import_chart_data.py, per the spec's "Git truth source, SQLite runtime
+# copy" design.  They are NOT included in the wheel — the deploy pipeline copies
+# them alongside the release.
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
