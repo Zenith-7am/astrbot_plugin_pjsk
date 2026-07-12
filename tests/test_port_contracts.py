@@ -17,6 +17,11 @@ from pjsk_core.ports.repositories import (
     UserRepository,
 )
 from pjsk_core.ports.vision import VisionEngine
+from pjsk_core.ports.circuit_breaker import (
+    CircuitBreaker,
+    CircuitPermit,
+    CircuitState,
+)
 
 
 # ── Fake implementations ────────────────────────────────────────────
@@ -255,3 +260,26 @@ async def test_candidate_store_contract() -> None:
     # Second consume returns None (already consumed)
     result2 = await store.consume(cid, UserId(1))
     assert result2 is None
+
+
+# ── CircuitBreaker contract tests ──────────────────────────────────
+
+
+class TestCircuitBreakerContract:
+    def test_protocol_methods_exist(self) -> None:
+        """CircuitBreaker Protocol defines all required methods."""
+        assert hasattr(CircuitBreaker, "acquire")
+        assert hasattr(CircuitBreaker, "record_success")
+        assert hasattr(CircuitBreaker, "record_failure")
+        assert hasattr(CircuitBreaker, "release")
+        assert hasattr(CircuitBreaker, "state")
+
+    def test_circuit_permit_fields(self) -> None:
+        permit = CircuitPermit("eng", probe=True)
+        assert permit.engine_id == "eng"
+        assert permit.probe is True
+
+    def test_circuit_state_values(self) -> None:
+        assert CircuitState.CLOSED.value == "closed"
+        assert CircuitState.OPEN.value == "open"
+        assert CircuitState.HALF_OPEN.value == "half_open"
