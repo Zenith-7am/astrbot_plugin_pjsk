@@ -192,7 +192,7 @@ B20 选取：只取 FC/AP 的**个人最佳** → 按 Rating 降序 → 取前 2
 - 引用 PENTATONIC 系（民间精确定数，`.1`~`.5`、`+/-` 后缀）；EXPERT 定数另有独立源。
 - 难度范围：EASY(1–8) NORMAL(6–14) HARD(11–20) EXPERT(21–32) MASTER(24–37) APPEND(24–38)。
   - 2026-07-13 基于实际 chart_data 更新：EXPERT 21–32（原 22–30）、APPEND 24–38（原 22–37）。
-  - **已知数据异常**：song_id=241 EXPERT 的 community_constant 为 "30.0"，但其 official_level=21，疑似旧库导入时误拷了 MASTER 定数。待人工修正。
+  - **已知数据异常**：song_id=241 在游戏中不存在，疑为 PJSK 官方编号疏漏（跳号）。chart_data 中该条目暂作占位保留，待深度查证后决定删除或修正。
 
 | 难度 | 缩写 |
 |------|------|
