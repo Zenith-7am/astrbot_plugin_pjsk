@@ -1,5 +1,6234 @@
 {
   "version": "2026-07-12",
   "source": "PENTATONIC",
-  "charts": []
+  "charts": [
+    {
+      "song_id": 671,
+      "title_ja": "怪獣になりたい",
+      "title_cn": "想变成怪兽",
+      "difficulty": "expert",
+      "official_level": 32,
+      "community_constant": "32.0",
+      "note_count": 1600
+    },
+    {
+      "song_id": 329,
+      "title_ja": "ヤミナベ!!!!",
+      "title_cn": "暗锅!!!!",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.8+",
+      "note_count": 1539
+    },
+    {
+      "song_id": 176,
+      "title_ja": "マシンガンポエムドール",
+      "title_cn": "Machinegun Poem Doll",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.8+",
+      "note_count": 1730
+    },
+    {
+      "song_id": 162,
+      "title_ja": "エンドマークに希望と涙を添えて",
+      "title_cn": "为休止符添上希望与泪水",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.7+",
+      "note_count": 1553
+    },
+    {
+      "song_id": 487,
+      "title_ja": "ダイジョブですか？",
+      "title_cn": "你没事吧？",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.6+",
+      "note_count": 1495
+    },
+    {
+      "song_id": 370,
+      "title_ja": "人生",
+      "title_cn": "人生",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.5",
+      "note_count": 1441
+    },
+    {
+      "song_id": 163,
+      "title_ja": "the EmpErroR",
+      "title_cn": "the EmpErroR",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.5",
+      "note_count": 1223
+    },
+    {
+      "song_id": 755,
+      "title_ja": "初音狂奏曲第01番「彗惺」",
+      "title_cn": "初音狂奏曲第一号「彗惺」",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.4",
+      "note_count": 1581
+    },
+    {
+      "song_id": 486,
+      "title_ja": "おぎゃりないざー",
+      "title_cn": "还婴者",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.4",
+      "note_count": 1387
+    },
+    {
+      "song_id": 315,
+      "title_ja": "What's up? Pop!",
+      "title_cn": "What's up? Pop!",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.4",
+      "note_count": 1804
+    },
+    {
+      "song_id": 668,
+      "title_ja": "ネクラチューンサーカス",
+      "title_cn": "阴郁调马戏团",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.2",
+      "note_count": 1380
+    },
+    {
+      "song_id": 465,
+      "title_ja": "嬢王",
+      "title_cn": "嬢王",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.2",
+      "note_count": 1266
+    },
+    {
+      "song_id": 691,
+      "title_ja": "0.0000034",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.1",
+      "note_count": 1634
+    },
+    {
+      "song_id": 488,
+      "title_ja": "メモリア",
+      "title_cn": "Memoria",
+      "difficulty": "expert",
+      "official_level": 31,
+      "community_constant": "31.0",
+      "note_count": 1637
+    },
+    {
+      "song_id": 131,
+      "title_ja": "初音ミクの激唱",
+      "title_cn": "初音未来的激唱",
+      "difficulty": "expert",
+      "official_level": 30,
+      "community_constant": "30.7+",
+      "note_count": 1520
+    },
+    {
+      "song_id": 164,
+      "title_ja": "Don't Fight The Music",
+      "title_cn": "Don't Fight The Music",
+      "difficulty": "expert",
+      "official_level": 30,
+      "community_constant": "30.4",
+      "note_count": 1545
+    },
+    {
+      "song_id": 49,
+      "title_ja": "初音ミクの消失",
+      "title_cn": "初音未来的消失",
+      "difficulty": "expert",
+      "official_level": 30,
+      "community_constant": "30.4",
+      "note_count": 1502
+    },
+    {
+      "song_id": 447,
+      "title_ja": "folern",
+      "title_cn": "folern",
+      "difficulty": "expert",
+      "official_level": 30,
+      "community_constant": "30.2",
+      "note_count": 1392
+    },
+    {
+      "song_id": 250,
+      "title_ja": "腐れ外道とチョコレゐト",
+      "title_cn": "该死的异端与巧克力",
+      "difficulty": "expert",
+      "official_level": 30,
+      "community_constant": "30.2",
+      "note_count": 1396
+    },
+    {
+      "song_id": 708,
+      "title_ja": "幽玄ノ乱",
+      "title_cn": "幽玄之乱",
+      "difficulty": "expert",
+      "official_level": 30,
+      "community_constant": "30.1",
+      "note_count": 1354
+    },
+    {
+      "song_id": 760,
+      "title_ja": "オールイン・ワン",
+      "title_cn": "万象·归一",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "30.0",
+      "note_count": 1029
+    },
+    {
+      "song_id": 757,
+      "title_ja": "ひかりのあつめかた",
+      "title_cn": "光芒的汇聚之方",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "30.0",
+      "note_count": 818
+    },
+    {
+      "song_id": 706,
+      "title_ja": "永遠甚だしい",
+      "title_cn": "永远至极",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "30.0",
+      "note_count": 930
+    },
+    {
+      "song_id": 449,
+      "title_ja": "MarbleBlue.",
+      "title_cn": "MarbleBlue.",
+      "difficulty": "expert",
+      "official_level": 30,
+      "community_constant": "30.0",
+      "note_count": 1437
+    },
+    {
+      "song_id": 290,
+      "title_ja": "どんな結末がお望みだい？",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "30.0",
+      "note_count": 638
+    },
+    {
+      "song_id": 241,
+      "title_ja": "アサガオの散る頃に",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "30.0",
+      "note_count": 748
+    },
+    {
+      "song_id": 328,
+      "title_ja": "星界ちゃんと可不ちゃんのおつかい合騒曲",
+      "title_cn": "星界酱和可不酱的采购合奏曲",
+      "difficulty": "expert",
+      "official_level": 29,
+      "community_constant": "29.8+",
+      "note_count": 1491
+    },
+    {
+      "song_id": 135,
+      "title_ja": "六兆年と一夜物語",
+      "title_cn": "六兆年零一夜的物语",
+      "difficulty": "expert",
+      "official_level": 29,
+      "community_constant": "29.8+",
+      "note_count": 1099
+    },
+    {
+      "song_id": 745,
+      "title_ja": "ANiMA",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 29,
+      "community_constant": "29.4",
+      "note_count": 1059
+    },
+    {
+      "song_id": 543,
+      "title_ja": "生命性シンドロウム",
+      "title_cn": "生命性综合征",
+      "difficulty": "expert",
+      "official_level": 29,
+      "community_constant": "29.4",
+      "note_count": 1299
+    },
+    {
+      "song_id": 709,
+      "title_ja": "初音ミクの消失−劇場版−",
+      "title_cn": "初音未来的消失-剧场版-",
+      "difficulty": "expert",
+      "official_level": 29,
+      "community_constant": "29.2",
+      "note_count": 918
+    },
+    {
+      "song_id": 448,
+      "title_ja": "Sage",
+      "title_cn": "Sage",
+      "difficulty": "expert",
+      "official_level": 29,
+      "community_constant": "29.1",
+      "note_count": 1259
+    },
+    {
+      "song_id": 186,
+      "title_ja": "初音天地開闢神話",
+      "title_cn": "初音天地开辟神话",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.9+",
+      "note_count": 1581
+    },
+    {
+      "song_id": 128,
+      "title_ja": "Brand New Day",
+      "title_cn": "Brand New Day",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.9+",
+      "note_count": 1260
+    },
+    {
+      "song_id": 285,
+      "title_ja": "ÅMARA(大未来電脳)",
+      "title_cn": "ÅMARA(大未来电脑)",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.6+",
+      "note_count": 1342
+    },
+    {
+      "song_id": 249,
+      "title_ja": "ぼくらの16bit戦争",
+      "title_cn": "我们的16bit战争",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.6+",
+      "note_count": 1379
+    },
+    {
+      "song_id": 6,
+      "title_ja": "ヒバナ -Reloaded-",
+      "title_cn": "火花 -Reloaded-",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.5",
+      "note_count": 808
+    },
+    {
+      "song_id": 685,
+      "title_ja": "電光刹歌",
+      "title_cn": "电光刹歌",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.4",
+      "note_count": 1086
+    },
+    {
+      "song_id": 503,
+      "title_ja": "超最終鬼畜妹フランドール・Ｓ",
+      "title_cn": "超最终鬼畜妹芙兰朵露·S",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.4",
+      "note_count": 1175
+    },
+    {
+      "song_id": 175,
+      "title_ja": "拝啓ドッペルゲンガー",
+      "title_cn": "敬启，我的分身",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.4",
+      "note_count": 1368
+    },
+    {
+      "song_id": 686,
+      "title_ja": "トレジャーガーデン",
+      "title_cn": "宝藏花园",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.3",
+      "note_count": 1381
+    },
+    {
+      "song_id": 206,
+      "title_ja": "君色マリンスノウ",
+      "title_cn": "你的颜色Marine Snow",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.3",
+      "note_count": 1339
+    },
+    {
+      "song_id": 732,
+      "title_ja": "天藍のアイスヘヴン",
+      "title_cn": "天蓝的冰之天堂",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.2",
+      "note_count": 1228
+    },
+    {
+      "song_id": 697,
+      "title_ja": "Internet Junk Junkie",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.2",
+      "note_count": 1105
+    },
+    {
+      "song_id": 588,
+      "title_ja": "プラネットヒーロー",
+      "title_cn": "Planet Hero",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.2",
+      "note_count": 1128
+    },
+    {
+      "song_id": 584,
+      "title_ja": "IMAWANOKIWA",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.2",
+      "note_count": 1256
+    },
+    {
+      "song_id": 396,
+      "title_ja": "東京テディベア",
+      "title_cn": "东京泰迪熊",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.2",
+      "note_count": 1172
+    },
+    {
+      "song_id": 284,
+      "title_ja": "インビジブル",
+      "title_cn": "透明人",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.2",
+      "note_count": 1385
+    },
+    {
+      "song_id": 647,
+      "title_ja": "SAN値直葬",
+      "title_cn": "SAN值直葬",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.1",
+      "note_count": 1365
+    },
+    {
+      "song_id": 229,
+      "title_ja": "脳漿炸裂ガール",
+      "title_cn": "脑浆炸裂少女",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.1",
+      "note_count": 1349
+    },
+    {
+      "song_id": 552,
+      "title_ja": "M@GICAL☆CURE! LOVE ♥ SHOT!",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.0",
+      "note_count": 980
+    },
+    {
+      "song_id": 353,
+      "title_ja": "キティ",
+      "title_cn": "Kitty",
+      "difficulty": "expert",
+      "official_level": 28,
+      "community_constant": "28.0",
+      "note_count": 982
+    },
+    {
+      "song_id": 622,
+      "title_ja": "超ナイト・オブ・ナイツ",
+      "title_cn": "超Night of Knights",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.9+",
+      "note_count": 1201
+    },
+    {
+      "song_id": 273,
+      "title_ja": "フューチャー・イヴ",
+      "title_cn": "未来前夜",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.9+",
+      "note_count": 1462
+    },
+    {
+      "song_id": 171,
+      "title_ja": "カゲロウデイズ",
+      "title_cn": "阳炎眩乱",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.9+",
+      "note_count": 1295
+    },
+    {
+      "song_id": 3,
+      "title_ja": "テオ",
+      "title_cn": "将手",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.9+",
+      "note_count": 997
+    },
+    {
+      "song_id": 641,
+      "title_ja": "君が飛び降りるのならば",
+      "title_cn": "如若你跳落的话",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.8+",
+      "note_count": 970
+    },
+    {
+      "song_id": 327,
+      "title_ja": "SnowMix♪",
+      "title_cn": "SnowMix♪",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.8+",
+      "note_count": 1321
+    },
+    {
+      "song_id": 136,
+      "title_ja": "チルドレンレコード",
+      "title_cn": "孩童记录",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.8+",
+      "note_count": 1234
+    },
+    {
+      "song_id": 127,
+      "title_ja": "トンデモワンダーズ",
+      "title_cn": "不可思议的Wonders",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.8+",
+      "note_count": 1122
+    },
+    {
+      "song_id": 46,
+      "title_ja": "グリーンライツ・セレナーデ",
+      "title_cn": "绿灯小夜曲",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.8+",
+      "note_count": 1034
+    },
+    {
+      "song_id": 43,
+      "title_ja": "ネクストネスト",
+      "title_cn": "Next Nest",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.8+",
+      "note_count": 983
+    },
+    {
+      "song_id": 688,
+      "title_ja": "ウィーアーピコピコハンマーズ!!!!",
+      "title_cn": "We are Pico Pico Hammers!!!!",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 1125
+    },
+    {
+      "song_id": 587,
+      "title_ja": "ルルブ",
+      "title_cn": "规则书「Rule Book」",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 1143
+    },
+    {
+      "song_id": 559,
+      "title_ja": "おどりゃんせ",
+      "title_cn": "来起舞吧",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 1100
+    },
+    {
+      "song_id": 444,
+      "title_ja": "心泥夢(syndrome)",
+      "title_cn": "心泥梦(syndrome)",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 1221
+    },
+    {
+      "song_id": 408,
+      "title_ja": "CIRCUS PANIC!!!",
+      "title_cn": "CIRCUS PANIC!!!",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 1083
+    },
+    {
+      "song_id": 406,
+      "title_ja": "ARQETYPE",
+      "title_cn": "ARQETYPE",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 827
+    },
+    {
+      "song_id": 361,
+      "title_ja": "きゅうくらりん",
+      "title_cn": "心跳不止",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 1141
+    },
+    {
+      "song_id": 178,
+      "title_ja": "にっこり^^調査隊のテーマ",
+      "title_cn": "微笑^^调查队的主题曲",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 1026
+    },
+    {
+      "song_id": 165,
+      "title_ja": "そうだった！！",
+      "title_cn": "是的是的！！",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.7+",
+      "note_count": 1175
+    },
+    {
+      "song_id": 749,
+      "title_ja": "99 Glooms",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6",
+      "note_count": 1017
+    },
+    {
+      "song_id": 689,
+      "title_ja": "最愛人生ランナー",
+      "title_cn": "最爱人生跑者",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 1039
+    },
+    {
+      "song_id": 590,
+      "title_ja": "マンハッタン",
+      "title_cn": "Manhattan",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 901
+    },
+    {
+      "song_id": 354,
+      "title_ja": "セツナトリップ",
+      "title_cn": "刹那旅程",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 1275
+    },
+    {
+      "song_id": 344,
+      "title_ja": "脳内革命ガール",
+      "title_cn": "脑内革命女孩",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 1189
+    },
+    {
+      "song_id": 335,
+      "title_ja": "トラッシュ・アンド・トラッシュ！",
+      "title_cn": "TRASH and TRASH!",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 1022
+    },
+    {
+      "song_id": 307,
+      "title_ja": "おこちゃま戦争",
+      "title_cn": "孩子气的战争",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 1259
+    },
+    {
+      "song_id": 251,
+      "title_ja": "フロイライン＝ビブリォチカ",
+      "title_cn": "Fräulein=библиотека",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 1222
+    },
+    {
+      "song_id": 234,
+      "title_ja": "徳川カップヌードル禁止令",
+      "title_cn": "德川杯面禁止令",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 1065
+    },
+    {
+      "song_id": 199,
+      "title_ja": "ゴーストルール",
+      "title_cn": "幽灵法则",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 1174
+    },
+    {
+      "song_id": 28,
+      "title_ja": "ドクター＝ファンクビート",
+      "title_cn": "Doctor=Funk Beat",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.6+",
+      "note_count": 984
+    },
+    {
+      "song_id": 714,
+      "title_ja": "フロイライン＝オジョウサマ",
+      "title_cn": "Fräulein=大小姐",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 1130
+    },
+    {
+      "song_id": 581,
+      "title_ja": "厨病激発ボーイ",
+      "title_cn": "厨病激发男孩",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 1118
+    },
+    {
+      "song_id": 553,
+      "title_ja": "パリィ",
+      "title_cn": "招架",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 963
+    },
+    {
+      "song_id": 549,
+      "title_ja": "化けの花",
+      "title_cn": "诡异之花",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 875
+    },
+    {
+      "song_id": 379,
+      "title_ja": "ずんだパーリナイ",
+      "title_cn": "俊达萌派对之夜",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 1407
+    },
+    {
+      "song_id": 364,
+      "title_ja": "エターナルアリア",
+      "title_cn": "永恒的咏叹调",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 1272
+    },
+    {
+      "song_id": 334,
+      "title_ja": "Vampire's ∞ pathoS",
+      "title_cn": "Vampire's ∞ pathoS",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 992
+    },
+    {
+      "song_id": 254,
+      "title_ja": "未完成讃歌",
+      "title_cn": "未完成赞歌",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 1324
+    },
+    {
+      "song_id": 744,
+      "title_ja": "CHAOS",
+      "title_cn": "混沌",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 890
+    },
+    {
+      "song_id": 703,
+      "title_ja": "バイオレンストリガー",
+      "title_cn": "暴力扳机",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 1277
+    },
+    {
+      "song_id": 468,
+      "title_ja": "十六歳の心臓",
+      "title_cn": "十六岁的心脏",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 1162
+    },
+    {
+      "song_id": 451,
+      "title_ja": "熱異常",
+      "title_cn": "热异常",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 978
+    },
+    {
+      "song_id": 433,
+      "title_ja": "ヒアソビ",
+      "title_cn": "与火共舞",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 1053
+    },
+    {
+      "song_id": 428,
+      "title_ja": "ときめきジェットコースター",
+      "title_cn": "心跳不止的过山车",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 1016
+    },
+    {
+      "song_id": 381,
+      "title_ja": "新人類",
+      "title_cn": "新人类",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 1285
+    },
+    {
+      "song_id": 301,
+      "title_ja": "私の恋はヘルファイア",
+      "title_cn": "我的恋情是地狱之焰",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 1491
+    },
+    {
+      "song_id": 227,
+      "title_ja": "ONESELF",
+      "title_cn": "ONESELF",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 1063
+    },
+    {
+      "song_id": 112,
+      "title_ja": "天使のクローバー",
+      "title_cn": "天使的幸运草",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 985
+    },
+    {
+      "song_id": 555,
+      "title_ja": "フュージョン",
+      "title_cn": "Fusion",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.3",
+      "note_count": 1056
+    },
+    {
+      "song_id": 474,
+      "title_ja": "キラー",
+      "title_cn": "Killer",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.3",
+      "note_count": 825
+    },
+    {
+      "song_id": 411,
+      "title_ja": "世界を照らすテトラッド",
+      "title_cn": "照亮世界的四和音",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.3",
+      "note_count": 850
+    },
+    {
+      "song_id": 392,
+      "title_ja": "春嵐",
+      "title_cn": "春岚",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.2",
+      "note_count": 1095
+    },
+    {
+      "song_id": 562,
+      "title_ja": "アンヘル",
+      "title_cn": "天使",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.1",
+      "note_count": 917
+    },
+    {
+      "song_id": 452,
+      "title_ja": "サイバーパンクデッドボーイ",
+      "title_cn": "Cyberpunk Dead Boy",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.1",
+      "note_count": 917
+    },
+    {
+      "song_id": 631,
+      "title_ja": "天才ロック",
+      "title_cn": "天才摇滚",
+      "difficulty": "expert",
+      "official_level": 27,
+      "community_constant": "27.0",
+      "note_count": 1148
+    },
+    {
+      "song_id": 707,
+      "title_ja": "さいたま2000",
+      "title_cn": "埼玉2000",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 659
+    },
+    {
+      "song_id": 623,
+      "title_ja": "とうほう☆ワンダーランド",
+      "title_cn": "东方☆奇幻乐园",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 806
+    },
+    {
+      "song_id": 450,
+      "title_ja": "オペラ！スペースオペラ！",
+      "title_cn": "歌剧！太空歌剧！",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 986
+    },
+    {
+      "song_id": 399,
+      "title_ja": "Disco No.39",
+      "title_cn": "Disco No.39",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 950
+    },
+    {
+      "song_id": 187,
+      "title_ja": "ロウワー",
+      "title_cn": "堕落眼界",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 780
+    },
+    {
+      "song_id": 185,
+      "title_ja": "しっくおぶはうす！",
+      "title_cn": "Sick of House!",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 1107
+    },
+    {
+      "song_id": 183,
+      "title_ja": "フィクサー",
+      "title_cn": "Fixer",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 948
+    },
+    {
+      "song_id": 122,
+      "title_ja": "ポジティブ☆ダンスタイム",
+      "title_cn": "Positive☆Dance Time",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 965
+    },
+    {
+      "song_id": 83,
+      "title_ja": "Gimme×Gimme",
+      "title_cn": "Gimme×Gimme",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 842
+    },
+    {
+      "song_id": 62,
+      "title_ja": "ジャックポットサッドガール",
+      "title_cn": "Jackpot Sad Girl",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.9+",
+      "note_count": 647
+    },
+    {
+      "song_id": 711,
+      "title_ja": "ワンダーラスト",
+      "title_cn": "Wanderlast",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8",
+      "note_count": 1418
+    },
+    {
+      "song_id": 626,
+      "title_ja": "フィッシュアンドTips",
+      "title_cn": "Fish and Tips",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 833
+    },
+    {
+      "song_id": 624,
+      "title_ja": "チルノのパーフェクトさんすう学園",
+      "title_cn": "琪露诺的完美算术教室",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 999
+    },
+    {
+      "song_id": 531,
+      "title_ja": "メズマライザー",
+      "title_cn": "催眠术",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 1218
+    },
+    {
+      "song_id": 380,
+      "title_ja": "スターダストメドレー",
+      "title_cn": "Stardust Medley",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 1215
+    },
+    {
+      "song_id": 304,
+      "title_ja": "Iなんです",
+      "title_cn": "这就是I",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 910
+    },
+    {
+      "song_id": 299,
+      "title_ja": "エゴイスト",
+      "title_cn": "利己主义者",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 1303
+    },
+    {
+      "song_id": 222,
+      "title_ja": "ピアノ×フォルテ×スキャンダル",
+      "title_cn": "Piano×Forte×Scandal",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 1042
+    },
+    {
+      "song_id": 113,
+      "title_ja": "ローリンガール",
+      "title_cn": "翻滚少女",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 1156
+    },
+    {
+      "song_id": 99,
+      "title_ja": "モア！ジャンプ！モア！",
+      "title_cn": "More! Jump! More!",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 1011
+    },
+    {
+      "song_id": 98,
+      "title_ja": "ロストワンの号哭",
+      "title_cn": "Lost One 的号哭",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 947
+    },
+    {
+      "song_id": 88,
+      "title_ja": "チュルリラ・チュルリラ・ダッダッダ！",
+      "title_cn": "啾噜哩啦·啾噜哩啦·哒哒哒！",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 1246
+    },
+    {
+      "song_id": 84,
+      "title_ja": "ジャンキーナイトタウンオーケストラ",
+      "title_cn": "瘾者之夜城镇乐队",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 1070
+    },
+    {
+      "song_id": 60,
+      "title_ja": "悔やむと書いてミライ",
+      "title_cn": "写作悔恨的未来",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.8+",
+      "note_count": 815
+    },
+    {
+      "song_id": 521,
+      "title_ja": "オーバーライド",
+      "title_cn": "Override",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1004
+    },
+    {
+      "song_id": 475,
+      "title_ja": "ちがう!!!",
+      "title_cn": "不对的!!!",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 930
+    },
+    {
+      "song_id": 414,
+      "title_ja": "HERO",
+      "title_cn": "HERO",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1194
+    },
+    {
+      "song_id": 367,
+      "title_ja": "すきなことだけでいいです",
+      "title_cn": "我只要我喜欢的事物",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1081
+    },
+    {
+      "song_id": 349,
+      "title_ja": "悪食娘コンチータ",
+      "title_cn": "恶食娘空琪塔\n",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 791
+    },
+    {
+      "song_id": 336,
+      "title_ja": "Be The MUSIC!",
+      "title_cn": "Be The MUSIC!",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1121
+    },
+    {
+      "song_id": 333,
+      "title_ja": "Mr. Showtime",
+      "title_cn": "Mr. Showtime",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1341
+    },
+    {
+      "song_id": 291,
+      "title_ja": "フェレス",
+      "title_cn": "Pheles",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1374
+    },
+    {
+      "song_id": 248,
+      "title_ja": "バグ",
+      "title_cn": "故障",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1101
+    },
+    {
+      "song_id": 224,
+      "title_ja": "88☆彡",
+      "title_cn": "88☆彡",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1088
+    },
+    {
+      "song_id": 115,
+      "title_ja": "アンノウン・マザーグース",
+      "title_cn": "不为人知的鹅妈妈",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1080
+    },
+    {
+      "song_id": 114,
+      "title_ja": "裏表ラバーズ",
+      "title_cn": "里表情人",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1017
+    },
+    {
+      "song_id": 101,
+      "title_ja": "RAD DOGS",
+      "title_cn": "RAD DOGS",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.7+",
+      "note_count": 1067
+    },
+    {
+      "song_id": 713,
+      "title_ja": "Nyanyanyanyanyanyanya!",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1059
+    },
+    {
+      "song_id": 704,
+      "title_ja": "黒塗り世界宛て書簡",
+      "title_cn": "致涂成黑色的世界的书信",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 930
+    },
+    {
+      "song_id": 687,
+      "title_ja": "ジェットブラック",
+      "title_cn": "漆黑「Jet Black」",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1052
+    },
+    {
+      "song_id": 652,
+      "title_ja": "カレシのジュード",
+      "title_cn": "男朋友的Jude",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1184
+    },
+    {
+      "song_id": 651,
+      "title_ja": "ホワイトハッピー",
+      "title_cn": "白色幸福",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 939
+    },
+    {
+      "song_id": 538,
+      "title_ja": "オールセーブチャレンジ",
+      "title_cn": "全存档挑战",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 795
+    },
+    {
+      "song_id": 504,
+      "title_ja": "I know 愛脳.",
+      "title_cn": "I know 爱脑.",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1016
+    },
+    {
+      "song_id": 494,
+      "title_ja": "ポッピンキャンディ☆フィーバー！",
+      "title_cn": "Poppin' Candy☆Fever!",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1140
+    },
+    {
+      "song_id": 435,
+      "title_ja": "リレイアウター",
+      "title_cn": "中继输出者",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 960
+    },
+    {
+      "song_id": 308,
+      "title_ja": "ももいろの鍵",
+      "title_cn": "桃色钥匙",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1073
+    },
+    {
+      "song_id": 302,
+      "title_ja": "フレー",
+      "title_cn": "Hurray",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1067
+    },
+    {
+      "song_id": 268,
+      "title_ja": "ノンブレス・オブリージュ",
+      "title_cn": "无呼吸义务",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1071
+    },
+    {
+      "song_id": 197,
+      "title_ja": "ラストスコア",
+      "title_cn": "Last Score",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1050
+    },
+    {
+      "song_id": 167,
+      "title_ja": "オルターエゴ",
+      "title_cn": "Alter Ego",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1175
+    },
+    {
+      "song_id": 145,
+      "title_ja": "ベノム",
+      "title_cn": "猛毒",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 972
+    },
+    {
+      "song_id": 119,
+      "title_ja": "ワールズエンド・ダンスホール",
+      "title_cn": "世末舞厅",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 957
+    },
+    {
+      "song_id": 107,
+      "title_ja": "ミルククラウン・オン・ソーネチカ",
+      "title_cn": "索涅奇卡的牛奶皇冠",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 1025
+    },
+    {
+      "song_id": 97,
+      "title_ja": "霽れを待つ",
+      "title_cn": "等待雨晴",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 974
+    },
+    {
+      "song_id": 78,
+      "title_ja": "ぼうけんのしょがきえました！",
+      "title_cn": "冒险之书消失了！",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 951
+    },
+    {
+      "song_id": 22,
+      "title_ja": "命に嫌われている",
+      "title_cn": "被生命所厌恶。",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.6+",
+      "note_count": 756
+    },
+    {
+      "song_id": 723,
+      "title_ja": "ラヴィ",
+      "title_cn": "Lavie「生命」",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 1080
+    },
+    {
+      "song_id": 695,
+      "title_ja": "花結び",
+      "title_cn": "花结",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 989
+    },
+    {
+      "song_id": 665,
+      "title_ja": "ロケットサイダー",
+      "title_cn": "火箭苏打水",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 1110
+    },
+    {
+      "song_id": 648,
+      "title_ja": "Life Will Change",
+      "title_cn": "Life Will Change",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 973
+    },
+    {
+      "song_id": 620,
+      "title_ja": "紗痲",
+      "title_cn": "纱痲",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 1088
+    },
+    {
+      "song_id": 595,
+      "title_ja": "エンヴィキャットウォーク",
+      "title_cn": "嫉妒猫步",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 932
+    },
+    {
+      "song_id": 583,
+      "title_ja": "アクセラレイト",
+      "title_cn": "Accelerate",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 810
+    },
+    {
+      "song_id": 517,
+      "title_ja": "メリーゴーラウンド",
+      "title_cn": "旋转木马",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 874
+    },
+    {
+      "song_id": 496,
+      "title_ja": "シルバーコレクター",
+      "title_cn": "银牌收集者",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 1113
+    },
+    {
+      "song_id": 462,
+      "title_ja": "レッドランドマーカー",
+      "title_cn": "Red Land Marker",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 1018
+    },
+    {
+      "song_id": 288,
+      "title_ja": "アンハッピーリフレイン",
+      "title_cn": "Unhappy Refrain",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 1137
+    },
+    {
+      "song_id": 157,
+      "title_ja": "マシュマリー",
+      "title_cn": "Marshmary",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 1123
+    },
+    {
+      "song_id": 81,
+      "title_ja": "夜咄ディセイブ",
+      "title_cn": "夜谈欺骗",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 1165
+    },
+    {
+      "song_id": 68,
+      "title_ja": "ダンスロボットダンス",
+      "title_cn": "Dance Robot Dance",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 927
+    },
+    {
+      "song_id": 21,
+      "title_ja": "脱法ロック",
+      "title_cn": "逃避法律摇滚",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.5",
+      "note_count": 972
+    },
+    {
+      "song_id": 715,
+      "title_ja": "魔法少女幸福論",
+      "title_cn": "魔法少女幸福论",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 982
+    },
+    {
+      "song_id": 669,
+      "title_ja": "げんてん",
+      "title_cn": "Genten",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 1021
+    },
+    {
+      "song_id": 649,
+      "title_ja": "サヨナラ天国また来て地獄",
+      "title_cn": "再见天国再临地狱",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 723
+    },
+    {
+      "song_id": 632,
+      "title_ja": "Surges",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 950
+    },
+    {
+      "song_id": 606,
+      "title_ja": "スーサイドパレヱド",
+      "title_cn": "决死行进",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 918
+    },
+    {
+      "song_id": 554,
+      "title_ja": "snooze",
+      "title_cn": "snooze",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 961
+    },
+    {
+      "song_id": 502,
+      "title_ja": "Help me, ERINNNNNN!!",
+      "title_cn": "Help me, ERINNNNNN!!",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 1168
+    },
+    {
+      "song_id": 412,
+      "title_ja": "デビルじゃないもん",
+      "title_cn": "才不是恶魔呢",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 854
+    },
+    {
+      "song_id": 391,
+      "title_ja": "キュートなカノジョ",
+      "title_cn": "可爱女友",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 1006
+    },
+    {
+      "song_id": 357,
+      "title_ja": "ブループラネット",
+      "title_cn": "蓝色星球",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 1287
+    },
+    {
+      "song_id": 231,
+      "title_ja": "アイデンティティ",
+      "title_cn": "Identity",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 1196
+    },
+    {
+      "song_id": 133,
+      "title_ja": "悪魔の踊り方",
+      "title_cn": "恶魔的舞步",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 792
+    },
+    {
+      "song_id": 90,
+      "title_ja": "限りなく灰色へ",
+      "title_cn": "向着无尽之灰",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 818
+    },
+    {
+      "song_id": 64,
+      "title_ja": "ステラ",
+      "title_cn": "Stella",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.4",
+      "note_count": 955
+    },
+    {
+      "song_id": 663,
+      "title_ja": "ヴィーナス",
+      "title_cn": "维纳斯",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 1124
+    },
+    {
+      "song_id": 636,
+      "title_ja": "エクスプロウル",
+      "title_cn": "Explore",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 1024
+    },
+    {
+      "song_id": 601,
+      "title_ja": "ルマ",
+      "title_cn": "倒谬",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 899
+    },
+    {
+      "song_id": 596,
+      "title_ja": "D/N/A",
+      "title_cn": "D/N/A",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 913
+    },
+    {
+      "song_id": 569,
+      "title_ja": "シークレット・シーカー",
+      "title_cn": "Secret Seeker",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 894
+    },
+    {
+      "song_id": 509,
+      "title_ja": "ライアーダンサー",
+      "title_cn": "谎言舞者",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 892
+    },
+    {
+      "song_id": 508,
+      "title_ja": "ヘイヴン",
+      "title_cn": "避风港",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 875
+    },
+    {
+      "song_id": 482,
+      "title_ja": "だめにんげんだ!",
+      "title_cn": "无用人类！",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 917
+    },
+    {
+      "song_id": 418,
+      "title_ja": "金木犀",
+      "title_cn": "金木樨",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 814
+    },
+    {
+      "song_id": 413,
+      "title_ja": "さよならプリンセス",
+      "title_cn": "再见公主",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 812
+    },
+    {
+      "song_id": 376,
+      "title_ja": "我儘姫",
+      "title_cn": "任性公主",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.3",
+      "note_count": 1040
+    },
+    {
+      "song_id": 664,
+      "title_ja": "人マニア",
+      "title_cn": "人狂热症",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 1000
+    },
+    {
+      "song_id": 608,
+      "title_ja": "星宙メランコリア",
+      "title_cn": "星空忧郁",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 1004
+    },
+    {
+      "song_id": 561,
+      "title_ja": "プロトディスコ",
+      "title_cn": "Proto Disco",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 913
+    },
+    {
+      "song_id": 557,
+      "title_ja": "花溺れ",
+      "title_cn": "沉溺于花中",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 780
+    },
+    {
+      "song_id": 446,
+      "title_ja": "オーバーコード",
+      "title_cn": "O-Barcode",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 1113
+    },
+    {
+      "song_id": 423,
+      "title_ja": "レグルス",
+      "title_cn": "轩辕十四",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 949
+    },
+    {
+      "song_id": 416,
+      "title_ja": "limbo",
+      "title_cn": "limbo",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 900
+    },
+    {
+      "song_id": 410,
+      "title_ja": "マーシャル・マキシマイザー",
+      "title_cn": "Marshall Maximizer",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 694
+    },
+    {
+      "song_id": 378,
+      "title_ja": "スロウダウナー",
+      "title_cn": "Slow Downer",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 1054
+    },
+    {
+      "song_id": 198,
+      "title_ja": "グッバイ宣言",
+      "title_cn": "再见宣言",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 1017
+    },
+    {
+      "song_id": 110,
+      "title_ja": "千本桜",
+      "title_cn": "千本樱",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.2",
+      "note_count": 1000
+    },
+    {
+      "song_id": 633,
+      "title_ja": "庭師のおはなしによると",
+      "title_cn": "根据庭师的故事",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.1",
+      "note_count": 1121
+    },
+    {
+      "song_id": 628,
+      "title_ja": "モニタリング",
+      "title_cn": "视奸",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.1",
+      "note_count": 901
+    },
+    {
+      "song_id": 524,
+      "title_ja": "それでも僕らは歌うことをやめない",
+      "title_cn": "即便如此我们也不会放弃歌唱",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.1",
+      "note_count": 705
+    },
+    {
+      "song_id": 456,
+      "title_ja": "幾望の月",
+      "title_cn": "几望之月",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.1",
+      "note_count": 892
+    },
+    {
+      "song_id": 205,
+      "title_ja": "踊",
+      "title_cn": "舞",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.1",
+      "note_count": 882
+    },
+    {
+      "song_id": 741,
+      "title_ja": "アイ・メイカー！",
+      "title_cn": "眼妆大师！",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.0",
+      "note_count": 1118
+    },
+    {
+      "song_id": 727,
+      "title_ja": "T氏の話を信じるな",
+      "title_cn": "不要听那姓T的话",
+      "difficulty": "expert",
+      "official_level": 26,
+      "community_constant": "26.0",
+      "note_count": 948
+    },
+    {
+      "song_id": 303,
+      "title_ja": "リンちゃんなう！",
+      "title_cn": "铃酱Now！",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.9+",
+      "note_count": 1098
+    },
+    {
+      "song_id": 213,
+      "title_ja": "ヴァンパイア",
+      "title_cn": "吸血鬼",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.9+",
+      "note_count": 1029
+    },
+    {
+      "song_id": 184,
+      "title_ja": "Hello,world!",
+      "title_cn": "Hello,world!",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.9",
+      "note_count": 900
+    },
+    {
+      "song_id": 151,
+      "title_ja": "泡沫未来",
+      "title_cn": "泡沫未来",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.9+",
+      "note_count": 750
+    },
+    {
+      "song_id": 656,
+      "title_ja": "ブラッドドール",
+      "title_cn": "Blood Doll",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.8+",
+      "note_count": 795
+    },
+    {
+      "song_id": 401,
+      "title_ja": "まにまに",
+      "title_cn": "随之任之",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.8",
+      "note_count": 893
+    },
+    {
+      "song_id": 215,
+      "title_ja": "ジウダス",
+      "title_cn": "叛徒",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.8+",
+      "note_count": 769
+    },
+    {
+      "song_id": 637,
+      "title_ja": "笑えたらえーやん！",
+      "title_cn": "笑了不就好了！",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.7",
+      "note_count": 878
+    },
+    {
+      "song_id": 439,
+      "title_ja": "一千光年",
+      "title_cn": "一千光年",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.7+",
+      "note_count": 941
+    },
+    {
+      "song_id": 472,
+      "title_ja": "成敗いたAAAAAす！",
+      "title_cn": "降下诸罚AAAAA！",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.6",
+      "note_count": 1022
+    },
+    {
+      "song_id": 276,
+      "title_ja": "シャンティ",
+      "title_cn": "Shanti",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.6",
+      "note_count": 942
+    },
+    {
+      "song_id": 266,
+      "title_ja": "YY",
+      "title_cn": "YY",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.6+",
+      "note_count": 976
+    },
+    {
+      "song_id": 233,
+      "title_ja": "コスモスパイス",
+      "title_cn": "宇宙香料",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.6+",
+      "note_count": 849
+    },
+    {
+      "song_id": 208,
+      "title_ja": "僕らまだアンダーグラウンド",
+      "title_cn": "我们仍在地面之下",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.6+",
+      "note_count": 920
+    },
+    {
+      "song_id": 467,
+      "title_ja": "あいのうた",
+      "title_cn": "爱之歌",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.5",
+      "note_count": 950
+    },
+    {
+      "song_id": 168,
+      "title_ja": "ダーリンダンス",
+      "title_cn": "Darling Dance",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.5",
+      "note_count": 824
+    },
+    {
+      "song_id": 156,
+      "title_ja": "Beat Eater",
+      "title_cn": "Beat Eater",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.5",
+      "note_count": 772
+    },
+    {
+      "song_id": 104,
+      "title_ja": "サンドリヨン 10th Anniversary",
+      "title_cn": "「Cendrillon」十周年纪念版",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.5",
+      "note_count": 735
+    },
+    {
+      "song_id": 724,
+      "title_ja": "ハオ",
+      "title_cn": "好",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 964
+    },
+    {
+      "song_id": 718,
+      "title_ja": "幕を下ろそう、パレードへ",
+      "title_cn": "让帷幕落下，向游行前进",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 861
+    },
+    {
+      "song_id": 627,
+      "title_ja": "テトリス",
+      "title_cn": "Tetoris",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 653
+    },
+    {
+      "song_id": 570,
+      "title_ja": "スター",
+      "title_cn": "Star",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 799
+    },
+    {
+      "song_id": 544,
+      "title_ja": "妄想アスパルテーム",
+      "title_cn": "妄想阿斯巴甜",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 828
+    },
+    {
+      "song_id": 542,
+      "title_ja": "Blackjack",
+      "title_cn": "Blackjack",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 921
+    },
+    {
+      "song_id": 505,
+      "title_ja": "コールボーイ",
+      "title_cn": "Call Boy",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 809
+    },
+    {
+      "song_id": 491,
+      "title_ja": "キャットラビング",
+      "title_cn": "Cat Loving",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 934
+    },
+    {
+      "song_id": 316,
+      "title_ja": "ひつじがいっぴき",
+      "title_cn": "独羊",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 1120
+    },
+    {
+      "song_id": 230,
+      "title_ja": "サラマンダー",
+      "title_cn": "火蜥蜴",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 1186
+    },
+    {
+      "song_id": 216,
+      "title_ja": "ルカルカ★ナイトフィーバー",
+      "title_cn": "Luka Luka ★ Night Fever",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 950
+    },
+    {
+      "song_id": 91,
+      "title_ja": "ドラマツルギー",
+      "title_cn": "拟剧论",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 747
+    },
+    {
+      "song_id": 702,
+      "title_ja": "ラムネ",
+      "title_cn": "弹珠汽水",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 951
+    },
+    {
+      "song_id": 591,
+      "title_ja": "吉原ラメント 再来盤",
+      "title_cn": "吉原哀歌 再版",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 1135
+    },
+    {
+      "song_id": 589,
+      "title_ja": "バレリーコ",
+      "title_cn": "芭蕾舞者",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 965
+    },
+    {
+      "song_id": 580,
+      "title_ja": "三日月ステップ",
+      "title_cn": "三日月Step",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 891
+    },
+    {
+      "song_id": 511,
+      "title_ja": "如月アテンション",
+      "title_cn": "如月专注",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 855
+    },
+    {
+      "song_id": 478,
+      "title_ja": "フューエル",
+      "title_cn": "燃料",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 698
+    },
+    {
+      "song_id": 425,
+      "title_ja": "Cool Me Down",
+      "title_cn": "Cool Me Down",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 1159
+    },
+    {
+      "song_id": 356,
+      "title_ja": "リアライズ",
+      "title_cn": "Realize",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 744
+    },
+    {
+      "song_id": 592,
+      "title_ja": "クイーンオブハート",
+      "title_cn": "红心皇后",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.2",
+      "note_count": 1189
+    },
+    {
+      "song_id": 586,
+      "title_ja": "ヤンキーボーイ・ヤンキーガール",
+      "title_cn": "不良少年·不良少女",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.2",
+      "note_count": 903
+    },
+    {
+      "song_id": 585,
+      "title_ja": "ペンタトニック",
+      "title_cn": "五声音阶",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.2",
+      "note_count": 733
+    },
+    {
+      "song_id": 536,
+      "title_ja": "Fire◎Flower (Rerec)",
+      "title_cn": "Fire◎Flower (重录版)",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.2",
+      "note_count": 734
+    },
+    {
+      "song_id": 515,
+      "title_ja": "イガク",
+      "title_cn": "医学",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.2",
+      "note_count": 892
+    },
+    {
+      "song_id": 352,
+      "title_ja": "命ばっかり",
+      "title_cn": "只为生命",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.2",
+      "note_count": 1037
+    },
+    {
+      "song_id": 594,
+      "title_ja": "Call!!",
+      "title_cn": "Call!!",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.1",
+      "note_count": 549
+    },
+    {
+      "song_id": 289,
+      "title_ja": "天ノ弱",
+      "title_cn": "天之弱",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.1",
+      "note_count": 982
+    },
+    {
+      "song_id": 181,
+      "title_ja": "愛して愛して愛して",
+      "title_cn": "深爱着深爱着深爱着",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.1",
+      "note_count": 928
+    },
+    {
+      "song_id": 746,
+      "title_ja": "Masquerade",
+      "title_cn": "假面舞会",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 868
+    },
+    {
+      "song_id": 737,
+      "title_ja": "導火愛",
+      "title_cn": "导火爱",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 883
+    },
+    {
+      "song_id": 733,
+      "title_ja": "いますぐ輪廻",
+      "title_cn": "即刻轮回",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 796
+    },
+    {
+      "song_id": 719,
+      "title_ja": "SHIAWASE FOR YOU!",
+      "title_cn": "予你幸福！",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 789
+    },
+    {
+      "song_id": 705,
+      "title_ja": "ラズベリー＊モンスター",
+      "title_cn": "树莓＊怪兽",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 933
+    },
+    {
+      "song_id": 700,
+      "title_ja": "魔法少女とチョコレゐト",
+      "title_cn": "魔法少女与巧克力",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 797
+    },
+    {
+      "song_id": 692,
+      "title_ja": "ぼかろころしあむ",
+      "title_cn": "VOCALOID斗技场",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 805
+    },
+    {
+      "song_id": 682,
+      "title_ja": "あなたしか見えないの",
+      "title_cn": "眼中仅有你一人",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 969
+    },
+    {
+      "song_id": 681,
+      "title_ja": "星に一番近い場所",
+      "title_cn": "离星星最近的地方",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 964
+    },
+    {
+      "song_id": 653,
+      "title_ja": "パメラ",
+      "title_cn": "帕梅拉",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 877
+    },
+    {
+      "song_id": 646,
+      "title_ja": "透明なパレット",
+      "title_cn": "透明调色板",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 852
+    },
+    {
+      "song_id": 645,
+      "title_ja": "深海シティアンダーグラウンド",
+      "title_cn": "深海地下城",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 872
+    },
+    {
+      "song_id": 643,
+      "title_ja": "About me",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 863
+    },
+    {
+      "song_id": 642,
+      "title_ja": "このまんまでいこう",
+      "title_cn": "就这样继续前进吧",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 738
+    },
+    {
+      "song_id": 639,
+      "title_ja": "マリオネットダンサー",
+      "title_cn": "木偶舞者",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 860
+    },
+    {
+      "song_id": 625,
+      "title_ja": "このふざけた素晴らしき世界は、僕の為にある",
+      "title_cn": "这可笑又美妙的世界、为我而存在",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 946
+    },
+    {
+      "song_id": 616,
+      "title_ja": "アイ",
+      "title_cn": "爱",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 821
+    },
+    {
+      "song_id": 614,
+      "title_ja": "スターナイトスノウ",
+      "title_cn": "星夜之雪",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 859
+    },
+    {
+      "song_id": 611,
+      "title_ja": "好き！雪！本気マジック",
+      "title_cn": "喜欢！雪！真实的魔法",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 828
+    },
+    {
+      "song_id": 576,
+      "title_ja": "ファイアダンス",
+      "title_cn": "火之舞",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 606
+    },
+    {
+      "song_id": 575,
+      "title_ja": "FUN!!",
+      "title_cn": "FUN!!",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 622
+    },
+    {
+      "song_id": 574,
+      "title_ja": "SToRY",
+      "title_cn": "SToRY",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 705
+    },
+    {
+      "song_id": 571,
+      "title_ja": "偽物人間40号",
+      "title_cn": "伪物人间40号",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 775
+    },
+    {
+      "song_id": 560,
+      "title_ja": "アイリッド",
+      "title_cn": "眼睑",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 813
+    },
+    {
+      "song_id": 558,
+      "title_ja": "のだ",
+      "title_cn": "のだ「Noda」",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 918
+    },
+    {
+      "song_id": 547,
+      "title_ja": "終焉逃避行",
+      "title_cn": "终焉逃避行",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 721
+    },
+    {
+      "song_id": 546,
+      "title_ja": "その音が鳴るなら",
+      "title_cn": "若那声音响起",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 952
+    },
+    {
+      "song_id": 541,
+      "title_ja": "メインキャラクター",
+      "title_cn": "主人公",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 951
+    },
+    {
+      "song_id": 534,
+      "title_ja": "ワールド・ランプシェード [reunion]",
+      "title_cn": "世界灯罩 [reunion]",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 895
+    },
+    {
+      "song_id": 533,
+      "title_ja": "転生林檎",
+      "title_cn": "转生苹果",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 851
+    },
+    {
+      "song_id": 529,
+      "title_ja": "カルチャ",
+      "title_cn": "文化",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 797
+    },
+    {
+      "song_id": 525,
+      "title_ja": "アンテナ39",
+      "title_cn": "天线39",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1039
+    },
+    {
+      "song_id": 520,
+      "title_ja": "透明エレジー",
+      "title_cn": "透明哀歌",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 848
+    },
+    {
+      "song_id": 512,
+      "title_ja": "合成するミライ",
+      "title_cn": "合成的未来",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 969
+    },
+    {
+      "song_id": 510,
+      "title_ja": "失敗作少女",
+      "title_cn": "失败作少女",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 805
+    },
+    {
+      "song_id": 506,
+      "title_ja": "QUEEN",
+      "title_cn": "QUEEN",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1164
+    },
+    {
+      "song_id": 499,
+      "title_ja": "混沌ブギ",
+      "title_cn": "混沌布吉",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 962
+    },
+    {
+      "song_id": 498,
+      "title_ja": "はしる! とおく! とどく!",
+      "title_cn": "奔跑！远方！抵达！",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 742
+    },
+    {
+      "song_id": 495,
+      "title_ja": "スーパーヒーロー",
+      "title_cn": "超级英雄",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 904
+    },
+    {
+      "song_id": 484,
+      "title_ja": "Henceforth",
+      "title_cn": "Henceforth",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 916
+    },
+    {
+      "song_id": 471,
+      "title_ja": "ULTRA C",
+      "title_cn": "ULTRA C",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 651
+    },
+    {
+      "song_id": 466,
+      "title_ja": "ガーネットの涙",
+      "title_cn": "石榴石之泪",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 774
+    },
+    {
+      "song_id": 455,
+      "title_ja": "ド屑",
+      "title_cn": "大人渣",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 844
+    },
+    {
+      "song_id": 445,
+      "title_ja": "Twilight Melody",
+      "title_cn": "暮色旋律",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 943
+    },
+    {
+      "song_id": 440,
+      "title_ja": "ショウタイム×オーディエンス",
+      "title_cn": "Showtime × Audience",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1091
+    },
+    {
+      "song_id": 437,
+      "title_ja": "え？あぁ、そう。",
+      "title_cn": "诶？啊，这样。",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 838
+    },
+    {
+      "song_id": 427,
+      "title_ja": "幽光、1/fのゆらめき",
+      "title_cn": "幽光，1/f的波动",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 718
+    },
+    {
+      "song_id": 420,
+      "title_ja": "imaginary love story",
+      "title_cn": "想象中的爱情故事",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1019
+    },
+    {
+      "song_id": 407,
+      "title_ja": "初めての恋が終わる時",
+      "title_cn": "初恋终结之时",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 822
+    },
+    {
+      "song_id": 398,
+      "title_ja": "Beyond the way",
+      "title_cn": "Beyond the way",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 737
+    },
+    {
+      "song_id": 397,
+      "title_ja": "フィラメントフィーバー",
+      "title_cn": "灯丝狂热",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 864
+    },
+    {
+      "song_id": 385,
+      "title_ja": "神っぽいな",
+      "title_cn": "像神一样呐",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1035
+    },
+    {
+      "song_id": 377,
+      "title_ja": "悪役にキスシーンを",
+      "title_cn": "与反派的吻戏",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 998
+    },
+    {
+      "song_id": 373,
+      "title_ja": "下剋上",
+      "title_cn": "下克上",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1228
+    },
+    {
+      "song_id": 372,
+      "title_ja": "天樂",
+      "title_cn": "天乐",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1396
+    },
+    {
+      "song_id": 368,
+      "title_ja": "アイムマイン",
+      "title_cn": "I'm Mine",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1058
+    },
+    {
+      "song_id": 366,
+      "title_ja": "NEO",
+      "title_cn": "NEO",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 939
+    },
+    {
+      "song_id": 342,
+      "title_ja": "Blue Star",
+      "title_cn": "蔚蓝星球",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1046
+    },
+    {
+      "song_id": 341,
+      "title_ja": "難聴系男子が倒せない",
+      "title_cn": "听觉障碍系男子不会被击倒",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1028
+    },
+    {
+      "song_id": 337,
+      "title_ja": "METEOR",
+      "title_cn": "METEOR",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1160
+    },
+    {
+      "song_id": 323,
+      "title_ja": "快晴",
+      "title_cn": "快晴",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1286
+    },
+    {
+      "song_id": 321,
+      "title_ja": "アトラクトライト",
+      "title_cn": "Attract Light",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1295
+    },
+    {
+      "song_id": 320,
+      "title_ja": "Booo!",
+      "title_cn": "Booo!",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 823
+    },
+    {
+      "song_id": 317,
+      "title_ja": "魔法みたいなミュージック！",
+      "title_cn": "宛如魔法般的音乐！",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1080
+    },
+    {
+      "song_id": 300,
+      "title_ja": "ザムザ",
+      "title_cn": "萨姆沙",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 779
+    },
+    {
+      "song_id": 298,
+      "title_ja": "ネトゲ廃人シュプレヒコール",
+      "title_cn": "网游废人齐颂曲",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1156
+    },
+    {
+      "song_id": 286,
+      "title_ja": "Hello, Worker",
+      "title_cn": "Hello, Worker",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 773
+    },
+    {
+      "song_id": 283,
+      "title_ja": "レイニースノードロップ",
+      "title_cn": "Rainy Snowdrop",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1234
+    },
+    {
+      "song_id": 281,
+      "title_ja": "気まぐれメルシィ",
+      "title_cn": "反复无常的宽赦",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1247
+    },
+    {
+      "song_id": 278,
+      "title_ja": "Bad ∞ End ∞ Night",
+      "title_cn": "Bad ∞ End ∞ Night",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 875
+    },
+    {
+      "song_id": 272,
+      "title_ja": "ジェヘナ",
+      "title_cn": "地狱",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1177
+    },
+    {
+      "song_id": 264,
+      "title_ja": "パラソルサイダー",
+      "title_cn": "遮阳伞汽水",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 796
+    },
+    {
+      "song_id": 261,
+      "title_ja": "星屑ユートピア",
+      "title_cn": "星屑下的理想乡",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1183
+    },
+    {
+      "song_id": 260,
+      "title_ja": "ラブカ？",
+      "title_cn": "Love吗？",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 710
+    },
+    {
+      "song_id": 259,
+      "title_ja": "the WALL",
+      "title_cn": "the WALL",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 815
+    },
+    {
+      "song_id": 253,
+      "title_ja": "DAYBREAK FRONTLINE",
+      "title_cn": "DAYBREAK FRONTLINE",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1102
+    },
+    {
+      "song_id": 252,
+      "title_ja": "DREAM PLACE",
+      "title_cn": "DREAM PLACE",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 937
+    },
+    {
+      "song_id": 246,
+      "title_ja": "エイリアンエイリアン",
+      "title_cn": "Alien Alien",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1208
+    },
+    {
+      "song_id": 243,
+      "title_ja": "Calc.",
+      "title_cn": "Calc.",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1126
+    },
+    {
+      "song_id": 239,
+      "title_ja": "月光",
+      "title_cn": "月光",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1058
+    },
+    {
+      "song_id": 236,
+      "title_ja": "Voices",
+      "title_cn": "Voices",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1144
+    },
+    {
+      "song_id": 235,
+      "title_ja": "Journey",
+      "title_cn": "Journey",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1285
+    },
+    {
+      "song_id": 226,
+      "title_ja": "ロストエンファウンド",
+      "title_cn": "Lost and Found",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1082
+    },
+    {
+      "song_id": 225,
+      "title_ja": "エゴロック",
+      "title_cn": "自我摇滚",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1041
+    },
+    {
+      "song_id": 221,
+      "title_ja": "マトリョシカ",
+      "title_cn": "俄罗斯套娃",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 887
+    },
+    {
+      "song_id": 220,
+      "title_ja": "ドーナツホール 2024",
+      "title_cn": "甜甜圈洞 2024版",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1046
+    },
+    {
+      "song_id": 214,
+      "title_ja": "パレットには君がいっぱい",
+      "title_cn": "盛满你的调色盘",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 900
+    },
+    {
+      "song_id": 210,
+      "title_ja": "雨とペトラ",
+      "title_cn": "雨与佩特拉",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 976
+    },
+    {
+      "song_id": 207,
+      "title_ja": "Peaky Peaky",
+      "title_cn": "Peaky Peaky",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 747
+    },
+    {
+      "song_id": 201,
+      "title_ja": "神のまにまに",
+      "title_cn": "神的随波逐流",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 900
+    },
+    {
+      "song_id": 177,
+      "title_ja": "右肩の蝶",
+      "title_cn": "右肩之蝶",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1058
+    },
+    {
+      "song_id": 173,
+      "title_ja": "流星のパルス",
+      "title_cn": "流星的脉冲",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 958
+    },
+    {
+      "song_id": 172,
+      "title_ja": "Happy Halloween",
+      "title_cn": "Happy Halloween",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 827
+    },
+    {
+      "song_id": 170,
+      "title_ja": "ヴィラン",
+      "title_cn": "反派",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 984
+    },
+    {
+      "song_id": 166,
+      "title_ja": "Glory Steady Go!",
+      "title_cn": "Glory Steady Go!",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 738
+    },
+    {
+      "song_id": 161,
+      "title_ja": "magic number",
+      "title_cn": "魔法数字",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 818
+    },
+    {
+      "song_id": 160,
+      "title_ja": "ショウタイム・ルーラー",
+      "title_cn": "Showtime Ruler",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 819
+    },
+    {
+      "song_id": 159,
+      "title_ja": "STAGE OF SEKAI",
+      "title_cn": "STAGE OF SEKAI",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1005
+    },
+    {
+      "song_id": 158,
+      "title_ja": "ナンセンス文学",
+      "title_cn": "无意义文学",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 856
+    },
+    {
+      "song_id": 154,
+      "title_ja": "地球最後の告白を",
+      "title_cn": "地球最后的告白",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 884
+    },
+    {
+      "song_id": 152,
+      "title_ja": "だれかの心臓になれたなら",
+      "title_cn": "若能成为某人的心脏",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 811
+    },
+    {
+      "song_id": 150,
+      "title_ja": "トキヲ・ファンカ",
+      "title_cn": "Tokio Funka",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 780
+    },
+    {
+      "song_id": 139,
+      "title_ja": "夜に駆ける",
+      "title_cn": "向夜晚奔去",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 932
+    },
+    {
+      "song_id": 138,
+      "title_ja": "KING",
+      "title_cn": "KING",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1002
+    },
+    {
+      "song_id": 137,
+      "title_ja": "花を唄う",
+      "title_cn": "歌颂花束",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 807
+    },
+    {
+      "song_id": 134,
+      "title_ja": "テレキャスタービーボーイ",
+      "title_cn": "电吉他摇滚少年",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 726
+    },
+    {
+      "song_id": 129,
+      "title_ja": "ビターチョコデコレーション",
+      "title_cn": "苦巧克力装饰",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1059
+    },
+    {
+      "song_id": 125,
+      "title_ja": "ボッカデラベリタ",
+      "title_cn": "真理之口",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 884
+    },
+    {
+      "song_id": 120,
+      "title_ja": "いかないで",
+      "title_cn": "别走",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 977
+    },
+    {
+      "song_id": 116,
+      "title_ja": "アイディスマイル",
+      "title_cn": "IDSMILE",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 985
+    },
+    {
+      "song_id": 111,
+      "title_ja": "カトラリー",
+      "title_cn": "餐具",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 686
+    },
+    {
+      "song_id": 109,
+      "title_ja": "ヒビカセ",
+      "title_cn": "让其响彻",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 898
+    },
+    {
+      "song_id": 103,
+      "title_ja": "ニジイロストーリーズ",
+      "title_cn": "虹色物语",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 881
+    },
+    {
+      "song_id": 85,
+      "title_ja": "Leia - Remind",
+      "title_cn": "Leia - Remind",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 970
+    },
+    {
+      "song_id": 63,
+      "title_ja": "needLe",
+      "title_cn": "needLe",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 889
+    },
+    {
+      "song_id": 61,
+      "title_ja": "携帯恋話",
+      "title_cn": "移动恋话",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 981
+    },
+    {
+      "song_id": 54,
+      "title_ja": "Ready Steady",
+      "title_cn": "Ready Steady",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 564
+    },
+    {
+      "song_id": 47,
+      "title_ja": "メルト",
+      "title_cn": "Melt",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1363
+    },
+    {
+      "song_id": 38,
+      "title_ja": "ブリキノダンス",
+      "title_cn": "马口铁之舞",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 852
+    },
+    {
+      "song_id": 36,
+      "title_ja": "ミラクルペイント",
+      "title_cn": "魔法笔刷",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1300
+    },
+    {
+      "song_id": 26,
+      "title_ja": "劣等上等",
+      "title_cn": "劣等上等",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 825
+    },
+    {
+      "song_id": 18,
+      "title_ja": "アスノヨゾラ哨戒班",
+      "title_cn": "明日夜空哨戒班",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 1073
+    },
+    {
+      "song_id": 15,
+      "title_ja": "drop pop candy",
+      "title_cn": "drop pop candy",
+      "difficulty": "expert",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 773
+    },
+    {
+      "song_id": 756,
+      "title_ja": "Gimme more!",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 721
+    },
+    {
+      "song_id": 748,
+      "title_ja": "Saika",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 875
+    },
+    {
+      "song_id": 743,
+      "title_ja": "ドリーマーズビート",
+      "title_cn": "逐梦者的节拍",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 670
+    },
+    {
+      "song_id": 735,
+      "title_ja": "傀儡のうつつ",
+      "title_cn": "傀儡的现世",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 719
+    },
+    {
+      "song_id": 734,
+      "title_ja": "プロポーズ",
+      "title_cn": "求婚",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 830
+    },
+    {
+      "song_id": 726,
+      "title_ja": "アルカリレットウセイ",
+      "title_cn": "碱性劣等生",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 854
+    },
+    {
+      "song_id": 722,
+      "title_ja": "ダイダイダイダイダイキライ",
+      "title_cn": "超级超级超级超级超级讨厌\n",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 687
+    },
+    {
+      "song_id": 716,
+      "title_ja": "透過する温度",
+      "title_cn": "渗透而来的温度",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 608
+    },
+    {
+      "song_id": 712,
+      "title_ja": "比較症候群",
+      "title_cn": "比较症候群",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 889
+    },
+    {
+      "song_id": 710,
+      "title_ja": "ヘッジホッグ",
+      "title_cn": "刺猬",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 837
+    },
+    {
+      "song_id": 698,
+      "title_ja": "鎖の少女-Re Alive-",
+      "title_cn": "枷锁少女-Re Alive-",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 920
+    },
+    {
+      "song_id": 696,
+      "title_ja": "ドリーム・キス",
+      "title_cn": "梦之吻",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 515
+    },
+    {
+      "song_id": 693,
+      "title_ja": "erase or zero",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 845
+    },
+    {
+      "song_id": 690,
+      "title_ja": "惑星ループ",
+      "title_cn": "行星环",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 857
+    },
+    {
+      "song_id": 683,
+      "title_ja": "カラフルファンデーション",
+      "title_cn": "缤纷真我",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 815
+    },
+    {
+      "song_id": 680,
+      "title_ja": "Who?",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 687
+    },
+    {
+      "song_id": 679,
+      "title_ja": "CRASH THE PARTY",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 818
+    },
+    {
+      "song_id": 678,
+      "title_ja": "金時計",
+      "title_cn": "金时针",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 747
+    },
+    {
+      "song_id": 677,
+      "title_ja": "アベリア",
+      "title_cn": "六道木",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 865
+    },
+    {
+      "song_id": 672,
+      "title_ja": "ハウトゥー世界征服",
+      "title_cn": "How to 世界征服",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 803
+    },
+    {
+      "song_id": 670,
+      "title_ja": "い〜やい〜やい〜や",
+      "title_cn": "随便～随便～随便～",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 792
+    },
+    {
+      "song_id": 667,
+      "title_ja": "㋰責任集合体",
+      "title_cn": "无责任集合体",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 762
+    },
+    {
+      "song_id": 666,
+      "title_ja": "少女A",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1265
+    },
+    {
+      "song_id": 661,
+      "title_ja": "卑怯戦隊うろたんだー",
+      "title_cn": "卑怯战队UROTANDA",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1025
+    },
+    {
+      "song_id": 660,
+      "title_ja": "とびだせ！わんだぴょい",
+      "title_cn": "飞奔吧！汪大砰",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 788
+    },
+    {
+      "song_id": 658,
+      "title_ja": "上弦の月",
+      "title_cn": "上弦之月",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 599
+    },
+    {
+      "song_id": 655,
+      "title_ja": "リリィララ",
+      "title_cn": "Lily-lala",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 810
+    },
+    {
+      "song_id": 650,
+      "title_ja": "あの夏が飽和する。",
+      "title_cn": "那个夏日已然饱和。",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 626
+    },
+    {
+      "song_id": 638,
+      "title_ja": "花弁、それにまつわる音声",
+      "title_cn": "花瓣、与之相关的声音",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 883
+    },
+    {
+      "song_id": 635,
+      "title_ja": "ありのままのストーリーを",
+      "title_cn": "这本色出演的故事",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 892
+    },
+    {
+      "song_id": 634,
+      "title_ja": "光線歌",
+      "title_cn": "光线歌",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 700
+    },
+    {
+      "song_id": 629,
+      "title_ja": "8.32",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 659
+    },
+    {
+      "song_id": 621,
+      "title_ja": "東京サマーセッション",
+      "title_cn": "东京夏日相会",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 892
+    },
+    {
+      "song_id": 615,
+      "title_ja": "四角い地球を丸くする",
+      "title_cn": "将四方形的世界踏成相遇的圆",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 950
+    },
+    {
+      "song_id": 612,
+      "title_ja": "Snow Fairy Story",
+      "title_cn": "Snow Fairy Story",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 912
+    },
+    {
+      "song_id": 610,
+      "title_ja": "Polar Star",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 697
+    },
+    {
+      "song_id": 605,
+      "title_ja": "Sympathy",
+      "title_cn": "Sympathy",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 723
+    },
+    {
+      "song_id": 582,
+      "title_ja": "アンチユー",
+      "title_cn": "Anti-You",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 610
+    },
+    {
+      "song_id": 579,
+      "title_ja": "Worlders",
+      "title_cn": "Worlders",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 924
+    },
+    {
+      "song_id": 578,
+      "title_ja": "ハローセカイ",
+      "title_cn": "Hello, SEKAI",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 621
+    },
+    {
+      "song_id": 577,
+      "title_ja": "スマイル*シンフォニー",
+      "title_cn": "微笑*交响曲",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 594
+    },
+    {
+      "song_id": 573,
+      "title_ja": "はじまりの未来",
+      "title_cn": "初始的未来",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 972
+    },
+    {
+      "song_id": 567,
+      "title_ja": "結ンデ開イテ羅刹ト骸",
+      "title_cn": "一结一解罗刹与骨骸",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 826
+    },
+    {
+      "song_id": 566,
+      "title_ja": "パンダヒーロー",
+      "title_cn": "熊猫英雄",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 820
+    },
+    {
+      "song_id": 565,
+      "title_ja": "夏に透明",
+      "title_cn": "夏日透明",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 691
+    },
+    {
+      "song_id": 551,
+      "title_ja": "ロストアンブレラ",
+      "title_cn": "Lost Umbrella",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 804
+    },
+    {
+      "song_id": 548,
+      "title_ja": "ぼくのかみさま",
+      "title_cn": "我的神明大人",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 792
+    },
+    {
+      "song_id": 540,
+      "title_ja": "虚無さん",
+      "title_cn": "虚无小姐",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 650
+    },
+    {
+      "song_id": 537,
+      "title_ja": "花に風",
+      "title_cn": "风拂花",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 755
+    },
+    {
+      "song_id": 530,
+      "title_ja": "キャットフード",
+      "title_cn": "Cat Food",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 895
+    },
+    {
+      "song_id": 523,
+      "title_ja": "きみとぼくのレゾナンス",
+      "title_cn": "你我二人的共鸣",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 896
+    },
+    {
+      "song_id": 522,
+      "title_ja": "WAVE",
+      "title_cn": "WAVE",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 794
+    },
+    {
+      "song_id": 518,
+      "title_ja": "みかぼし",
+      "title_cn": "瓮星",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 984
+    },
+    {
+      "song_id": 513,
+      "title_ja": "CH4NGE",
+      "title_cn": "CHANGE",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 789
+    },
+    {
+      "song_id": 507,
+      "title_ja": "エンパープル",
+      "title_cn": "浸染成紫",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 813
+    },
+    {
+      "song_id": 501,
+      "title_ja": "Bad Apple!! feat.SEKAI",
+      "title_cn": "Bad Apple!! feat.SEKAI",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 883
+    },
+    {
+      "song_id": 493,
+      "title_ja": "きょうもハレバレ",
+      "title_cn": "今天也是晴空万里",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 793
+    },
+    {
+      "song_id": 492,
+      "title_ja": "私は雨",
+      "title_cn": "我既是雨",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 823
+    },
+    {
+      "song_id": 490,
+      "title_ja": "ルーマー",
+      "title_cn": "谣言",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 863
+    },
+    {
+      "song_id": 485,
+      "title_ja": "だんだん早くなる",
+      "title_cn": "渐渐变快",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 851
+    },
+    {
+      "song_id": 483,
+      "title_ja": "アコトバ",
+      "title_cn": "亚语言",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 664
+    },
+    {
+      "song_id": 480,
+      "title_ja": "おちゃめ機能",
+      "title_cn": "天真烂漫机能",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 933
+    },
+    {
+      "song_id": 477,
+      "title_ja": "モザイクロール (Reloaded)",
+      "title_cn": "马赛克卷 (Reloaded)",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 871
+    },
+    {
+      "song_id": 473,
+      "title_ja": "マインドブランド",
+      "title_cn": "Mind Brand",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 764
+    },
+    {
+      "song_id": 461,
+      "title_ja": "おどロボ",
+      "title_cn": "舞蹈机器人",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1266
+    },
+    {
+      "song_id": 460,
+      "title_ja": "LEADER",
+      "title_cn": "LEADER",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 763
+    },
+    {
+      "song_id": 458,
+      "title_ja": "抜錨",
+      "title_cn": "拔锚",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 831
+    },
+    {
+      "song_id": 457,
+      "title_ja": "Supernova",
+      "title_cn": "超新星",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 750
+    },
+    {
+      "song_id": 454,
+      "title_ja": "えれくとりっく・えんじぇぅ",
+      "title_cn": "电子天使",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 927
+    },
+    {
+      "song_id": 443,
+      "title_ja": "林檎売りの泡沫少女",
+      "title_cn": "卖苹果的泡沫少女",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1009
+    },
+    {
+      "song_id": 441,
+      "title_ja": "酔いどれ知らず",
+      "title_cn": "不知醉",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 865
+    },
+    {
+      "song_id": 438,
+      "title_ja": "ハイドアンド・シーク",
+      "title_cn": "捉迷藏",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 764
+    },
+    {
+      "song_id": 436,
+      "title_ja": "古書屋敷殺人事件",
+      "title_cn": "古书屋敷杀人事件",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 823
+    },
+    {
+      "song_id": 432,
+      "title_ja": "強風オールバック",
+      "title_cn": "强风大背头",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 714
+    },
+    {
+      "song_id": 430,
+      "title_ja": "『んっあっあっ。』",
+      "title_cn": "『嗯啊啊。』",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 742
+    },
+    {
+      "song_id": 429,
+      "title_ja": "はぐ",
+      "title_cn": "拥抱",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 851
+    },
+    {
+      "song_id": 424,
+      "title_ja": "インテグラル",
+      "title_cn": "缺一不可",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 868
+    },
+    {
+      "song_id": 422,
+      "title_ja": "JUMPIN’ OVER !",
+      "title_cn": "JUMPIN’ OVER !",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 858
+    },
+    {
+      "song_id": 421,
+      "title_ja": "CR詠ZY",
+      "title_cn": "CR咏ZY",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 615
+    },
+    {
+      "song_id": 417,
+      "title_ja": "くうになる",
+      "title_cn": "成为空",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 769
+    },
+    {
+      "song_id": 415,
+      "title_ja": "ラッキー☆オーブ",
+      "title_cn": "幸运☆天体",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 802
+    },
+    {
+      "song_id": 403,
+      "title_ja": "番凩",
+      "title_cn": "番凩",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 716
+    },
+    {
+      "song_id": 400,
+      "title_ja": "我らステインバスターズ！",
+      "title_cn": "我们是污渍克星！",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 797
+    },
+    {
+      "song_id": 395,
+      "title_ja": "サマータイムレコード",
+      "title_cn": "夏令时记录",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1107
+    },
+    {
+      "song_id": 394,
+      "title_ja": "ボトルケーキ",
+      "title_cn": "盒子蛋糕",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 640
+    },
+    {
+      "song_id": 393,
+      "title_ja": "Un-Lock",
+      "title_cn": "Un-Lock",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 894
+    },
+    {
+      "song_id": 387,
+      "title_ja": "Hello Builder",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 847
+    },
+    {
+      "song_id": 383,
+      "title_ja": "purpose",
+      "title_cn": "purpose",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 720
+    },
+    {
+      "song_id": 375,
+      "title_ja": "星を繋ぐ",
+      "title_cn": "连结繁星",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 753
+    },
+    {
+      "song_id": 374,
+      "title_ja": "チームメイト",
+      "title_cn": "队友",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 803
+    },
+    {
+      "song_id": 369,
+      "title_ja": "メランコリック",
+      "title_cn": "忧郁的心情",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 917
+    },
+    {
+      "song_id": 363,
+      "title_ja": "UNDERWATER",
+      "title_cn": "UNDERWATER",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 971
+    },
+    {
+      "song_id": 362,
+      "title_ja": "Wonder Style",
+      "title_cn": "Wonder Style",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 888
+    },
+    {
+      "song_id": 359,
+      "title_ja": "名も無き革命",
+      "title_cn": "无名革命",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 995
+    },
+    {
+      "song_id": 355,
+      "title_ja": "白い雪のプリンセスは",
+      "title_cn": "白如雪的公主啊",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1273
+    },
+    {
+      "song_id": 350,
+      "title_ja": "眠らせ姫からの贈り物",
+      "title_cn": "来自安眠公主的赠礼",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 904
+    },
+    {
+      "song_id": 348,
+      "title_ja": "悪徳のジャッジメント",
+      "title_cn": "恶贯满盈的审判",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 777
+    },
+    {
+      "song_id": 347,
+      "title_ja": "円尾坂の仕立屋",
+      "title_cn": "圆尾坂的裁缝店",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 842
+    },
+    {
+      "song_id": 346,
+      "title_ja": "嗚呼、素晴らしきニャン生",
+      "title_cn": "啊啊，美妙的喵生",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1125
+    },
+    {
+      "song_id": 345,
+      "title_ja": "演劇",
+      "title_cn": "戏剧",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 983
+    },
+    {
+      "song_id": 343,
+      "title_ja": "スノーマン",
+      "title_cn": "Snow Man",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1001
+    },
+    {
+      "song_id": 340,
+      "title_ja": "とても素敵な六月でした",
+      "title_cn": "这是个多么美好的六月啊",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1273
+    },
+    {
+      "song_id": 331,
+      "title_ja": "39",
+      "title_cn": "39",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1139
+    },
+    {
+      "song_id": 326,
+      "title_ja": "天使の翼。",
+      "title_cn": "天使之翼。",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1072
+    },
+    {
+      "song_id": 325,
+      "title_ja": "豚になってyeah yeah",
+      "title_cn": "变成猪，耶耶",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 705
+    },
+    {
+      "song_id": 322,
+      "title_ja": "絶え間なく藍色",
+      "title_cn": "无尽的蓝色",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1002
+    },
+    {
+      "song_id": 319,
+      "title_ja": "Decade",
+      "title_cn": "Decade",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 839
+    },
+    {
+      "song_id": 313,
+      "title_ja": "FREELY TOMORROW",
+      "title_cn": "FREELY TOMORROW",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 905
+    },
+    {
+      "song_id": 312,
+      "title_ja": "ココロ",
+      "title_cn": "心",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 945
+    },
+    {
+      "song_id": 310,
+      "title_ja": "Flyway",
+      "title_cn": "Flyway",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1011
+    },
+    {
+      "song_id": 306,
+      "title_ja": "1925",
+      "title_cn": "1925",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 887
+    },
+    {
+      "song_id": 297,
+      "title_ja": "p.h.",
+      "title_cn": "p.h.",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 739
+    },
+    {
+      "song_id": 296,
+      "title_ja": "カンタレラ",
+      "title_cn": "坎特雷拉",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 870
+    },
+    {
+      "song_id": 287,
+      "title_ja": "私は、私達は",
+      "title_cn": "我是，我们是",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 712
+    },
+    {
+      "song_id": 279,
+      "title_ja": "こちら、幸福安心委員会です。",
+      "title_cn": "这里是，幸福安心委员会。",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 898
+    },
+    {
+      "song_id": 277,
+      "title_ja": "フォニイ",
+      "title_cn": "伪物",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1064
+    },
+    {
+      "song_id": 275,
+      "title_ja": "パラジクロロベンゼン",
+      "title_cn": "对二氯苯",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 916
+    },
+    {
+      "song_id": 274,
+      "title_ja": "それでもいいんだよ",
+      "title_cn": "即便如此也没关系",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 897
+    },
+    {
+      "song_id": 271,
+      "title_ja": "あったかいと",
+      "title_cn": "暖暖KAITO",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1026
+    },
+    {
+      "song_id": 262,
+      "title_ja": "帝国少女",
+      "title_cn": "帝国少女",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 962
+    },
+    {
+      "song_id": 257,
+      "title_ja": "てらてら",
+      "title_cn": "熠熠闪光",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1035
+    },
+    {
+      "song_id": 255,
+      "title_ja": "夜もすがら君想ふ",
+      "title_cn": "夜里也一直想着你",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1004
+    },
+    {
+      "song_id": 244,
+      "title_ja": "Awake Now",
+      "title_cn": "Awake Now",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 723
+    },
+    {
+      "song_id": 240,
+      "title_ja": "踊れオーケストラ",
+      "title_cn": "起舞管弦乐",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 845
+    },
+    {
+      "song_id": 238,
+      "title_ja": "ブラック★ロックシューター",
+      "title_cn": "黑岩★射手",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 695
+    },
+    {
+      "song_id": 232,
+      "title_ja": "青色絵具",
+      "title_cn": "蔚蓝画具",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 846
+    },
+    {
+      "song_id": 212,
+      "title_ja": "星空のメロディー",
+      "title_cn": "星空旋律",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 713
+    },
+    {
+      "song_id": 204,
+      "title_ja": "うっせぇわ",
+      "title_cn": "烦死了",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1035
+    },
+    {
+      "song_id": 203,
+      "title_ja": "トリコロージュ",
+      "title_cn": "特等俘虏",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 860
+    },
+    {
+      "song_id": 202,
+      "title_ja": "Q",
+      "title_cn": "Q",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 907
+    },
+    {
+      "song_id": 200,
+      "title_ja": "ガランド",
+      "title_cn": "Airhead",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 761
+    },
+    {
+      "song_id": 195,
+      "title_ja": "PaⅢ.SENSATION",
+      "title_cn": "PaⅢ.SENSATION",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1032
+    },
+    {
+      "song_id": 193,
+      "title_ja": "ワールドワイドワンダー",
+      "title_cn": "世界环游",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 626
+    },
+    {
+      "song_id": 191,
+      "title_ja": "悪ノ召使",
+      "title_cn": "恶之召使",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 609
+    },
+    {
+      "song_id": 190,
+      "title_ja": "悪ノ娘",
+      "title_cn": "恶之娘",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 609
+    },
+    {
+      "song_id": 188,
+      "title_ja": "心予報",
+      "title_cn": "心情预报",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 909
+    },
+    {
+      "song_id": 182,
+      "title_ja": "Flyer!",
+      "title_cn": "Flyer!",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 861
+    },
+    {
+      "song_id": 180,
+      "title_ja": "ミライ",
+      "title_cn": "未来",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1017
+    },
+    {
+      "song_id": 179,
+      "title_ja": "炉心融解",
+      "title_cn": "炉心融解",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 998
+    },
+    {
+      "song_id": 174,
+      "title_ja": "いーあるふぁんくらぶ",
+      "title_cn": "一二粉丝俱乐部",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 863
+    },
+    {
+      "song_id": 169,
+      "title_ja": "少女レイ",
+      "title_cn": "少女灵",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1168
+    },
+    {
+      "song_id": 153,
+      "title_ja": "Miku",
+      "title_cn": "Miku",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 990
+    },
+    {
+      "song_id": 148,
+      "title_ja": "ray",
+      "title_cn": "ray",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 978
+    },
+    {
+      "song_id": 146,
+      "title_ja": "リモコン",
+      "title_cn": "遥控器",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 903
+    },
+    {
+      "song_id": 143,
+      "title_ja": "トラフィック・ジャム",
+      "title_cn": "Traffic Jam",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 896
+    },
+    {
+      "song_id": 141,
+      "title_ja": "群青讃歌",
+      "title_cn": "群青赞歌",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 711
+    },
+    {
+      "song_id": 140,
+      "title_ja": "アイスドロップ",
+      "title_cn": "Ice Drop",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 704
+    },
+    {
+      "song_id": 130,
+      "title_ja": "フロムトーキョー",
+      "title_cn": "From Tokyo",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 640
+    },
+    {
+      "song_id": 126,
+      "title_ja": "シネマ",
+      "title_cn": "电影",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 616
+    },
+    {
+      "song_id": 124,
+      "title_ja": "みくみくにしてあげる♪【してやんよ】",
+      "title_cn": "把你给MikuMiku掉♪【会让你好看的哦】",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 739
+    },
+    {
+      "song_id": 121,
+      "title_ja": "ロミオとシンデレラ",
+      "title_cn": "罗密欧与辛德瑞拉",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 856
+    },
+    {
+      "song_id": 118,
+      "title_ja": "＊ハロー、プラネット。",
+      "title_cn": "*你好、星球。",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 931
+    },
+    {
+      "song_id": 117,
+      "title_ja": "ODDS＆ENDS",
+      "title_cn": "ODDS＆ENDS",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 739
+    },
+    {
+      "song_id": 106,
+      "title_ja": "お気に召すまま",
+      "title_cn": "皆大欢喜",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 808
+    },
+    {
+      "song_id": 102,
+      "title_ja": "幽霊東京",
+      "title_cn": "幽灵东京",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 904
+    },
+    {
+      "song_id": 96,
+      "title_ja": "from Y to Y",
+      "title_cn": "from Y to Y",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 847
+    },
+    {
+      "song_id": 95,
+      "title_ja": "威風堂々",
+      "title_cn": "威风堂堂",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 975
+    },
+    {
+      "song_id": 93,
+      "title_ja": "青く駆けろ！",
+      "title_cn": "蔚蓝奔跑！",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 919
+    },
+    {
+      "song_id": 92,
+      "title_ja": "乙女解剖",
+      "title_cn": "少女解剖",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 834
+    },
+    {
+      "song_id": 77,
+      "title_ja": "ワーワーワールド",
+      "title_cn": "Wah Wah World",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 789
+    },
+    {
+      "song_id": 72,
+      "title_ja": "ブレス・ユア・ブレス",
+      "title_cn": "Bless Your Breath",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 696
+    },
+    {
+      "song_id": 71,
+      "title_ja": "ツギハギスタッカート",
+      "title_cn": "拼凑的断音",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 854
+    },
+    {
+      "song_id": 70,
+      "title_ja": "メルティランドナイトメア",
+      "title_cn": "Melty Land Nightmare",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 934
+    },
+    {
+      "song_id": 69,
+      "title_ja": "フラジール",
+      "title_cn": "Fragile",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 863
+    },
+    {
+      "song_id": 57,
+      "title_ja": "アイドル新鋭隊",
+      "title_cn": "偶像新锐队",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 754
+    },
+    {
+      "song_id": 55,
+      "title_ja": "Forward",
+      "title_cn": "Forward",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 737
+    },
+    {
+      "song_id": 52,
+      "title_ja": "potatoになっていく",
+      "title_cn": "变身土豆",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 721
+    },
+    {
+      "song_id": 51,
+      "title_ja": "セカイはまだ始まってすらいない",
+      "title_cn": "世界还未开始",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 774
+    },
+    {
+      "song_id": 48,
+      "title_ja": "ワールドイズマイン",
+      "title_cn": "世界第一的公主殿下",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 1248
+    },
+    {
+      "song_id": 41,
+      "title_ja": "スイートマジック",
+      "title_cn": "甜蜜魔法",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 920
+    },
+    {
+      "song_id": 11,
+      "title_ja": "ビバハピ",
+      "title_cn": "开心万岁",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 597
+    },
+    {
+      "song_id": 10,
+      "title_ja": "ハッピーシンセサイザ",
+      "title_cn": "快乐合成器",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 859
+    },
+    {
+      "song_id": 2,
+      "title_ja": "ロキ",
+      "title_cn": "ROKI",
+      "difficulty": "expert",
+      "official_level": 24,
+      "community_constant": "24.0",
+      "note_count": 827
+    },
+    {
+      "song_id": 742,
+      "title_ja": "旅に帰る",
+      "title_cn": "归于旅途",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 670
+    },
+    {
+      "song_id": 740,
+      "title_ja": "羽歌",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 714
+    },
+    {
+      "song_id": 739,
+      "title_ja": "世界の歩き方",
+      "title_cn": "世界的行走方式",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 683
+    },
+    {
+      "song_id": 721,
+      "title_ja": "あいしていたのに",
+      "title_cn": "明明曾爱着你",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 550
+    },
+    {
+      "song_id": 720,
+      "title_ja": "アリア",
+      "title_cn": "咏叹调",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 544
+    },
+    {
+      "song_id": 717,
+      "title_ja": "Ribbon",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 598
+    },
+    {
+      "song_id": 699,
+      "title_ja": "Catch the Wave",
+      "title_cn": "乘风破浪",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 739
+    },
+    {
+      "song_id": 684,
+      "title_ja": "ファイター",
+      "title_cn": "Fighter",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 641
+    },
+    {
+      "song_id": 654,
+      "title_ja": "ラストラス",
+      "title_cn": "星汉灿烂「Lustrous」",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 769
+    },
+    {
+      "song_id": 630,
+      "title_ja": "幸福刑",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 773
+    },
+    {
+      "song_id": 619,
+      "title_ja": "Connecting",
+      "title_cn": "Connecting",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 616
+    },
+    {
+      "song_id": 618,
+      "title_ja": "Fondant Step",
+      "title_cn": "Fondant Step",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 679
+    },
+    {
+      "song_id": 617,
+      "title_ja": "ぽかぽかの星",
+      "title_cn": "暖洋洋的星球",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 783
+    },
+    {
+      "song_id": 613,
+      "title_ja": "雪がとける前に",
+      "title_cn": "融雪之前",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 618
+    },
+    {
+      "song_id": 603,
+      "title_ja": "ドレミファロンド",
+      "title_cn": "音阶圆舞曲",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 690
+    },
+    {
+      "song_id": 600,
+      "title_ja": "征け",
+      "title_cn": "出发",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 701
+    },
+    {
+      "song_id": 593,
+      "title_ja": "クリスタルスノウ",
+      "title_cn": "水晶之雪",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 694
+    },
+    {
+      "song_id": 556,
+      "title_ja": "サイハテ",
+      "title_cn": "最终之所",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 840
+    },
+    {
+      "song_id": 545,
+      "title_ja": "脳天",
+      "title_cn": "头顶",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 901
+    },
+    {
+      "song_id": 539,
+      "title_ja": "イレヴンス",
+      "title_cn": "Eleventh",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 677
+    },
+    {
+      "song_id": 527,
+      "title_ja": "Unpoison",
+      "title_cn": "脱毒",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 714
+    },
+    {
+      "song_id": 519,
+      "title_ja": "夏夜ノ唄",
+      "title_cn": "夏夜之歌",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 695
+    },
+    {
+      "song_id": 497,
+      "title_ja": "烈火",
+      "title_cn": "烈火",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 786
+    },
+    {
+      "song_id": 489,
+      "title_ja": "熱風",
+      "title_cn": "热风",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 871
+    },
+    {
+      "song_id": 481,
+      "title_ja": "明鏡止水",
+      "title_cn": "明镜止水",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 728
+    },
+    {
+      "song_id": 476,
+      "title_ja": "Shadow Shadow",
+      "title_cn": "Shadow Shadow",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 601
+    },
+    {
+      "song_id": 470,
+      "title_ja": "ハジメテノオト",
+      "title_cn": "最初的声音",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 539
+    },
+    {
+      "song_id": 469,
+      "title_ja": "ラグトレイン",
+      "title_cn": "延误列车",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 705
+    },
+    {
+      "song_id": 464,
+      "title_ja": "Intergalactic Bound",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 918
+    },
+    {
+      "song_id": 463,
+      "title_ja": "ハッピーチートデー",
+      "title_cn": "Happy Cheat Day",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 645
+    },
+    {
+      "song_id": 442,
+      "title_ja": "すれすれ",
+      "title_cn": "若即若离",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 521
+    },
+    {
+      "song_id": 434,
+      "title_ja": "1000年生きてる",
+      "title_cn": "存活千年",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 673
+    },
+    {
+      "song_id": 431,
+      "title_ja": "flos",
+      "title_cn": "flos",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 694
+    },
+    {
+      "song_id": 426,
+      "title_ja": "On&On",
+      "title_cn": "On&On",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 712
+    },
+    {
+      "song_id": 405,
+      "title_ja": "MOTTO!!!",
+      "title_cn": "MOTTO!!!",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 881
+    },
+    {
+      "song_id": 404,
+      "title_ja": "blender",
+      "title_cn": "blender",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 812
+    },
+    {
+      "song_id": 402,
+      "title_ja": "エンヴィーベイビー",
+      "title_cn": "Envy Baby",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 969
+    },
+    {
+      "song_id": 390,
+      "title_ja": "Dear",
+      "title_cn": "Dear",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 1032
+    },
+    {
+      "song_id": 386,
+      "title_ja": "キラピピ★キラピカ",
+      "title_cn": "KIRAPIPI★KIRAPIKA",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 909
+    },
+    {
+      "song_id": 382,
+      "title_ja": "心拍ペアリング",
+      "title_cn": "心跳配对",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 575
+    },
+    {
+      "song_id": 365,
+      "title_ja": "恋は戦争",
+      "title_cn": "恋爱战争",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 1081
+    },
+    {
+      "song_id": 360,
+      "title_ja": "太陽系デスコ",
+      "title_cn": "太阳系disco",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 1018
+    },
+    {
+      "song_id": 332,
+      "title_ja": "エピローグに君はいない",
+      "title_cn": "终幕时你已不在",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 596
+    },
+    {
+      "song_id": 330,
+      "title_ja": "インタビュア",
+      "title_cn": "心境探访",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 1006
+    },
+    {
+      "song_id": 324,
+      "title_ja": "箱庭のコラル",
+      "title_cn": "箱庭的珊瑚",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 862
+    },
+    {
+      "song_id": 318,
+      "title_ja": "Sharing The World",
+      "title_cn": "Sharing The World",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 937
+    },
+    {
+      "song_id": 314,
+      "title_ja": "陽だまりのセツナ",
+      "title_cn": "向阳处的刹那",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 932
+    },
+    {
+      "song_id": 309,
+      "title_ja": "Afterglow",
+      "title_cn": "Afterglow",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 727
+    },
+    {
+      "song_id": 305,
+      "title_ja": "ストロボラスト",
+      "title_cn": "Strobe last",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 726
+    },
+    {
+      "song_id": 295,
+      "title_ja": "フロート・プランナー",
+      "title_cn": "Float Planner",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 685
+    },
+    {
+      "song_id": 293,
+      "title_ja": "アイロニ",
+      "title_cn": "反语",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 861
+    },
+    {
+      "song_id": 282,
+      "title_ja": "星空オーケストラ",
+      "title_cn": "星空交响乐团",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 1057
+    },
+    {
+      "song_id": 280,
+      "title_ja": "虚ろを扇ぐ",
+      "title_cn": "煽动虚无",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 908
+    },
+    {
+      "song_id": 269,
+      "title_ja": "ロンリーユニバース",
+      "title_cn": "Lonely Universe",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 781
+    },
+    {
+      "song_id": 267,
+      "title_ja": "仮死化",
+      "title_cn": "假死化",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 1019
+    },
+    {
+      "song_id": 265,
+      "title_ja": "Change me",
+      "title_cn": "Change me",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 1019
+    },
+    {
+      "song_id": 263,
+      "title_ja": "Highlight",
+      "title_cn": "Highlight",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 596
+    },
+    {
+      "song_id": 258,
+      "title_ja": "深海少女",
+      "title_cn": "深海少女",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 867
+    },
+    {
+      "song_id": 256,
+      "title_ja": "ダブルラリアット",
+      "title_cn": "双重套索",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 936
+    },
+    {
+      "song_id": 247,
+      "title_ja": "Copycat",
+      "title_cn": "Copycat",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 752
+    },
+    {
+      "song_id": 245,
+      "title_ja": "阿吽のビーツ",
+      "title_cn": "阿吽的节奏",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 802
+    },
+    {
+      "song_id": 242,
+      "title_ja": "トリノコシティ",
+      "title_cn": "孤雏市",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 753
+    },
+    {
+      "song_id": 228,
+      "title_ja": "Goodbye",
+      "title_cn": "Goodbye",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 734
+    },
+    {
+      "song_id": 223,
+      "title_ja": "千年の独奏歌",
+      "title_cn": "千年独奏歌",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 791
+    },
+    {
+      "song_id": 219,
+      "title_ja": "砂の惑星",
+      "title_cn": "沙之行星",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 873
+    },
+    {
+      "song_id": 217,
+      "title_ja": "街",
+      "title_cn": "街道",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 668
+    },
+    {
+      "song_id": 211,
+      "title_ja": "イフ",
+      "title_cn": "If",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 845
+    },
+    {
+      "song_id": 209,
+      "title_ja": "メタモリボン",
+      "title_cn": "变身缎带",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 580
+    },
+    {
+      "song_id": 194,
+      "title_ja": "妄想感傷代償連盟",
+      "title_cn": "妄想感伤代偿联盟",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 908
+    },
+    {
+      "song_id": 192,
+      "title_ja": "去り人達のワルツ",
+      "title_cn": "离别之人的华尔兹",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 672
+    },
+    {
+      "song_id": 189,
+      "title_ja": "ノマド",
+      "title_cn": "流浪者",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 515
+    },
+    {
+      "song_id": 155,
+      "title_ja": "心拍数♯0822",
+      "title_cn": "心拍数♯0822",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 675
+    },
+    {
+      "song_id": 147,
+      "title_ja": "からくりピエロ",
+      "title_cn": "活动小丑",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 714
+    },
+    {
+      "song_id": 132,
+      "title_ja": "「１」",
+      "title_cn": "「1」",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 619
+    },
+    {
+      "song_id": 123,
+      "title_ja": "どりーみんチュチュ",
+      "title_cn": "Dreamin Chuchu",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 873
+    },
+    {
+      "song_id": 108,
+      "title_ja": "愛されなくても君がいる",
+      "title_cn": "就算没有爱 只要有你就好",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 914
+    },
+    {
+      "song_id": 100,
+      "title_ja": "ECHO",
+      "title_cn": "ECHO",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 659
+    },
+    {
+      "song_id": 94,
+      "title_ja": "とても痛い痛がりたい",
+      "title_cn": "痛并渴痛",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 817
+    },
+    {
+      "song_id": 89,
+      "title_ja": "Color of Drops",
+      "title_cn": "Color of Drops",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 796
+    },
+    {
+      "song_id": 86,
+      "title_ja": "on the rocks",
+      "title_cn": "on the rocks",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 857
+    },
+    {
+      "song_id": 82,
+      "title_ja": "alive",
+      "title_cn": "alive",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 804
+    },
+    {
+      "song_id": 76,
+      "title_ja": "セカイ",
+      "title_cn": "「世界」",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 735
+    },
+    {
+      "song_id": 75,
+      "title_ja": "ウミユリ海底譚",
+      "title_cn": "海百合海底谭",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 737
+    },
+    {
+      "song_id": 50,
+      "title_ja": "Blessing",
+      "title_cn": "Blessing",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 859
+    },
+    {
+      "song_id": 45,
+      "title_ja": "39みゅーじっく！",
+      "title_cn": "39 Music!",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 839
+    },
+    {
+      "song_id": 44,
+      "title_ja": "Hand in Hand",
+      "title_cn": "Hand in Hand",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 809
+    },
+    {
+      "song_id": 27,
+      "title_ja": "Just Be Friends",
+      "title_cn": "Just Be Friends",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 811
+    },
+    {
+      "song_id": 19,
+      "title_ja": "シャルル",
+      "title_cn": "Charles",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 701
+    },
+    {
+      "song_id": 13,
+      "title_ja": "Nostalogic",
+      "title_cn": "Nostalogic",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 719
+    },
+    {
+      "song_id": 8,
+      "title_ja": "タイムマシン",
+      "title_cn": "时光机",
+      "difficulty": "expert",
+      "official_level": 23,
+      "community_constant": "23.0",
+      "note_count": 719
+    },
+    {
+      "song_id": 747,
+      "title_ja": "SAIRAI",
+      "title_cn": "SAIRAI\n",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 601
+    },
+    {
+      "song_id": 738,
+      "title_ja": "ストラタでまちあわせ",
+      "title_cn": "地层的幽会",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 441
+    },
+    {
+      "song_id": 662,
+      "title_ja": "告白",
+      "title_cn": "",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 565
+    },
+    {
+      "song_id": 644,
+      "title_ja": "生きる",
+      "title_cn": "生",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 536
+    },
+    {
+      "song_id": 604,
+      "title_ja": "Packaged",
+      "title_cn": "Packaged",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 739
+    },
+    {
+      "song_id": 597,
+      "title_ja": "その絵の名前は",
+      "title_cn": "其绘名为",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 514
+    },
+    {
+      "song_id": 572,
+      "title_ja": "飾って",
+      "title_cn": "装饰",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 515
+    },
+    {
+      "song_id": 564,
+      "title_ja": "そこに在る、光。",
+      "title_cn": "光芒，就在那里。",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 403
+    },
+    {
+      "song_id": 516,
+      "title_ja": "あちこちデートさん",
+      "title_cn": "这里那里约会桑",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 693
+    },
+    {
+      "song_id": 409,
+      "title_ja": "25時の情熱",
+      "title_cn": "25点的热情",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 625
+    },
+    {
+      "song_id": 384,
+      "title_ja": "トワイライトライト",
+      "title_cn": "微明暮光",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 520
+    },
+    {
+      "song_id": 358,
+      "title_ja": "心做し",
+      "title_cn": "心理作用",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 676
+    },
+    {
+      "song_id": 351,
+      "title_ja": "相生",
+      "title_cn": "相生",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 879
+    },
+    {
+      "song_id": 339,
+      "title_ja": "glow",
+      "title_cn": "glow",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 875
+    },
+    {
+      "song_id": 311,
+      "title_ja": "夜明けと蛍",
+      "title_cn": "黎明与萤火",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 691
+    },
+    {
+      "song_id": 294,
+      "title_ja": "それがあなたの幸せとしても",
+      "title_cn": "即使这就是你的幸福",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 615
+    },
+    {
+      "song_id": 292,
+      "title_ja": "いちにのさんで",
+      "title_cn": "从一到三",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 595
+    },
+    {
+      "song_id": 270,
+      "title_ja": "泥中に咲く",
+      "title_cn": "花出淤泥",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 646
+    },
+    {
+      "song_id": 218,
+      "title_ja": "メリュー",
+      "title_cn": "Meru",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 632
+    },
+    {
+      "song_id": 149,
+      "title_ja": "カナデトモスソラ",
+      "title_cn": "奏明天空",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 522
+    },
+    {
+      "song_id": 144,
+      "title_ja": "アイノマテリアル",
+      "title_cn": "爱的材料",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 643
+    },
+    {
+      "song_id": 142,
+      "title_ja": "再生",
+      "title_cn": "再生",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 458
+    },
+    {
+      "song_id": 105,
+      "title_ja": "ワンスアポンアドリーム",
+      "title_cn": "虹色物语",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 683
+    },
+    {
+      "song_id": 87,
+      "title_ja": "恋愛裁判",
+      "title_cn": "恋爱裁判",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 889
+    },
+    {
+      "song_id": 74,
+      "title_ja": "独りんぼエンヴィー",
+      "title_cn": "孑然炉火",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 544
+    },
+    {
+      "song_id": 73,
+      "title_ja": "ニア",
+      "title_cn": "Near",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 702
+    },
+    {
+      "song_id": 67,
+      "title_ja": "自傷無色",
+      "title_cn": "自伤无色",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 614
+    },
+    {
+      "song_id": 66,
+      "title_ja": "ハロ／ハワユ",
+      "title_cn": "Hello / How are you",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 690
+    },
+    {
+      "song_id": 1,
+      "title_ja": "Tell Your World",
+      "title_cn": "Tell Your World",
+      "difficulty": "expert",
+      "official_level": 22,
+      "community_constant": "22.0",
+      "note_count": 961
+    },
+    {
+      "song_id": 659,
+      "title_ja": "あなたの空が泣くのなら",
+      "title_cn": "若你的天空在哭泣",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "21.0",
+      "note_count": 478
+    },
+    {
+      "song_id": 607,
+      "title_ja": "回る空うさぎ",
+      "title_cn": "月兔回旋于空中",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "21.0",
+      "note_count": 607
+    },
+    {
+      "song_id": 532,
+      "title_ja": "レイヤーノート",
+      "title_cn": "Layer Note",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "21.0",
+      "note_count": 563
+    },
+    {
+      "song_id": 526,
+      "title_ja": "彗星ノ銀河",
+      "title_cn": "彗星的银河",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "21.0",
+      "note_count": 688
+    },
+    {
+      "song_id": 500,
+      "title_ja": "余花にみとれて",
+      "title_cn": "心醉余花",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "21.0",
+      "note_count": 599
+    },
+    {
+      "song_id": 338,
+      "title_ja": "Where shall we go?",
+      "title_cn": "我们去哪儿？",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "21.0",
+      "note_count": 594
+    },
+    {
+      "song_id": 237,
+      "title_ja": "君の夜をくれ",
+      "title_cn": "予我你的长夜",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "21.0",
+      "note_count": 482
+    },
+    {
+      "song_id": 196,
+      "title_ja": "オーダーメイド",
+      "title_cn": "定制之物",
+      "difficulty": "expert",
+      "official_level": 21,
+      "community_constant": "21.0",
+      "note_count": 480
+    }
+  ]
 }

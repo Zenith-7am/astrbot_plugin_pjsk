@@ -1,5 +1,1338 @@
 {
   "version": "2026-07-12",
   "source": "PENTATONIC",
-  "charts": []
+  "charts": [
+    {
+      "song_id": 671,
+      "title_ja": "怪獣になりたい",
+      "title_cn": "想变成怪兽",
+      "difficulty": "append",
+      "official_level": 38,
+      "community_constant": "38.0",
+      "note_count": 2800
+    },
+    {
+      "song_id": 487,
+      "title_ja": "ダイジョブですか？",
+      "title_cn": "你没事吧？",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.9",
+      "note_count": 2555
+    },
+    {
+      "song_id": 675,
+      "title_ja": "プロセカULTIMATE楽曲メドレー",
+      "title_cn": "Project SEKAI ULTIMATE 混合曲",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.9",
+      "note_count": 5197
+    },
+    {
+      "song_id": 449,
+      "title_ja": "MarbleBlue.",
+      "title_cn": "MarbleBlue.",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.7",
+      "note_count": 2500
+    },
+    {
+      "song_id": 755,
+      "title_ja": "初音狂奏曲第01番「彗惺」",
+      "title_cn": "初音狂奏曲第一号「彗惺」",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.5",
+      "note_count": 2586
+    },
+    {
+      "song_id": 486,
+      "title_ja": "おぎゃりないざー",
+      "title_cn": "还婴者",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.4",
+      "note_count": 2050
+    },
+    {
+      "song_id": 691,
+      "title_ja": "0.0000034",
+      "title_cn": "",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.2",
+      "note_count": 2334
+    },
+    {
+      "song_id": 676,
+      "title_ja": "周年記念高難易度書き下ろし楽曲メドレー",
+      "title_cn": "周年纪念高难度原创曲串烧",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.2",
+      "note_count": 4181
+    },
+    {
+      "song_id": 668,
+      "title_ja": "ネクラチューンサーカス",
+      "title_cn": "阴郁调马戏团",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.0",
+      "note_count": 2173
+    },
+    {
+      "song_id": 488,
+      "title_ja": "メモリア",
+      "title_cn": "Memoria",
+      "difficulty": "append",
+      "official_level": 37,
+      "community_constant": "37.0",
+      "note_count": 2117
+    },
+    {
+      "song_id": 543,
+      "title_ja": "生命性シンドロウム",
+      "title_cn": "生命性综合征",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.9+",
+      "note_count": 2357
+    },
+    {
+      "song_id": 465,
+      "title_ja": "嬢王",
+      "title_cn": "嬢王",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.7",
+      "note_count": 1972
+    },
+    {
+      "song_id": 709,
+      "title_ja": "初音ミクの消失−劇場版−",
+      "title_cn": "初音未来的消失-剧场版-",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.6",
+      "note_count": 1666
+    },
+    {
+      "song_id": 708,
+      "title_ja": "幽玄ノ乱",
+      "title_cn": "幽玄之乱",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.6",
+      "note_count": 2206
+    },
+    {
+      "song_id": 131,
+      "title_ja": "初音ミクの激唱",
+      "title_cn": "初音未来的激唱",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.6",
+      "note_count": 4500
+    },
+    {
+      "song_id": 647,
+      "title_ja": "SAN値直葬",
+      "title_cn": "SAN值直葬",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.5",
+      "note_count": 2060
+    },
+    {
+      "song_id": 448,
+      "title_ja": "Sage",
+      "title_cn": "Sage",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.4",
+      "note_count": 1812
+    },
+    {
+      "song_id": 745,
+      "title_ja": "ANiMA",
+      "title_cn": "",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.3",
+      "note_count": 1808
+    },
+    {
+      "song_id": 622,
+      "title_ja": "超ナイト・オブ・ナイツ",
+      "title_cn": "超Night of Knights",
+      "difficulty": "append",
+      "official_level": 36,
+      "community_constant": "36.1",
+      "note_count": 1782
+    },
+    {
+      "song_id": 447,
+      "title_ja": "folern",
+      "title_cn": "folern",
+      "difficulty": "append",
+      "official_level": 35,
+      "community_constant": "35.9+",
+      "note_count": 1794
+    },
+    {
+      "song_id": 135,
+      "title_ja": "六兆年と一夜物語",
+      "title_cn": "六兆年零一夜的物语",
+      "difficulty": "append",
+      "official_level": 35,
+      "community_constant": "35.7",
+      "note_count": 1723
+    },
+    {
+      "song_id": 503,
+      "title_ja": "超最終鬼畜妹フランドール・Ｓ",
+      "title_cn": "超最终鬼畜妹芙兰朵露·S",
+      "difficulty": "append",
+      "official_level": 35,
+      "community_constant": "35.6",
+      "note_count": 1914
+    },
+    {
+      "song_id": 584,
+      "title_ja": "IMAWANOKIWA",
+      "title_cn": "",
+      "difficulty": "append",
+      "official_level": 35,
+      "community_constant": "35.5",
+      "note_count": 1949
+    },
+    {
+      "song_id": 128,
+      "title_ja": "Brand New Day",
+      "title_cn": "Brand New Day",
+      "difficulty": "append",
+      "official_level": 35,
+      "community_constant": "35.5",
+      "note_count": 1894
+    },
+    {
+      "song_id": 744,
+      "title_ja": "CHAOS",
+      "title_cn": "混沌",
+      "difficulty": "append",
+      "official_level": 35,
+      "community_constant": "35.1",
+      "note_count": 1651
+    },
+    {
+      "song_id": 396,
+      "title_ja": "東京テディベア",
+      "title_cn": "东京泰迪熊",
+      "difficulty": "append",
+      "official_level": 34,
+      "community_constant": "34.3",
+      "note_count": 2024
+    },
+    {
+      "song_id": 6,
+      "title_ja": "ヒバナ -Reloaded-",
+      "title_cn": "火花 -Reloaded-",
+      "difficulty": "append",
+      "official_level": 34,
+      "community_constant": "34.3",
+      "note_count": 1351
+    },
+    {
+      "song_id": 555,
+      "title_ja": "フュージョン",
+      "title_cn": "Fusion",
+      "difficulty": "append",
+      "official_level": 34,
+      "community_constant": "34.2",
+      "note_count": 1555
+    },
+    {
+      "song_id": 561,
+      "title_ja": "プロトディスコ",
+      "title_cn": "Proto Disco",
+      "difficulty": "append",
+      "official_level": 34,
+      "community_constant": "34.0",
+      "note_count": 1404
+    },
+    {
+      "song_id": 304,
+      "title_ja": "Iなんです",
+      "title_cn": "这就是I",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.9+",
+      "note_count": 1572
+    },
+    {
+      "song_id": 127,
+      "title_ja": "トンデモワンダーズ",
+      "title_cn": "不可思议的Wonders",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.7",
+      "note_count": 1631
+    },
+    {
+      "song_id": 171,
+      "title_ja": "カゲロウデイズ",
+      "title_cn": "阳炎眩乱",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.6",
+      "note_count": 1915
+    },
+    {
+      "song_id": 707,
+      "title_ja": "さいたま2000",
+      "title_cn": "埼玉2000",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.5",
+      "note_count": 1448
+    },
+    {
+      "song_id": 624,
+      "title_ja": "チルノのパーフェクトさんすう学園",
+      "title_cn": "琪露诺的完美算术教室",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.5",
+      "note_count": 1599
+    },
+    {
+      "song_id": 558,
+      "title_ja": "のだ",
+      "title_cn": "のだ「Noda」",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.5+",
+      "note_count": 1346
+    },
+    {
+      "song_id": 562,
+      "title_ja": "アンヘル",
+      "title_cn": "天使",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.4",
+      "note_count": 1503
+    },
+    {
+      "song_id": 474,
+      "title_ja": "キラー",
+      "title_cn": "Killer",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.4+",
+      "note_count": 1267
+    },
+    {
+      "song_id": 499,
+      "title_ja": "混沌ブギ",
+      "title_cn": "混沌布吉",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.3",
+      "note_count": 1615
+    },
+    {
+      "song_id": 220,
+      "title_ja": "ドーナツホール 2024",
+      "title_cn": "甜甜圈洞 2024版",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.2",
+      "note_count": 1792
+    },
+    {
+      "song_id": 554,
+      "title_ja": "snooze",
+      "title_cn": "snooze",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.1",
+      "note_count": 1429
+    },
+    {
+      "song_id": 227,
+      "title_ja": "ONESELF",
+      "title_cn": "ONESELF",
+      "difficulty": "append",
+      "official_level": 33,
+      "community_constant": "33.0",
+      "note_count": 1406
+    },
+    {
+      "song_id": 154,
+      "title_ja": "地球最後の告白を",
+      "title_cn": "地球最后的告白",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.9",
+      "note_count": 1643
+    },
+    {
+      "song_id": 224,
+      "title_ja": "88☆彡",
+      "title_cn": "88☆彡",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.8",
+      "note_count": 1388
+    },
+    {
+      "song_id": 366,
+      "title_ja": "NEO",
+      "title_cn": "NEO",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.7",
+      "note_count": 1365
+    },
+    {
+      "song_id": 268,
+      "title_ja": "ノンブレス・オブリージュ",
+      "title_cn": "无呼吸义务",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.6",
+      "note_count": 1287
+    },
+    {
+      "song_id": 623,
+      "title_ja": "とうほう☆ワンダーランド",
+      "title_cn": "东方☆奇幻乐园",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.6",
+      "note_count": 1488
+    },
+    {
+      "song_id": 235,
+      "title_ja": "Journey",
+      "title_cn": "Journey",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.5",
+      "note_count": 1765
+    },
+    {
+      "song_id": 583,
+      "title_ja": "アクセラレイト",
+      "title_cn": "Accelerate",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.5",
+      "note_count": 1126
+    },
+    {
+      "song_id": 606,
+      "title_ja": "スーサイドパレヱド",
+      "title_cn": "决死行进",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.4",
+      "note_count": 1493
+    },
+    {
+      "song_id": 101,
+      "title_ja": "RAD DOGS",
+      "title_cn": "RAD DOGS",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.3",
+      "note_count": 1335
+    },
+    {
+      "song_id": 450,
+      "title_ja": "オペラ！スペースオペラ！",
+      "title_cn": "歌剧！太空歌剧！",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "32.3-",
+      "note_count": 1403
+    },
+    {
+      "song_id": 502,
+      "title_ja": "Help me, ERINNNNNN!!",
+      "title_cn": "Help me, ERINNNNNN!!",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.2",
+      "note_count": 1564
+    },
+    {
+      "song_id": 644,
+      "title_ja": "生きる",
+      "title_cn": "生",
+      "difficulty": "append",
+      "official_level": 32,
+      "community_constant": "32.1",
+      "note_count": 1131
+    },
+    {
+      "song_id": 291,
+      "title_ja": "フェレス",
+      "title_cn": "Pheles",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.9",
+      "note_count": 1744
+    },
+    {
+      "song_id": 746,
+      "title_ja": "Masquerade",
+      "title_cn": "假面舞会",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.7",
+      "note_count": 1282
+    },
+    {
+      "song_id": 107,
+      "title_ja": "ミルククラウン・オン・ソーネチカ",
+      "title_cn": "索涅奇卡的牛奶皇冠",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.7",
+      "note_count": 1495
+    },
+    {
+      "song_id": 272,
+      "title_ja": "ジェヘナ",
+      "title_cn": "地狱",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.7+",
+      "note_count": 1633
+    },
+    {
+      "song_id": 134,
+      "title_ja": "テレキャスタービーボーイ",
+      "title_cn": "电吉他摇滚少年",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.7+",
+      "note_count": 1159
+    },
+    {
+      "song_id": 64,
+      "title_ja": "ステラ",
+      "title_cn": "Stella",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.7",
+      "note_count": 1553
+    },
+    {
+      "song_id": 257,
+      "title_ja": "てらてら",
+      "title_cn": "熠熠闪光",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.5",
+      "note_count": 1450
+    },
+    {
+      "song_id": 160,
+      "title_ja": "ショウタイム・ルーラー",
+      "title_cn": "Showtime Ruler",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.5",
+      "note_count": 1163
+    },
+    {
+      "song_id": 489,
+      "title_ja": "熱風",
+      "title_cn": "热风",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.5",
+      "note_count": 1207
+    },
+    {
+      "song_id": 501,
+      "title_ja": "Bad Apple!! feat.SEKAI",
+      "title_cn": "Bad Apple!! feat.SEKAI",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.5",
+      "note_count": 1328
+    },
+    {
+      "song_id": 439,
+      "title_ja": "一千光年",
+      "title_cn": "一千光年",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.5+",
+      "note_count": 1496
+    },
+    {
+      "song_id": 110,
+      "title_ja": "千本桜",
+      "title_cn": "千本樱",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.4",
+      "note_count": 1230
+    },
+    {
+      "song_id": 11,
+      "title_ja": "ビバハピ",
+      "title_cn": "开心万岁",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.3",
+      "note_count": 884
+    },
+    {
+      "song_id": 187,
+      "title_ja": "ロウワー",
+      "title_cn": "堕落眼界",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "31.3",
+      "note_count": 1045
+    },
+    {
+      "song_id": 585,
+      "title_ja": "ペンタトニック",
+      "title_cn": "五声音阶",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.2",
+      "note_count": 1288
+    },
+    {
+      "song_id": 248,
+      "title_ja": "バグ",
+      "title_cn": "故障",
+      "difficulty": "append",
+      "official_level": 31,
+      "community_constant": "31.1",
+      "note_count": 1490
+    },
+    {
+      "song_id": 94,
+      "title_ja": "とても痛い痛がりたい",
+      "title_cn": "痛并渴痛",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.9",
+      "note_count": 1226
+    },
+    {
+      "song_id": 735,
+      "title_ja": "傀儡のうつつ",
+      "title_cn": "傀儡的现世",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.8",
+      "note_count": 892
+    },
+    {
+      "song_id": 300,
+      "title_ja": "ザムザ",
+      "title_cn": "萨姆沙",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.8",
+      "note_count": 1105
+    },
+    {
+      "song_id": 411,
+      "title_ja": "世界を照らすテトラッド",
+      "title_cn": "照亮世界的四和音",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.8+",
+      "note_count": 1210
+    },
+    {
+      "song_id": 423,
+      "title_ja": "レグルス",
+      "title_cn": "轩辕十四",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.8",
+      "note_count": 1268
+    },
+    {
+      "song_id": 99,
+      "title_ja": "モア！ジャンプ！モア！",
+      "title_cn": "More! Jump! More!",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.8+",
+      "note_count": 1518
+    },
+    {
+      "song_id": 280,
+      "title_ja": "虚ろを扇ぐ",
+      "title_cn": "煽动虚无",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.7",
+      "note_count": 1233
+    },
+    {
+      "song_id": 310,
+      "title_ja": "Flyway",
+      "title_cn": "Flyway",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.7",
+      "note_count": 1396
+    },
+    {
+      "song_id": 91,
+      "title_ja": "ドラマツルギー",
+      "title_cn": "拟剧论",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.6",
+      "note_count": 931
+    },
+    {
+      "song_id": 151,
+      "title_ja": "泡沫未来",
+      "title_cn": "泡沫未来",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.6",
+      "note_count": 1070
+    },
+    {
+      "song_id": 26,
+      "title_ja": "劣等上等",
+      "title_cn": "劣等上等",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.5",
+      "note_count": 939
+    },
+    {
+      "song_id": 507,
+      "title_ja": "エンパープル",
+      "title_cn": "浸染成紫",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.5",
+      "note_count": 1126
+    },
+    {
+      "song_id": 93,
+      "title_ja": "青く駆けろ！",
+      "title_cn": "蔚蓝奔跑！",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.5+",
+      "note_count": 1446
+    },
+    {
+      "song_id": 522,
+      "title_ja": "WAVE",
+      "title_cn": "WAVE",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.4",
+      "note_count": 1029
+    },
+    {
+      "song_id": 740,
+      "title_ja": "羽歌",
+      "title_cn": "",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.3",
+      "note_count": 944
+    },
+    {
+      "song_id": 756,
+      "title_ja": "Gimme more!",
+      "title_cn": "",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.2",
+      "note_count": 1183
+    },
+    {
+      "song_id": 106,
+      "title_ja": "お気に召すまま",
+      "title_cn": "皆大欢喜",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.0",
+      "note_count": 1003
+    },
+    {
+      "song_id": 182,
+      "title_ja": "Flyer!",
+      "title_cn": "Flyer!",
+      "difficulty": "append",
+      "official_level": 30,
+      "community_constant": "30.0",
+      "note_count": 1189
+    },
+    {
+      "song_id": 77,
+      "title_ja": "ワーワーワールド",
+      "title_cn": "Wah Wah World",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.9",
+      "note_count": 1170
+    },
+    {
+      "song_id": 150,
+      "title_ja": "トキヲ・ファンカ",
+      "title_cn": "Tokio Funka",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.9",
+      "note_count": 997
+    },
+    {
+      "song_id": 253,
+      "title_ja": "DAYBREAK FRONTLINE",
+      "title_cn": "DAYBREAK FRONTLINE",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.9+",
+      "note_count": 1352
+    },
+    {
+      "song_id": 126,
+      "title_ja": "シネマ",
+      "title_cn": "电影",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.8",
+      "note_count": 992
+    },
+    {
+      "song_id": 193,
+      "title_ja": "ワールドワイドワンダー",
+      "title_cn": "世界环游",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.7",
+      "note_count": 817
+    },
+    {
+      "song_id": 95,
+      "title_ja": "威風堂々",
+      "title_cn": "威风堂堂",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.7",
+      "note_count": 1269
+    },
+    {
+      "song_id": 211,
+      "title_ja": "イフ",
+      "title_cn": "If",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.6",
+      "note_count": 1270
+    },
+    {
+      "song_id": 132,
+      "title_ja": "「１」",
+      "title_cn": "「1」",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "29.6",
+      "note_count": 1001
+    },
+    {
+      "song_id": 10,
+      "title_ja": "ハッピーシンセサイザ",
+      "title_cn": "快乐合成器",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.6",
+      "note_count": 1205
+    },
+    {
+      "song_id": 266,
+      "title_ja": "YY",
+      "title_cn": "YY",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.6",
+      "note_count": 1249
+    },
+    {
+      "song_id": 324,
+      "title_ja": "箱庭のコラル",
+      "title_cn": "箱庭的珊瑚",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.5",
+      "note_count": 1220
+    },
+    {
+      "song_id": 429,
+      "title_ja": "はぐ",
+      "title_cn": "拥抱",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.5",
+      "note_count": 1109
+    },
+    {
+      "song_id": 627,
+      "title_ja": "テトリス",
+      "title_cn": "Tetoris",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.5",
+      "note_count": 938
+    },
+    {
+      "song_id": 424,
+      "title_ja": "インテグラル",
+      "title_cn": "缺一不可",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.5",
+      "note_count": 1357
+    },
+    {
+      "song_id": 398,
+      "title_ja": "Beyond the way",
+      "title_cn": "Beyond the way",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.5",
+      "note_count": 1017
+    },
+    {
+      "song_id": 605,
+      "title_ja": "Sympathy",
+      "title_cn": "Sympathy",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.4",
+      "note_count": 1043
+    },
+    {
+      "song_id": 244,
+      "title_ja": "Awake Now",
+      "title_cn": "Awake Now",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.4",
+      "note_count": 1049
+    },
+    {
+      "song_id": 441,
+      "title_ja": "酔いどれ知らず",
+      "title_cn": "不知醉",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.4",
+      "note_count": 1120
+    },
+    {
+      "song_id": 405,
+      "title_ja": "MOTTO!!!",
+      "title_cn": "MOTTO!!!",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.3",
+      "note_count": 1225
+    },
+    {
+      "song_id": 100,
+      "title_ja": "ECHO",
+      "title_cn": "ECHO",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.2",
+      "note_count": 1102
+    },
+    {
+      "song_id": 141,
+      "title_ja": "群青讃歌",
+      "title_cn": "群青赞歌",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.1",
+      "note_count": 1254
+    },
+    {
+      "song_id": 124,
+      "title_ja": "みくみくにしてあげる♪【してやんよ】",
+      "title_cn": "把你给MikuMiku掉♪【会让你好看的哦】",
+      "difficulty": "append",
+      "official_level": 29,
+      "community_constant": "29.0",
+      "note_count": 1039
+    },
+    {
+      "song_id": 2,
+      "title_ja": "ロキ",
+      "title_cn": "ROKI",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.9",
+      "note_count": 1040
+    },
+    {
+      "song_id": 19,
+      "title_ja": "シャルル",
+      "title_cn": "Charles",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.9+",
+      "note_count": 1000
+    },
+    {
+      "song_id": 156,
+      "title_ja": "Beat Eater",
+      "title_cn": "Beat Eater",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.8",
+      "note_count": 852
+    },
+    {
+      "song_id": 69,
+      "title_ja": "フラジール",
+      "title_cn": "Fragile",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.5",
+      "note_count": 999
+    },
+    {
+      "song_id": 267,
+      "title_ja": "仮死化",
+      "title_cn": "假死化",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.5",
+      "note_count": 1328
+    },
+    {
+      "song_id": 76,
+      "title_ja": "セカイ",
+      "title_cn": "「世界」",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.5",
+      "note_count": 945
+    },
+    {
+      "song_id": 44,
+      "title_ja": "Hand in Hand",
+      "title_cn": "Hand in Hand",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.5+",
+      "note_count": 1020
+    },
+    {
+      "song_id": 188,
+      "title_ja": "心予報",
+      "title_cn": "心情预报",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.5",
+      "note_count": 1318
+    },
+    {
+      "song_id": 256,
+      "title_ja": "ダブルラリアット",
+      "title_cn": "双重套索",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.4+",
+      "note_count": 1207
+    },
+    {
+      "song_id": 635,
+      "title_ja": "ありのままのストーリーを",
+      "title_cn": "这本色出演的故事",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.4+",
+      "note_count": 1178
+    },
+    {
+      "song_id": 690,
+      "title_ja": "惑星ループ",
+      "title_cn": "行星环",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.2",
+      "note_count": 1171
+    },
+    {
+      "song_id": 138,
+      "title_ja": "KING",
+      "title_cn": "KING",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.2",
+      "note_count": 1388
+    },
+    {
+      "song_id": 105,
+      "title_ja": "ワンスアポンアドリーム",
+      "title_cn": "虹色物语",
+      "difficulty": "append",
+      "official_level": 28,
+      "community_constant": "28.0",
+      "note_count": 1054
+    },
+    {
+      "song_id": 662,
+      "title_ja": "告白",
+      "title_cn": "",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.9",
+      "note_count": 729
+    },
+    {
+      "song_id": 548,
+      "title_ja": "ぼくのかみさま",
+      "title_cn": "我的神明大人",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.9",
+      "note_count": 989
+    },
+    {
+      "song_id": 213,
+      "title_ja": "ヴァンパイア",
+      "title_cn": "吸血鬼",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.9",
+      "note_count": 1433
+    },
+    {
+      "song_id": 375,
+      "title_ja": "星を繋ぐ",
+      "title_cn": "连结繁星",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.7",
+      "note_count": 1035
+    },
+    {
+      "song_id": 120,
+      "title_ja": "いかないで",
+      "title_cn": "别走",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 1212
+    },
+    {
+      "song_id": 198,
+      "title_ja": "グッバイ宣言",
+      "title_cn": "再见宣言",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.5",
+      "note_count": 1233
+    },
+    {
+      "song_id": 457,
+      "title_ja": "Supernova",
+      "title_cn": "超新星",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.4",
+      "note_count": 1016
+    },
+    {
+      "song_id": 384,
+      "title_ja": "トワイライトライト",
+      "title_cn": "微明暮光",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.3+",
+      "note_count": 754
+    },
+    {
+      "song_id": 169,
+      "title_ja": "少女レイ",
+      "title_cn": "少女灵",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.3",
+      "note_count": 1300
+    },
+    {
+      "song_id": 45,
+      "title_ja": "39みゅーじっく！",
+      "title_cn": "39 Music!",
+      "difficulty": "append",
+      "official_level": 27,
+      "community_constant": "27.0",
+      "note_count": 1039
+    },
+    {
+      "song_id": 368,
+      "title_ja": "アイムマイン",
+      "title_cn": "I'm Mine",
+      "difficulty": "append",
+      "official_level": 26,
+      "community_constant": "26.9",
+      "note_count": 1245
+    },
+    {
+      "song_id": 194,
+      "title_ja": "妄想感傷代償連盟",
+      "title_cn": "妄想感伤代偿联盟",
+      "difficulty": "append",
+      "official_level": 26,
+      "community_constant": "26.9",
+      "note_count": 1092
+    },
+    {
+      "song_id": 89,
+      "title_ja": "Color of Drops",
+      "title_cn": "Color of Drops",
+      "difficulty": "append",
+      "official_level": 26,
+      "community_constant": "26.9",
+      "note_count": 1028
+    },
+    {
+      "song_id": 172,
+      "title_ja": "Happy Halloween",
+      "title_cn": "Happy Halloween",
+      "difficulty": "append",
+      "official_level": 26,
+      "community_constant": "26.8",
+      "note_count": 832
+    },
+    {
+      "song_id": 174,
+      "title_ja": "いーあるふぁんくらぶ",
+      "title_cn": "一二粉丝俱乐部",
+      "difficulty": "append",
+      "official_level": 26,
+      "community_constant": "26.7",
+      "note_count": 1015
+    },
+    {
+      "song_id": 116,
+      "title_ja": "アイディスマイル",
+      "title_cn": "IDSMILE",
+      "difficulty": "append",
+      "official_level": 26,
+      "community_constant": "26.0",
+      "note_count": 1216
+    },
+    {
+      "song_id": 41,
+      "title_ja": "スイートマジック",
+      "title_cn": "甜蜜魔法",
+      "difficulty": "append",
+      "official_level": 25,
+      "community_constant": "25.9+",
+      "note_count": 1126
+    },
+    {
+      "song_id": 339,
+      "title_ja": "glow",
+      "title_cn": "glow",
+      "difficulty": "append",
+      "official_level": 25,
+      "community_constant": "25.6",
+      "note_count": 855
+    },
+    {
+      "song_id": 52,
+      "title_ja": "potatoになっていく",
+      "title_cn": "变身土豆",
+      "difficulty": "append",
+      "official_level": 25,
+      "community_constant": "25.4",
+      "note_count": 703
+    },
+    {
+      "song_id": 189,
+      "title_ja": "ノマド",
+      "title_cn": "流浪者",
+      "difficulty": "append",
+      "official_level": 25,
+      "community_constant": "25.3+",
+      "note_count": 531
+    },
+    {
+      "song_id": 469,
+      "title_ja": "ラグトレイン",
+      "title_cn": "延误列车",
+      "difficulty": "append",
+      "official_level": 25,
+      "community_constant": "25.3",
+      "note_count": 1038
+    },
+    {
+      "song_id": 1,
+      "title_ja": "Tell Your World",
+      "title_cn": "Tell Your World",
+      "difficulty": "append",
+      "official_level": 25,
+      "community_constant": "25.3+",
+      "note_count": 1353
+    },
+    {
+      "song_id": 311,
+      "title_ja": "夜明けと蛍",
+      "title_cn": "黎明与萤火",
+      "difficulty": "append",
+      "official_level": 25,
+      "community_constant": "25.0",
+      "note_count": 717
+    },
+    {
+      "song_id": 196,
+      "title_ja": "オーダーメイド",
+      "title_cn": "定制之物",
+      "difficulty": "append",
+      "official_level": 24,
+      "community_constant": "24.9",
+      "note_count": 634
+    },
+    {
+      "song_id": 292,
+      "title_ja": "いちにのさんで",
+      "title_cn": "从一到三",
+      "difficulty": "append",
+      "official_level": 24,
+      "community_constant": "24.9",
+      "note_count": 791
+    },
+    {
+      "song_id": 149,
+      "title_ja": "カナデトモスソラ",
+      "title_cn": "奏明天空",
+      "difficulty": "append",
+      "official_level": 24,
+      "community_constant": "24.9",
+      "note_count": 1020
+    }
+  ]
 }

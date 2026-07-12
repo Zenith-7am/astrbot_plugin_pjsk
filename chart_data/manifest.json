@@ -1,5 +1,9 @@
 {
   "version": "2026-07-12",
   "source": "PENTATONIC",
-  "files": {}
+  "files": {
+    "pentatonic_master.json": "sha256:8f14104b891a588a66a5b31fd2f452e24d46ad9d996935e93c82fbc9f1096e81",
+    "pentatonic_append.json": "sha256:ba716313f6ce9e08e11878db4f1abe79bc3e5f80afe14036e16d108f0eeaf24b",
+    "pentatonic_expert.json": "sha256:f5f3db2499d9dea4dc54dff5ecb65765d13a2468168f0983214ae7d1d563a6c6"
+  }
 }
