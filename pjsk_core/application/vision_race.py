@@ -394,9 +394,22 @@ class VisionRace:
         )
 
         if not successes:
+            # NO_AVAILABLE_ENGINES only when EVERY enabled engine was
+            # rejected by the circuit breaker (all results are FAILED
+            # with no error). Mixed breaker-rejects + actual failures
+            # (timeout, server error, etc.) → ALL_FAILED.
+            all_rejected = (
+                len(ctx.rejects) > 0
+                and len(ctx.worker_results) > 0
+                and all(
+                    r.status == EngineResultStatus.FAILED
+                    and r.error is None
+                    for r in ctx.worker_results
+                )
+            )
             decision = (
                 VisionRaceDecision.NO_AVAILABLE_ENGINES
-                if ctx.rejects
+                if all_rejected
                 else VisionRaceDecision.ALL_FAILED
             )
             return VisionRaceOutcome(

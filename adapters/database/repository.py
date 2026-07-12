@@ -19,10 +19,9 @@ class SqliteChartRepository:
 
     Caches the SongCatalog across calls within the same schema version.
     The cache is invalidated when ``MAX(chart_data_version)`` changes,
-    which is a cheap version-only query.  Note that this is not an atomic
-    snapshot with the data query — between the version check and the
-    SELECT a concurrent import could complete.  In practice the import
-    runs outside the hot path so the window is negligible.
+    which is a cheap version-only query.  On cache miss the version and
+    song rows are loaded in a single SELECT, giving a statement-level
+    consistent snapshot regardless of journal_mode.
     """
 
     def __init__(self, conn: Connection) -> None:
@@ -80,9 +79,11 @@ class SqliteChartRepository:
         A cheap version-only query avoids the full table scan when the
         catalog has not changed since the last call.
 
-        On cache miss, the version and data queries are wrapped in a
-        transaction so they form a consistent snapshot — no risk of
-        seeing a version from one import with data from another.
+        On cache miss the version and song data are loaded in a single
+        SELECT so they form a statement-level consistent snapshot — a
+        concurrent chart-data import that commits between the version
+        subquery and the song rows would be a separate statement and
+        cannot interleave.
         """
         # Quick version check — no need to load everything if catalog is fresh
         version_rows = list(
@@ -99,24 +100,19 @@ class SqliteChartRepository:
                 and self._catalog_cache.version == current_version):
             return self._catalog_cache
 
-        # Cache miss: load data.  No explicit transaction — SQLite in WAL
-        # mode gives consistent reads without one, and the catalog is
-        # best-effort, not transaction-critical.  Between the quick
-        # version check and the data SELECT a concurrent import could
-        # complete; the next cache check will reload.
-        version_rows = list(
-            await self._conn.execute_fetchall(
-                "SELECT MAX(chart_data_version) AS v FROM charts"
-            )
-        )
+        # Cache miss: single statement loads both version and songs —
+        # SQLite statement-level consistency guarantees the version
+        # matches the song rows regardless of journal_mode.
+        rows = list(await self._conn.execute_fetchall(
+            "SELECT s.id, s.title_ja, s.title_cn, s.title_en, s.aliases, "
+            "(SELECT MAX(chart_data_version) FROM charts) AS version "
+            "FROM songs s ORDER BY s.id"
+        ))
         current_version = (
-            version_rows[0]["v"] if version_rows and version_rows[0]["v"] is not None
+            rows[0]["version"] if rows and rows[0]["version"] is not None
             else "unknown"
         )
 
-        rows = await self._conn.execute_fetchall(
-            "SELECT id, title_ja, title_cn, title_en, aliases FROM songs ORDER BY id"
-        )
         candidates = tuple(
             SongCandidate(
                 song_id=r["id"],

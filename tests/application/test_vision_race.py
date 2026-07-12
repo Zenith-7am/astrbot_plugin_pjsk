@@ -372,6 +372,40 @@ class TestVisionRace:
         outcome = await race.run(b"fake_image")
         assert outcome.decision == VisionRaceDecision.NO_AVAILABLE_ENGINES
 
+    async def test_mixed_reject_and_failure_is_all_failed(self) -> None:
+        """One engine rejected by breaker + another times out → ALL_FAILED.
+
+        NO_AVAILABLE_ENGINES must only be returned when *every* enabled
+        engine is rejected by the circuit breaker.  A mix of breaker
+        rejects and actual failures (timeout, server error) is ALL_FAILED.
+        """
+
+        class SelectiveBreaker(FakeBreaker):
+            async def acquire(self, engine_id: str) -> CircuitPermit | None:
+                if engine_id == "g":
+                    return None  # reject gemini
+                return CircuitPermit(engine_id, probe=False)
+
+        policy = VisionRacePolicy(
+            engines=(
+                EnginePolicy("g", 1, True, 15.0, 3),
+                EnginePolicy("z", 2, True, 15.0, 3),
+            ),
+            global_timeout_seconds=30.0,
+            consensus_threshold=2,
+        )
+        race = VisionRace(
+            runtimes=[
+                _runtime("g", "google", [_obs("Song A")]),
+                _runtime("z", "zhipu", [VisionTimeoutError("timeout")]),
+            ],
+            breaker=SelectiveBreaker(),
+            validator=FakeValidator({"Song A": 1}),
+            policy=policy,
+        )
+        outcome = await race.run(b"fake_image")
+        assert outcome.decision == VisionRaceDecision.ALL_FAILED
+
     async def test_circuit_open_recovers_via_acquire(self) -> None:
         """OPEN circuit recovers when acquire() transitions to HALF_OPEN.
 

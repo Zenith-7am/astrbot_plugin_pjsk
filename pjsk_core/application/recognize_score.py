@@ -136,9 +136,10 @@ class RecognizeScore:
         and ranks via the domain
         :func:`~pjsk_core.domain.ocr.rank_candidates` function.
         """
-        # Group by (chart_id_or_song_id, difficulty, judgements)
+        # Group by ((kind, id), difficulty, judgements) — kind disambiguates
+        # chart.id from unmatched song_id so same integer values don't collide.
         groups: dict[
-            tuple[int, Difficulty, Judgements],
+            tuple[tuple[str, int], Difficulty, Judgements],
             list[tuple[EngineIdentity, ValidatedCandidate, OcrObservation]],
         ] = {}
         for result in outcome.results:
@@ -148,12 +149,12 @@ class RecognizeScore:
                 continue
             obs = result.observation
             for vc in result.validated.candidates:
-                chart_id = (
-                    vc.chart.id
+                chart_key = (
+                    ("chart", vc.chart.id)
                     if vc.chart is not None
-                    else vc.song_match.song_id
+                    else ("song", vc.song_match.song_id)
                 )
-                key = (chart_id, obs.difficulty, obs.judgements)
+                key = (chart_key, obs.difficulty, obs.judgements)
                 if key not in groups:
                     groups[key] = []
                 groups[key].append((result.identity, vc, obs))
