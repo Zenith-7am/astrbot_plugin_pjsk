@@ -53,11 +53,11 @@ class TestSqliteUserRepository:
             await repo.create(qq, game_id="p2")
 
     async def test_create_without_game_id(self, repo: SqliteUserRepository) -> None:
-        user = await repo.create(QqNumber("555"), game_id=None)
+        user = await repo.create(QqNumber("55555"), game_id=None)
         assert user.game_id is None
 
     async def test_roundtrip_timestamps(self, repo: SqliteUserRepository) -> None:
-        user = await repo.create(QqNumber("666"), game_id=None)
+        user = await repo.create(QqNumber("66666"), game_id=None)
         fetched = await repo.get_by_id(user.id)
         assert fetched is not None
         assert fetched.created_at is not None

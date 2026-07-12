@@ -3,7 +3,14 @@
 import pytest
 
 from pjsk_core.domain.charts import Difficulty
-from pjsk_core.domain.ocr import Candidate, OcrObservation, observations_agree, rank_candidates
+from pjsk_core.domain.ocr import (
+    Candidate,
+    OcrObservation,
+    ValidatedObservation,
+    observations_agree,
+    rank_candidates,
+    validated_observations_agree,
+)
 from pjsk_core.domain.scores import Judgements
 
 
@@ -90,6 +97,28 @@ class TestObservationsAgree:
         a = _obs(engine="gemini", elapsed_ms=500)
         b = _obs(engine="zhipu", elapsed_ms=1200)
         assert observations_agree(a, b)
+
+
+class TestValidatedObservationsAgree:
+    def test_same_chart_agree(self) -> None:
+        a = ValidatedObservation(observation=_obs(), matched_chart_id=42, note_validated=True)
+        b = ValidatedObservation(observation=_obs(), matched_chart_id=42, note_validated=True)
+        assert validated_observations_agree(a, b)
+
+    def test_different_chart_disagree(self) -> None:
+        a = ValidatedObservation(observation=_obs(), matched_chart_id=42, note_validated=True)
+        b = ValidatedObservation(observation=_obs(), matched_chart_id=99, note_validated=True)
+        assert not validated_observations_agree(a, b)
+
+    def test_different_judgements_disagree(self) -> None:
+        a = ValidatedObservation(observation=_obs(perfect=1000), matched_chart_id=42, note_validated=True)
+        b = ValidatedObservation(observation=_obs(perfect=999, great=1), matched_chart_id=42, note_validated=True)
+        assert not validated_observations_agree(a, b)
+
+    def test_frozen(self) -> None:
+        v = ValidatedObservation(observation=_obs(), matched_chart_id=1, note_validated=True)
+        with pytest.raises(Exception):
+            v.matched_chart_id = 2  # type: ignore[misc]
 
 
 class TestRankCandidates:

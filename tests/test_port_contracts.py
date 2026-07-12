@@ -142,21 +142,26 @@ class FakeIdentityResolver:
 
 class FakeCandidateStore:
     def __init__(self) -> None:
-        self._store: dict[str, list[OcrObservation]] = {}
+        self._store: dict[str, tuple[UserId, list[OcrObservation]]] = {}
         self._consumed: set[str] = set()
 
     async def put(
         self, user_id: UserId, candidates: list[OcrObservation], ttl_seconds: int
     ) -> str:
         key = f"candidate-{len(self._store)}"
-        self._store[key] = candidates
+        self._store[key] = (user_id, candidates)
         return key
 
-    async def consume(self, candidate_set_id: str) -> list[OcrObservation] | None:
+    async def consume(
+        self, candidate_set_id: str, user_id: UserId,
+    ) -> list[OcrObservation] | None:
         if candidate_set_id in self._consumed:
             return None
+        entry = self._store.get(candidate_set_id)
+        if entry is None or entry[0] != user_id:
+            return None  # not found or wrong owner
         self._consumed.add(candidate_set_id)
-        return self._store.get(candidate_set_id)
+        return entry[1]
 
 
 # ── Contract tests ──────────────────────────────────────────────────
@@ -244,9 +249,9 @@ async def test_candidate_store_contract() -> None:
     cid = await store.put(UserId(1), [obs], ttl_seconds=60)
     assert cid is not None
 
-    result = await store.consume(cid)
+    result = await store.consume(cid, UserId(1))
     assert result == [obs]
 
     # Second consume returns None (already consumed)
-    result2 = await store.consume(cid)
+    result2 = await store.consume(cid, UserId(1))
     assert result2 is None

@@ -35,9 +35,9 @@ class TestUserId:
         uid = UserId(1)
         assert uid.value == 1
 
-    def test_zero_is_valid(self) -> None:
-        uid = UserId(0)
-        assert uid.value == 0
+    def test_zero_raises(self) -> None:
+        with pytest.raises(ValueError):
+            UserId(0)
 
     def test_negative_raises(self) -> None:
         with pytest.raises(ValueError):

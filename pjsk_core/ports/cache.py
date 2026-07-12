@@ -20,5 +20,5 @@ class CandidateStore(Protocol):
     ) -> str: ...
 
     async def consume(
-        self, candidate_set_id: str
+        self, candidate_set_id: str, user_id: UserId,
     ) -> list[OcrObservation] | None: ...

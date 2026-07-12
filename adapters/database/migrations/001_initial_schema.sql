@@ -5,7 +5,9 @@ CREATE TABLE users (
     qq_number  TEXT NOT NULL UNIQUE,
     game_id    TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    CHECK (length(qq_number) >= 5),
+    CHECK (game_id IS NULL OR length(game_id) > 0)
 );
 
 CREATE TABLE external_identities (
@@ -14,14 +16,17 @@ CREATE TABLE external_identities (
     platform    TEXT NOT NULL,
     external_id TEXT NOT NULL,
     created_at  TEXT NOT NULL,
-    UNIQUE(platform, external_id)
+    UNIQUE(platform, external_id),
+    CHECK (length(platform) > 0),
+    CHECK (length(external_id) > 0)
 );
 
 CREATE TABLE songs (
     id       INTEGER PRIMARY KEY,
     title_ja TEXT NOT NULL,
     title_cn TEXT NOT NULL DEFAULT '',
-    title_en TEXT NOT NULL DEFAULT ''
+    title_en TEXT NOT NULL DEFAULT '',
+    CHECK (length(title_ja) > 0)
 );
 
 CREATE TABLE charts (
@@ -32,7 +37,10 @@ CREATE TABLE charts (
     community_constant TEXT NOT NULL,
     note_count         INTEGER NOT NULL,
     chart_data_version TEXT NOT NULL,
-    UNIQUE(song_id, difficulty)
+    UNIQUE(song_id, difficulty),
+    CHECK (difficulty IN ('easy', 'normal', 'hard', 'expert', 'master', 'append')),
+    CHECK (official_level > 0),
+    CHECK (note_count > 0)
 );
 
 CREATE TABLE score_attempts (
@@ -50,7 +58,15 @@ CREATE TABLE score_attempts (
     image_sha256   TEXT NOT NULL,
     source_gateway TEXT NOT NULL,
     ocr_run_id     INTEGER,
-    created_at     TEXT NOT NULL
+    created_at     TEXT NOT NULL,
+    CHECK (perfect >= 0),
+    CHECK (great >= 0),
+    CHECK (good >= 0),
+    CHECK (bad >= 0),
+    CHECK (miss >= 0),
+    CHECK (accuracy >= 0),
+    CHECK (rating >= 0),
+    CHECK (status IN ('ap', 'fc', 'clear'))
 );
 
 CREATE TABLE personal_bests (
@@ -61,5 +77,8 @@ CREATE TABLE personal_bests (
     rating          REAL NOT NULL,
     status          TEXT NOT NULL,
     updated_at      TEXT NOT NULL,
-    PRIMARY KEY(user_id, chart_id)
+    PRIMARY KEY(user_id, chart_id),
+    CHECK (accuracy >= 0),
+    CHECK (rating >= 0),
+    CHECK (status IN ('ap', 'fc', 'clear'))
 );

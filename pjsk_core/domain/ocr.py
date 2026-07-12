@@ -1,4 +1,4 @@
-"""Vision engine observation, consensus check, and candidate ranking."""
+"""Vision engine observation, validated results, consensus, and candidate ranking."""
 
 from dataclasses import dataclass
 
@@ -8,7 +8,7 @@ from pjsk_core.domain.scores import Judgements
 
 @dataclass(frozen=True)
 class OcrObservation:
-    """A single vision model's recognition result."""
+    """A single vision model's raw recognition result."""
 
     song_title: str
     difficulty: Difficulty
@@ -18,10 +18,38 @@ class OcrObservation:
     elapsed_ms: int
 
 
+@dataclass(frozen=True)
+class ValidatedObservation:
+    """An OCR observation after song-name matching resolved a chart_id.
+
+    Consensus should compare validated observations — not raw song_title
+    strings — because two models may produce different spellings of the
+    same song that both match to the same chart.
+    """
+
+    observation: OcrObservation
+    matched_chart_id: int
+    note_validated: bool
+
+
+def validated_observations_agree(
+    a: ValidatedObservation, b: ValidatedObservation,
+) -> bool:
+    """Two validated observations agree when they match the same chart
+    and produce the same difficulty, level, and judgements."""
+    return (
+        a.matched_chart_id == b.matched_chart_id
+        and a.observation.difficulty is b.observation.difficulty
+        and a.observation.displayed_level == b.observation.displayed_level
+        and a.observation.judgements == b.observation.judgements
+    )
+
+
 def observations_agree(a: OcrObservation, b: OcrObservation) -> bool:
-    """Two observations agree when song_title, difficulty, level, and
-    judgements match. Engine name and elapsed time are metadata — they
-    do not affect consensus."""
+    """Two raw observations agree on song_title, difficulty, level, and
+    judgements.  Prefer :func:`validated_observations_agree` once song
+    matching has resolved chart_ids — raw title comparison is fragile
+    across engines with different OCR outputs."""
     return (
         a.song_title == b.song_title
         and a.difficulty is b.difficulty

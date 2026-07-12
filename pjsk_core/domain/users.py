@@ -29,8 +29,8 @@ class UserId:
     value: int
 
     def __post_init__(self) -> None:
-        if self.value < 0:
-            raise ValueError(f"User ID must be non-negative, got: {self.value}")
+        if self.value <= 0:
+            raise ValueError(f"User ID must be positive, got: {self.value}")
 
 
 @dataclass(frozen=True)
