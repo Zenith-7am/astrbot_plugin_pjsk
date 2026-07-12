@@ -2,13 +2,13 @@
 
 from typing import Protocol
 
-from pjsk_core.domain.ocr import OcrObservation
+from pjsk_core.domain.ocr import EngineIdentity, OcrObservation
 
 
 class VisionEngine(Protocol):
     """A single vision model backend for recognizing score screenshots."""
 
-    name: str
+    identity: EngineIdentity
 
     async def recognize(
         self, image: bytes, *, timeout: float

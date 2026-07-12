@@ -3,11 +3,21 @@
 All methods return domain objects, never dicts or database rows.
 """
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from pjsk_core.domain.charts import Chart, Difficulty
 from pjsk_core.domain.scores import ScoreAttempt, ScoreStatus
+from pjsk_core.domain.song_matcher import SongCandidate
 from pjsk_core.domain.users import QqNumber, User, UserId
+
+
+@dataclass(frozen=True)
+class SongCatalog:
+    """Versioned catalog of all songs available for OCR matching."""
+
+    version: str
+    candidates: tuple[SongCandidate, ...]
 
 
 class UserRepository(Protocol):
@@ -28,6 +38,12 @@ class ChartRepository(Protocol):
     async def list_by_difficulty_level(
         self, difficulty: Difficulty, official_level: int
     ) -> list[Chart]: ...
+
+    async def get_song_catalog(self) -> SongCatalog: ...
+
+    async def get_by_song_and_difficulty(
+        self, song_id: int, difficulty: Difficulty,
+    ) -> Chart | None: ...
 
 
 class ScoreRepository(Protocol):

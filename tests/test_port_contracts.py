@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 
 from pjsk_core.domain.charts import Chart, Difficulty
-from pjsk_core.domain.ocr import OcrObservation
+from pjsk_core.domain.ocr import EngineIdentity, OcrObservation
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
 from pjsk_core.domain.users import QqNumber, User, UserId
 from pjsk_core.ports.cache import CandidateStore
@@ -14,6 +14,7 @@ from pjsk_core.ports.renderer import RenderRequest, RenderResult, Renderer
 from pjsk_core.ports.repositories import (
     ChartRepository,
     ScoreRepository,
+    SongCatalog,
     UserRepository,
 )
 from pjsk_core.ports.vision import VisionEngine
@@ -72,6 +73,17 @@ class FakeChartRepository:
             if c.difficulty == difficulty and c.official_level == official_level
         ]
 
+    async def get_song_catalog(self) -> SongCatalog:
+        return SongCatalog(version="test-v1", candidates=())
+
+    async def get_by_song_and_difficulty(
+        self, song_id: int, difficulty: Difficulty,
+    ) -> Chart | None:
+        for c in self._charts.values():
+            if c.song_id == song_id and c.difficulty == difficulty:
+                return c
+        return None
+
 
 class FakeScoreRepository:
     def __init__(self) -> None:
@@ -118,7 +130,7 @@ class FakeScoreRepository:
 
 
 class FakeVisionEngine:
-    name = "fake-vision"
+    identity = EngineIdentity(engine_id="fake-vision", provider="test", model="test-v1")
 
     async def recognize(self, image: bytes, *, timeout: float) -> OcrObservation:
         return OcrObservation(
@@ -126,7 +138,7 @@ class FakeVisionEngine:
             difficulty=Difficulty.EXPERT,
             displayed_level=25,
             judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
-            engine=self.name,
+            engine=self.identity.engine_id,
             elapsed_ms=100,
         )
 
@@ -283,3 +295,25 @@ class TestCircuitBreakerContract:
         assert CircuitState.CLOSED.value == "closed"
         assert CircuitState.OPEN.value == "open"
         assert CircuitState.HALF_OPEN.value == "half_open"
+
+
+# ── VisionEngine identity contract tests ─────────────────────────────
+
+
+class TestVisionEngineRevisedContract:
+    def test_identity_attribute(self) -> None:
+        """VisionEngine no longer has 'name'; it has 'identity'."""
+        annotations = VisionEngine.__annotations__
+        assert "identity" in annotations
+        assert "name" not in annotations
+
+
+# ── ChartRepository extended contract tests ──────────────────────────
+
+
+class TestChartRepositoryExtended:
+    def test_get_song_catalog_exists(self) -> None:
+        assert hasattr(ChartRepository, "get_song_catalog")
+
+    def test_get_by_song_and_difficulty_exists(self) -> None:
+        assert hasattr(ChartRepository, "get_by_song_and_difficulty")

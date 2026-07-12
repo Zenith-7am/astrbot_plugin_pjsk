@@ -6,7 +6,9 @@ from aiosqlite import Connection, Row
 
 from pjsk_core.domain.charts import Chart, Difficulty
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
+from pjsk_core.domain.song_matcher import SongCandidate
 from pjsk_core.domain.users import QqNumber, User, UserId
+from pjsk_core.ports.repositories import SongCatalog
 
 
 class SqliteChartRepository:
@@ -62,6 +64,39 @@ class SqliteChartRepository:
             (difficulty.value, official_level),
         )
         return [self._row_to_chart(r) for r in rows]
+
+    async def get_song_catalog(self) -> SongCatalog:
+        """Return the full list of songs as SongCandidates."""
+        rows = await self._conn.execute_fetchall(
+            "SELECT id, title_ja, title_cn, title_en FROM songs ORDER BY id"
+        )
+        candidates = tuple(
+            SongCandidate(song_id=r["id"], title_ja=r["title_ja"],
+                          title_cn=r["title_cn"], title_en=r["title_en"])
+            for r in rows
+        )
+        # Use the highest chart_data_version across all charts as catalog version
+        version_rows = list(
+            await self._conn.execute_fetchall(
+                "SELECT MAX(chart_data_version) AS v FROM charts"
+            )
+        )
+        version = version_rows[0]["v"] if version_rows else "unknown"
+        return SongCatalog(version=version, candidates=candidates)
+
+    async def get_by_song_and_difficulty(
+        self, song_id: int, difficulty: Difficulty,
+    ) -> Chart | None:
+        rows = list(
+            await self._conn.execute_fetchall(
+                "SELECT id, song_id, difficulty, official_level, community_constant, note_count, chart_data_version "
+                "FROM charts WHERE song_id = ? AND difficulty = ?",
+                (song_id, difficulty.value),
+            )
+        )
+        if not rows:
+            return None
+        return self._row_to_chart(rows[0])
 
     def _row_to_chart(self, row: Row) -> Chart:
         return Chart(
