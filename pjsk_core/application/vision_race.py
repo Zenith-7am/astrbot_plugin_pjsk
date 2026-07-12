@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import time as _time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol
 
@@ -23,7 +23,6 @@ from pjsk_core.domain.scores import Judgements
 from pjsk_core.ports.circuit_breaker import (
     CircuitBreaker,
     CircuitFailure,
-    CircuitState,
 )
 from pjsk_core.ports.vision import VisionEngine
 
@@ -88,6 +87,15 @@ class EngineRuntime:
     engine: VisionEngine
     policy: EnginePolicy
     semaphore: asyncio.Semaphore
+
+
+@dataclass
+class _RaceContext:
+    """Per-invocation mutable state for a single vision race run."""
+
+    worker_results: list[EngineResult] = field(default_factory=list)
+    rejects: list[EngineIdentity] = field(default_factory=list)
+    active_tasks: set[asyncio.Task[EngineResult]] = field(default_factory=set)
 
 
 class ObservationValidator(Protocol):
@@ -163,9 +171,6 @@ class VisionRace:
         self._breaker = breaker
         self._validator = validator
         self._policy = policy
-        self._worker_results: list[EngineResult] = []
-        self._active_tasks: set[asyncio.Task[EngineResult]] = set()
-        self._rejects: list[EngineIdentity] = []
 
     # ── Public entry point ───────────────────────────────────────────────
 
@@ -174,8 +179,9 @@ class VisionRace:
 
         Steps:
         1. Filter to enabled runtimes.
-        2. Query circuit-breaker state for each (reject open circuits).
-        3. Start remaining workers concurrently.
+        2. Create per-invocation context.
+        3. Start all enabled workers concurrently (circuit-breaker
+           state is managed per-worker via acquire()).
         4. Wait for first consensus, all finished, or global timeout.
         """
         runtimes = [r for r in self._runtimes if r.policy.enabled]
@@ -188,39 +194,23 @@ class VisionRace:
                 circuit_rejects=(),
             )
 
-        # Filter circuit-rejected engines (state check only — permits
-        # are owned by workers)
-        active: list[EngineRuntime] = []
-        self._rejects = []
-        for r in sorted(runtimes, key=lambda r: r.policy.priority):
-            state = await self._breaker.state(r.engine.identity.engine_id)
-            if state == CircuitState.OPEN:
-                self._rejects.append(r.engine.identity)
-            else:
-                active.append(r)
-
-        if not active:
-            return VisionRaceOutcome(
-                decision=VisionRaceDecision.ALL_FAILED,
-                selected=None,
-                consensus=None,
-                results=(),
-                circuit_rejects=tuple(self._rejects),
-            )
+        ctx = _RaceContext()
+        active = sorted(runtimes, key=lambda r: r.policy.priority)
 
         try:
             async with asyncio.timeout(self._policy.global_timeout_seconds):
-                return await self._collect(image, active)
+                return await self._collect(ctx, image, active)
         except TimeoutError:
-            return await self._finish_global_timeout()
+            return await self._finish_global_timeout(ctx)
         except asyncio.CancelledError:
-            await self._cancel_all()
+            await self._cancel_all(ctx)
             raise
 
     # ── Internal helpers ────────────────────────────────────────────────
 
     async def _collect(
         self,
+        ctx: _RaceContext,
         image: bytes,
         active: list[EngineRuntime],
     ) -> VisionRaceOutcome:
@@ -228,14 +218,14 @@ class VisionRace:
 
         Returns as soon as consensus is reached or all workers finish.
         """
-        self._worker_results.clear()
-        self._active_tasks.clear()
+        ctx.worker_results.clear()
+        ctx.active_tasks.clear()
 
         for r in active:
-            task = asyncio.create_task(self._worker(r, image))
-            self._active_tasks.add(task)
+            task = asyncio.create_task(self._worker(ctx, r, image))
+            ctx.active_tasks.add(task)
 
-        pending = set(self._active_tasks)
+        pending = set(ctx.active_tasks)
         while pending:
             done, pending = await asyncio.wait(
                 pending,
@@ -246,10 +236,10 @@ class VisionRace:
                 try:
                     await task
                 except Exception:
-                    pass  # Worker already appended to _worker_results
+                    pass  # Worker already appended to ctx.worker_results
 
             # Check for consensus
-            decision, outcome = self._evaluate_consensus()
+            decision, outcome = self._evaluate_consensus(ctx)
             if decision is not None:
                 # Cancel remaining workers
                 for t in pending:
@@ -260,10 +250,11 @@ class VisionRace:
                 return outcome
 
         # All workers finished, no consensus
-        return self._final_decision()
+        return self._final_decision(ctx)
 
     def _evaluate_consensus(
         self,
+        ctx: _RaceContext,
     ) -> tuple[VisionRaceDecision | None, VisionRaceOutcome | None]:
         """Check current results for consensus.
 
@@ -272,7 +263,7 @@ class VisionRace:
         """
         successes = [
             r
-            for r in self._worker_results
+            for r in ctx.worker_results
             if r.status == EngineResultStatus.SUCCESS
             and r.validated is not None
             and r.validated.status == ValidationStatus.STRONG
@@ -323,19 +314,21 @@ class VisionRace:
                     ),
                     results=tuple(
                         sorted(
-                            self._worker_results,
+                            ctx.worker_results,
                             key=lambda r: r.identity.engine_id,
                         )
                     ),
-                    circuit_rejects=tuple(self._rejects),
+                    circuit_rejects=tuple(ctx.rejects),
                 )
 
         return None, None
 
-    def _final_decision(self) -> VisionRaceOutcome:
+    def _final_decision(self, ctx: _RaceContext) -> VisionRaceOutcome:
         """Produce final decision when all workers finished without consensus."""
         successes = [
-            r for r in self._worker_results if r.status == EngineResultStatus.SUCCESS
+            r
+            for r in ctx.worker_results
+            if r.status == EngineResultStatus.SUCCESS
         ]
         strong = [
             r
@@ -344,7 +337,7 @@ class VisionRace:
         ]
 
         all_results = tuple(
-            sorted(self._worker_results, key=lambda r: r.identity.engine_id)
+            sorted(ctx.worker_results, key=lambda r: r.identity.engine_id)
         )
 
         if not successes:
@@ -353,16 +346,17 @@ class VisionRace:
                 selected=None,
                 consensus=None,
                 results=all_results,
-                circuit_rejects=tuple(self._rejects),
+                circuit_rejects=tuple(ctx.rejects),
             )
 
-        if len(strong) == 1:
+        # Single engine returned a STRONG result (others failed/timeout)
+        if len(successes) == 1 and len(strong) == 1:
             return VisionRaceOutcome(
                 decision=VisionRaceDecision.DEGRADED_SINGLE,
                 selected=strong[0].validated,
                 consensus=None,
                 results=all_results,
-                circuit_rejects=tuple(self._rejects),
+                circuit_rejects=tuple(ctx.rejects),
             )
 
         # Multiple successes but no consensus
@@ -371,26 +365,26 @@ class VisionRace:
             selected=None,
             consensus=None,
             results=all_results,
-            circuit_rejects=tuple(self._rejects),
+            circuit_rejects=tuple(ctx.rejects),
         )
 
-    async def _finish_global_timeout(self) -> VisionRaceOutcome:
+    async def _finish_global_timeout(self, ctx: _RaceContext) -> VisionRaceOutcome:
         """Called when the global timeout fires before all workers finished.
 
         Cancels remaining workers and collects whatever completed results
         are available.
         """
         # Cancel still-running workers
-        for t in self._active_tasks:
+        for t in ctx.active_tasks:
             if not t.done():
                 t.cancel()
-        if self._active_tasks:
-            await asyncio.gather(*self._active_tasks, return_exceptions=True)
+        if ctx.active_tasks:
+            await asyncio.gather(*ctx.active_tasks, return_exceptions=True)
 
         # Filter out results from cancelled workers
         real_results = [
             r
-            for r in self._worker_results
+            for r in ctx.worker_results
             if r.status
             not in (
                 EngineResultStatus.CANCELLED_BY_CONSENSUS,
@@ -417,19 +411,20 @@ class VisionRace:
             selected=selected,
             consensus=None,
             results=all_results,
-            circuit_rejects=tuple(self._rejects),
+            circuit_rejects=tuple(ctx.rejects),
         )
 
-    async def _cancel_all(self) -> None:
+    async def _cancel_all(self, ctx: _RaceContext) -> None:
         """Cancel all active worker tasks and drain them."""
-        for t in self._active_tasks:
+        for t in ctx.active_tasks:
             if not t.done():
                 t.cancel()
-        if self._active_tasks:
-            await asyncio.gather(*self._active_tasks, return_exceptions=True)
+        if ctx.active_tasks:
+            await asyncio.gather(*ctx.active_tasks, return_exceptions=True)
 
     async def _worker(
         self,
+        ctx: _RaceContext,
         runtime: EngineRuntime,
         image: bytes,
     ) -> EngineResult:
@@ -449,6 +444,7 @@ class VisionRace:
                 runtime.engine.identity.engine_id,
             )
             if permit is None:
+                ctx.rejects.append(runtime.engine.identity)
                 result = EngineResult(
                     identity=runtime.engine.identity,
                     status=EngineResultStatus.FAILED,
@@ -457,7 +453,7 @@ class VisionRace:
                     error=None,
                     elapsed_ms=0,
                 )
-                self._worker_results.append(result)
+                ctx.worker_results.append(result)
                 return result
 
             settled = False
@@ -483,7 +479,7 @@ class VisionRace:
                     error=None,
                     elapsed_ms=elapsed,
                 )
-                self._worker_results.append(result)
+                ctx.worker_results.append(result)
                 return result
 
             except asyncio.TimeoutError:
@@ -500,7 +496,7 @@ class VisionRace:
                     error=VisionEngineError("timeout"),
                     elapsed_ms=elapsed,
                 )
-                self._worker_results.append(result)
+                ctx.worker_results.append(result)
                 return result
 
             except VisionEngineError as e:
@@ -517,7 +513,7 @@ class VisionRace:
                     error=e,
                     elapsed_ms=elapsed,
                 )
-                self._worker_results.append(result)
+                ctx.worker_results.append(result)
                 return result
 
             except asyncio.CancelledError:
@@ -533,5 +529,5 @@ class VisionRace:
                     error=None,
                     elapsed_ms=elapsed,
                 )
-                self._worker_results.append(result)
+                ctx.worker_results.append(result)
                 return result

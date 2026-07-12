@@ -316,10 +316,10 @@ class TestVisionRace:
         """An engine whose circuit is OPEN is skipped; others still run."""
 
         class SelectiveBreaker(FakeBreaker):
-            async def state(self, engine_id: str) -> CircuitState:
+            async def acquire(self, engine_id: str) -> CircuitPermit | None:
                 if engine_id == "z":
-                    return CircuitState.OPEN  # zhipu is down
-                return await super().state(engine_id)
+                    return None  # zhipu circuit is OPEN
+                return await super().acquire(engine_id)
 
         policy = VisionRacePolicy(
             engines=tuple(
@@ -354,8 +354,8 @@ class TestVisionRace:
         """All engines rejected by breaker -> ALL_FAILED."""
 
         class AllClosedBreaker(FakeBreaker):
-            async def state(self, engine_id: str) -> CircuitState:
-                return CircuitState.OPEN
+            async def acquire(self, engine_id: str) -> CircuitPermit | None:
+                return None
 
         policy = VisionRacePolicy(
             engines=(
@@ -376,6 +376,87 @@ class TestVisionRace:
         )
         outcome = await race.run(b"fake_image")
         assert outcome.decision == VisionRaceDecision.ALL_FAILED
+
+    async def test_circuit_open_recovers_via_acquire(self) -> None:
+        """OPEN circuit recovers when acquire() transitions to HALF_OPEN.
+
+        First call returns None (OPEN). Second call returns a probe
+        (HALF_OPEN), allowing the engine to run and recover.
+        """
+
+        class RecoveryBreaker(FakeBreaker):
+            def __init__(self) -> None:
+                super().__init__()
+                self._calls: dict[str, int] = {}
+
+            async def acquire(self, engine_id: str) -> CircuitPermit | None:
+                self._calls[engine_id] = self._calls.get(engine_id, 0) + 1
+                if self._calls[engine_id] == 1:
+                    return None  # OPEN -> reject
+                # Subsequent calls: HALF_OPEN probe -> allow
+                return CircuitPermit(engine_id, probe=True)
+
+        policy = VisionRacePolicy(
+            engines=(
+                EnginePolicy("g", 1, True, 15.0, 3),
+                EnginePolicy("z", 2, True, 15.0, 3),
+            ),
+            global_timeout_seconds=30.0,
+            consensus_threshold=2,
+        )
+        breaker = RecoveryBreaker()
+        validator = FakeValidator({"Song A": 1})
+
+        # First run: "g" is OPEN (acquire returns None)
+        race1 = VisionRace(
+            runtimes=[
+                _runtime("g", "google", [_obs("Song A")]),
+                _runtime("z", "zhipu", [VisionTimeoutError("t")]),
+            ],
+            breaker=breaker,
+            validator=validator,
+            policy=policy,
+        )
+        outcome1 = await race1.run(b"fake_image")
+        assert any(
+            r.engine_id == "g" for r in outcome1.circuit_rejects
+        )
+
+        # Second run: "g" is HALF_OPEN (acquire returns probe), runs & succeeds
+        race2 = VisionRace(
+            runtimes=[
+                _runtime("g", "google", [_obs("Song A")]),
+                _runtime("z", "zhipu", [VisionTimeoutError("t")]),
+            ],
+            breaker=breaker,
+            validator=validator,
+            policy=policy,
+        )
+        outcome2 = await race2.run(b"fake_image")
+        # Engine "g" re-covered: it runs and returns DEGRADED_SINGLE
+        assert outcome2.decision == VisionRaceDecision.DEGRADED_SINGLE
+        assert len(outcome2.circuit_rejects) == 0
+
+    # ── Disagreement tests ──────────────────────────────────────────────
+
+    async def test_disagreement_when_multi_success_one_strong(self) -> None:
+        """Two engines succeed, only one STRONG -> DISAGREEMENT, not DEGRADED_SINGLE.
+
+        - Gemini returns "Song A" -> STRONG (in chart_map)
+        - Zhipu returns "Song C" -> REJECTED (not in chart_map) but still SUCCESS
+        -> 2 successes, 1 STRONG, no consensus -> DISAGREEMENT (not DEGRADED_SINGLE)
+        """
+        validator = FakeValidator({"Song A": 1, "Song B": 2})
+        race = self._race(
+            [
+                _runtime("g", "google", [_obs("Song A")]),
+                _runtime("z", "zhipu", [_obs("Song C")]),
+            ],
+            validator=validator,
+        )
+        outcome = await race.run(b"fake_image")
+        assert outcome.decision == VisionRaceDecision.DISAGREEMENT
+        assert outcome.selected is None
 
     # ── Global timeout tests ────────────────────────────────────────────
 
