@@ -1,9 +1,15 @@
-"""Tests for pjsk_core.domain.scores — status, judgements, and attempts."""
+"""Tests for pjsk_core.domain.scores — status, judgements, attempts, and pure rules."""
 
 from datetime import datetime, timezone
 
 import pytest
-from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
+from pjsk_core.domain.scores import (
+    Judgements,
+    ScoreAttempt,
+    ScoreStatus,
+    calculate_accuracy,
+    classify_status,
+)
 from pjsk_core.domain.users import UserId
 
 
@@ -142,3 +148,79 @@ class TestScoreAttempt:
         )
         with pytest.raises(Exception):
             attempt.accuracy = 99.0  # type: ignore[misc]
+
+
+# ── Accuracy and status rules (aligned with old emu-bot fixtures) ──────
+
+
+class TestCalculateAccuracy:
+    """Align with old emu-bot test_accuracy.py fixtures."""
+
+    def test_all_perfect(self) -> None:
+        j = Judgements(perfect=1200, great=0, good=0, bad=0, miss=0)
+        assert calculate_accuracy(j) == 101.0
+
+    def test_mixed(self) -> None:
+        j = Judgements(perfect=1000, great=200, good=50, bad=10, miss=5)
+        acc = calculate_accuracy(j)
+        # (P + G×0.75 + Good×0.5) / N × 101, capped at 101
+        expected = min(101.0, (1000 + 200 * 0.75 + 50 * 0.5) / 1265 * 101)
+        assert abs(acc - expected) < 0.1
+
+    def test_all_miss(self) -> None:
+        j = Judgements(perfect=0, great=0, good=0, bad=0, miss=1200)
+        assert calculate_accuracy(j) == 0.0
+
+    def test_empty(self) -> None:
+        j = Judgements(perfect=0, great=0, good=0, bad=0, miss=0)
+        assert calculate_accuracy(j) == 0.0
+
+    def test_cap_at_101(self) -> None:
+        j = Judgements(perfect=1300, great=0, good=0, bad=0, miss=0)
+        assert calculate_accuracy(j) == 101.0
+
+    def test_fc_with_great(self) -> None:
+        """FC allows GREAT; accuracy uses 75% weight, not forced to 101."""
+        j = Judgements(perfect=1100, great=100, good=0, bad=0, miss=0)
+        acc = calculate_accuracy(j)
+        expected = (1100 + 100 * 0.75) / 1200 * 101
+        assert abs(acc - expected) < 0.01
+
+    def test_clear_with_good(self) -> None:
+        """GOOD at 50% weight; not AP even if perfect is high."""
+        j = Judgements(perfect=1000, great=0, good=200, bad=0, miss=0)
+        acc = calculate_accuracy(j)
+        expected = (1000 + 200 * 0.5) / 1200 * 101
+        assert abs(acc - expected) < 0.01
+
+
+class TestClassifyStatus:
+    def test_ap(self) -> None:
+        j = Judgements(perfect=1000, great=0, good=0, bad=0, miss=0)
+        assert classify_status(j) is ScoreStatus.AP
+
+    def test_fc_with_great(self) -> None:
+        j = Judgements(perfect=990, great=10, good=0, bad=0, miss=0)
+        assert classify_status(j) is ScoreStatus.FC
+
+    def test_fc_no_perfect(self) -> None:
+        """0 perfect + some great + no combo breaks — still FC."""
+        j = Judgements(perfect=0, great=100, good=0, bad=0, miss=0)
+        assert classify_status(j) is ScoreStatus.FC
+
+    def test_clear_with_good(self) -> None:
+        j = Judgements(perfect=900, great=0, good=1, bad=0, miss=0)
+        assert classify_status(j) is ScoreStatus.CLEAR
+
+    def test_clear_with_bad(self) -> None:
+        j = Judgements(perfect=900, great=0, good=0, bad=1, miss=0)
+        assert classify_status(j) is ScoreStatus.CLEAR
+
+    def test_clear_with_miss(self) -> None:
+        j = Judgements(perfect=900, great=0, good=0, bad=0, miss=1)
+        assert classify_status(j) is ScoreStatus.CLEAR
+
+    def test_empty_is_clear(self) -> None:
+        """All-zero judgements — not a real play, classify as CLEAR."""
+        j = Judgements(perfect=0, great=0, good=0, bad=0, miss=0)
+        assert classify_status(j) is ScoreStatus.CLEAR

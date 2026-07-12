@@ -1,4 +1,4 @@
-"""Score status, judgement counts, and score attempt domain types."""
+"""Score status, judgement counts, score attempt domain types, and pure rules."""
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -60,3 +60,38 @@ class ScoreAttempt:
             raise ValueError(f"accuracy must be non-negative, got: {self.accuracy}")
         if self.rating < 0:
             raise ValueError(f"rating must be non-negative, got: {self.rating}")
+
+
+# ── Pure functions (no I/O, no framework imports) ──────────────────────
+
+
+def calculate_accuracy(j: Judgements) -> float:
+    """Accuracy = (P + G×0.75 + Good×0.5) / N × 101.
+
+    AP (no non-perfect judgements with at least one perfect) is forced
+    to exactly 101.0%.  Results are capped at 101.0%.
+    """
+    total = j.perfect + j.great + j.good + j.bad + j.miss
+    if total == 0:
+        return 0.0
+    raw = (j.perfect + j.great * 0.75 + j.good * 0.5) / total * 101
+    if j.great == 0 and j.good == 0 and j.bad == 0 and j.miss == 0 and j.perfect > 0:
+        return 101.0
+    return min(101.0, raw)
+
+
+def classify_status(j: Judgements) -> ScoreStatus:
+    """Classify a play as AP, FC, or CLEAR from its judgement counts.
+
+    AP  : perfect > 0, great = good = bad = miss = 0.
+    FC  : good = bad = miss = 0 (GREAT keeps combo, GOOD breaks it).
+    CLEAR: anything else, including all-zero.
+    """
+    total = j.perfect + j.great + j.good + j.bad + j.miss
+    if total == 0:
+        return ScoreStatus.CLEAR
+    if j.great == 0 and j.good == 0 and j.bad == 0 and j.miss == 0 and j.perfect > 0:
+        return ScoreStatus.AP
+    if j.good == 0 and j.bad == 0 and j.miss == 0:
+        return ScoreStatus.FC
+    return ScoreStatus.CLEAR
