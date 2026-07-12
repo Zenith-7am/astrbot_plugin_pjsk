@@ -1,5 +1,6 @@
 """SQLite UserRepository contract tests."""
 
+import sqlite3
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -49,7 +50,7 @@ class TestSqliteUserRepository:
     async def test_create_duplicate_qq_raises(self, repo: SqliteUserRepository) -> None:
         qq = QqNumber("111222333")
         await repo.create(qq, game_id="p1")
-        with pytest.raises(Exception):
+        with pytest.raises(sqlite3.IntegrityError):
             await repo.create(qq, game_id="p2")
 
     async def test_create_without_game_id(self, repo: SqliteUserRepository) -> None:

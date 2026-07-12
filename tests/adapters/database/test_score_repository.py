@@ -1,5 +1,6 @@
 """SQLite ScoreRepository contract tests."""
 
+import sqlite3
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from pathlib import Path
@@ -131,13 +132,11 @@ class TestSqliteScoreRepository:
         )
         assert len(both) == 1
 
-    async def test_rollback_on_failure(self, repos: _Repos) -> None:
-        """A failed record_attempt must leave the database unchanged.
-        Subsequent operations on the same connection must still work."""
+    async def test_rollback_on_fk_violation(self, repos: _Repos) -> None:
+        """FK violation on attempt INSERT → rollback entire transaction."""
         score_repo, _, _ = repos
         now = datetime.now(timezone.utc)
 
-        # chart_id=999 does not exist → FK violation triggers rollback
         bad_attempt = ScoreAttempt(
             id=None, user_id=UserId(1), chart_id=999,
             judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
@@ -145,14 +144,13 @@ class TestSqliteScoreRepository:
             image_sha256="bad", source_gateway="astrbot", ocr_run_id=None,
             created_at=now,
         )
-        with pytest.raises(Exception):
+        with pytest.raises(sqlite3.IntegrityError):
             await score_repo.record_attempt(bad_attempt)
 
-        # Verify no attempt was persisted
         bests = await score_repo.list_personal_bests(UserId(1))
-        assert len(bests) == 0  # rollback cleaned up
+        assert len(bests) == 0
 
-        # Connection is still usable after rollback
+        # Connection still usable
         good = ScoreAttempt(
             id=None, user_id=UserId(1), chart_id=1,
             judgements=Judgements(perfect=1000, great=0, good=0, bad=0, miss=0),
@@ -161,4 +159,61 @@ class TestSqliteScoreRepository:
             created_at=now,
         )
         saved = await score_repo.record_attempt(good)
-        assert saved.id == 1  # only the good attempt was saved
+        assert saved.id == 1
+
+    async def test_rollback_when_personal_best_fails(
+        self, repos: _Repos,
+    ) -> None:
+        """When attempt INSERT succeeds but personal_best INSERT fails,
+        the attempt must also be rolled back."""
+        score_repo, _, _ = repos
+        now = datetime.now(timezone.utc)
+
+        # Install a trigger that forces personal_bests writes to fail.
+        # We access the underlying connection to set this up outside of
+        # the repository's own BEGIN/COMMIT cycle.
+        conn = score_repo._conn
+        await conn.execute(
+            """CREATE TRIGGER fail_personal_best
+               BEFORE INSERT ON personal_bests
+               BEGIN
+                   SELECT RAISE(ABORT, 'forced failure');
+               END"""
+        )
+        await conn.commit()
+
+        try:
+            attempt = ScoreAttempt(
+                id=None, user_id=UserId(1), chart_id=1,
+                judgements=Judgements(perfect=1000, great=100, good=0, bad=0, miss=0),
+                accuracy=100.5, rating=3100.0, status=ScoreStatus.FC,
+                image_sha256="trigger_test", source_gateway="astrbot",
+                ocr_run_id=None, created_at=now,
+            )
+            with pytest.raises(Exception):
+                await score_repo.record_attempt(attempt)
+
+            # Both tables must be empty — the attempt was rolled back
+            bests = await score_repo.list_personal_bests(UserId(1))
+            assert len(bests) == 0
+            attempts = list(
+                await conn.execute_fetchall(
+                    "SELECT COUNT(*) FROM score_attempts"
+                )
+            )
+            assert attempts[0][0] == 0
+        finally:
+            # Clean up the trigger
+            await conn.execute("DROP TRIGGER IF EXISTS fail_personal_best")
+            await conn.commit()
+
+        # Connection still functional after cleanup
+        good = ScoreAttempt(
+            id=None, user_id=UserId(1), chart_id=1,
+            judgements=Judgements(perfect=1000, great=0, good=0, bad=0, miss=0),
+            accuracy=101.0, rating=3200.0, status=ScoreStatus.AP,
+            image_sha256="recovered", source_gateway="astrbot", ocr_run_id=None,
+            created_at=now,
+        )
+        saved = await score_repo.record_attempt(good)
+        assert saved.id is not None

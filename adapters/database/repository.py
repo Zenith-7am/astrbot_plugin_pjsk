@@ -172,23 +172,26 @@ class SqliteScoreRepository:
             if attempt_id is None:
                 raise RuntimeError("INSERT did not return a row id")
 
-            # Update personal_best in same transaction
-            best = list(
-                await self._conn.execute_fetchall(
-                    "SELECT rating FROM personal_bests WHERE user_id = ? AND chart_id = ?",
-                    (attempt.user_id.value, attempt.chart_id),
-                )
+            # Atomic UPSERT — the WHERE clause prevents a lower rating
+            # from overwriting a higher one, and the whole operation is
+            # a single statement so there is no SELECT-then-write window.
+            await self._conn.execute(
+                """INSERT INTO personal_bests
+                   (user_id, chart_id, best_attempt_id, accuracy,
+                    rating, status, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(user_id, chart_id) DO UPDATE SET
+                       best_attempt_id = excluded.best_attempt_id,
+                       accuracy = excluded.accuracy,
+                       rating = excluded.rating,
+                       status = excluded.status,
+                       updated_at = excluded.updated_at
+                   WHERE excluded.rating >= personal_bests.rating""",
+                (
+                    attempt.user_id.value, attempt.chart_id, attempt_id,
+                    attempt.accuracy, attempt.rating, attempt.status.value, now,
+                ),
             )
-            if not best or attempt.rating >= best[0][0]:
-                await self._conn.execute(
-                    """INSERT OR REPLACE INTO personal_bests
-                       (user_id, chart_id, best_attempt_id, accuracy, rating, status, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        attempt.user_id.value, attempt.chart_id, attempt_id,
-                        attempt.accuracy, attempt.rating, attempt.status.value, now,
-                    ),
-                )
 
             await self._conn.commit()
         except Exception:

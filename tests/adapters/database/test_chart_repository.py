@@ -96,3 +96,34 @@ class TestSqliteChartRepository:
         assert callable(repo.get_by_id)
         assert callable(repo.find_by_song_and_difficulty)
         assert callable(repo.list_by_difficulty_level)
+
+
+class TestChartSortOrder:
+    """P1: community_constant tag sort — numeric part then tag."""
+
+    async def test_tag_sort_order(self, repo: SqliteChartRepository) -> None:
+        """32.6- > 32.5+ > 32.5 > 32.5- when same difficulty+level."""
+        cases = [
+            (1, "32.5"),    # position 2
+            (2, "32.5+"),   # position 1
+            (3, "32.5-"),   # position 3
+            (4, "32.6-"),   # position 0 — higher numeric beats any 32.5 tag
+        ]
+        for song_id, constant in cases:
+            await repo._conn.execute(
+                "INSERT INTO songs(id, title_ja) VALUES (?, ?)",
+                (song_id, f"Song{song_id}"),
+            )
+            await repo._conn.execute(
+                "INSERT INTO charts(song_id, difficulty, official_level, "
+                "community_constant, note_count, chart_data_version) "
+                "VALUES (?, 'master', 32, ?, 1000, '2026-07-12')",
+                (song_id, constant),
+            )
+        await repo._conn.commit()
+
+        results = await repo.list_by_difficulty_level(Difficulty.MASTER, 32)
+        constants = [c.community_constant for c in results]
+        assert constants == ["32.6-", "32.5+", "32.5", "32.5-"], (
+            f"Expected [32.6-, 32.5+, 32.5, 32.5-], got {constants}"
+        )
