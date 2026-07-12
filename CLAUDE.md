@@ -369,30 +369,35 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 
 ## 16. 当前执行边界（最重要）
 
-> **当前阶段：Phase 2 — Chart Data and Persistence Layer**
-> 用户最新指令（2026-07-12）：**「继续」进入 Phase 2。**
+> **当前阶段：Phase 3a — 视觉识别编排（Vision Race）** ✅ 已完成
+> 最后完成任务：Task 12 — Vision config loader
 
-Phase 1（Foundation and Legacy Audit）已完成：
-- ✅ 工程骨架、包边界测试
-- ✅ Domain 数据类（User/Chart/Score/OCR）
-- ✅ Application 回复类型
-- ✅ Ports 协议（7 个 Protocol）
-- ✅ Accuracy、Rating、B20 纯规则（对齐旧 fixtures）
-- ✅ OCR 共识与 Candidate 排序
-- ✅ AstrBot 插件入口壳
-- ✅ 只读旧库审计器（审计已完成并修正）
+Phase 1（Foundation and Legacy Audit）已完成 ✅
+Phase 2（Chart Data and Persistence Layer）已完成 ✅
+Phase 3a（Vision Race — 适配器、编排器、共识）已完成 ✅
 
-### 当前授权：Phase 2
+### Phase 3a 交付物
 
-**允许**：
-- `chart_data/` 定数数据文件与 manifest
-- `adapters/database/` — SQLite schema、版本化迁移、connection factory
-- `adapters/database/repository.py` — User/Chart/Score Repository 的 SQLite 实现
-- `tools/import_chart_data.py` — 定数数据导入与校验
-- 以上各项的测试
+| 模块 | 状态 |
+|------|------|
+| SongMatcher 曲名匹配（Task 1） | ✅ |
+| EngineIdentity / VisionEngineError（Task 2） | ✅ |
+| Ports 扩展：CircuitBreaker / VisionEngine revise（Task 3） | ✅ |
+| ChartRepository 扩展（Task 4） | ✅ |
+| VisionRacePolicy / EnginePolicy（Task 5） | ✅ |
+| ValidationPipeline（Task 6） | ✅ |
+| VisionRace 编排器（Task 7） | ✅ |
+| RecognizeScore 用例（Task 8） | ✅ |
+| Repository 扩展：aliases / catalog（Task 9） | ✅ |
+| Gemini 适配器 + MemoryCircuitBreaker（Task 10） | ✅ |
+| 智谱 / StepFun 适配器（Task 11） | ✅ |
+| Vision config loader（Task 12） | ✅ |
+
+### 当前授权：待下一阶段计划
+
+**等待用户明确指令进入下一阶段。**
 
 **禁止**：
-- 视觉模型 HTTP 调用（Gemini/智谱/StepFun）
 - AstrBot 业务 handler（`/pjsk b20` 等命令）
 - 旧库数据迁移（从审计快照导入生产数据）
 - VPS 写操作
