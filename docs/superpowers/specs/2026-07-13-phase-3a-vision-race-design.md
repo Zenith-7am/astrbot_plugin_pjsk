@@ -304,7 +304,6 @@ on it, and application must not depend on adapters).
 @dataclass(frozen=True)
 class EnginePolicy:
     engine_id: str
-    provider: str
     priority: int             # 1=highest; task creation order, degrade preference
     enabled: bool
     timeout_seconds: float
@@ -319,8 +318,10 @@ class VisionRacePolicy:
 
 **Validation** (`__post_init__`):
 - `engine_id` non-empty, unique across all engines
-- `provider` non-empty
-- Among enabled engines: all `provider` values must be unique (V1: one model per provider)
+- When constructing `VisionRace`: each `EngineRuntime.policy.engine_id` must match
+  `EngineRuntime.engine.identity.engine_id`.  Provider uniqueness is checked against
+  `engine.identity.provider` — enabled engines must have distinct providers (V1:
+  one model per provider).
 - `priority ≥ 1`, `timeout_seconds > 0`, `max_concurrency ≥ 1`
 - `global_timeout_seconds > 0`
 - At least one engine enabled
@@ -409,7 +410,9 @@ class VisionRace:
         breaker: CircuitBreaker,
         validator: ObservationValidator,
         policy: VisionRacePolicy,
-    ) -> None: ...
+    ) -> None:
+        """Validate: policy.engine_id matches identity.engine_id;
+        enabled providers are unique and ≤ 3; threshold is 2."""
 
     async def run(self, image: bytes) -> VisionRaceOutcome: ...
 ```
@@ -425,18 +428,22 @@ class VisionRace:
       Check if consensus formed.
    b. Consensus formed (≥2 *providers* agree on matched_chart_id + difficulty +
       judgements) → cancel all remaining tasks, `asyncio.gather(*pending,
-      return_exceptions=True)` to drain them. For each cancelled task, call
-      `breaker.release(permit)` — NOT `record_failure`. Mark results as
+      return_exceptions=True)` to drain them. Each worker handles its own
+      permit settlement in its `CancelledError` handler — the orchestrator
+      never touches permits directly. Mark drained results as
       CANCELLED_BY_CONSENSUS.
-   c. FAILED/TIMED_OUT → `breaker.record_failure(permit, ...)`
+   c. FAILED/TIMED_OUT → worker has already called `breaker.record_failure`.
 5. All done, no consensus:
    a. Single SUCCESS with STRONG validation → DEGRADED_SINGLE
    b. Multiple SUCCESSES but no agreement → DISAGREEMENT
    c. All failed → ALL_FAILED
-6. Global timeout: preserve completed results, cancel remaining, call
-   `breaker.release()` for each cancelled permit. Return GLOBAL_TIMEOUT.
-7. Caller cancellation: cancel + drain all tasks, `breaker.release()` for each
-   pending permit, re-raise `CancelledError` (never swallow).
+6. Global timeout: preserve completed results, cancel remaining tasks, gather
+   to drain. Each cancelled worker handles its own permit via `CancelledError`.
+   Return GLOBAL_TIMEOUT.
+   If exactly one completed result is STRONG → `outcome.selected` points to it.
+   If multiple inconsistent STRONG or no STRONG → `outcome.selected = None`.
+7. Caller cancellation: cancel + drain all tasks, re-raise `CancelledError`
+   (never swallow). Workers handle their own permits.
 
 ### 5.5 Consensus Rules
 
@@ -455,24 +462,39 @@ observations are CANDIDATE and cannot form auto-consensus.
 
 ### 5.6 Worker Lifecycle
 
+**Permit ownership:** the worker that calls `breaker.acquire()` is the sole owner
+of that permit. The orchestrator never calls `release()` / `record_success()` /
+`record_failure()` directly — it only cancels tasks and awaits their completion.
+Every permit is settled exactly once by its owning worker.
+
 ```
 async with runtime.semaphore:           # 1. Wait for concurrency slot
     permit = await breaker.acquire()    # 2. Get breaker permit
     if permit is None: → circuit reject
 
+    settled = False
     started = monotonic()
     try:
         async with asyncio.timeout(policy.timeout_seconds):
             observation = await engine.recognize(image, timeout=...)
         # 3. HTTP + parse succeeded → breaker success NOW (before validation)
         await breaker.record_success(permit)
-    except asyncio.CancelledError:
-        await breaker.release(permit)   # 4a. Consensus/caller cancel → release
-        raise
+        settled = True
     except TimeoutError:
         await breaker.record_failure(permit, CircuitFailure.TIMEOUT)
+        settled = True
     except VisionEngineError as e:
         await breaker.record_failure(permit, ...)
+        settled = True
+    except asyncio.CancelledError:
+        if not settled:
+            await breaker.release(permit)   # 4a. Consensus/caller cancel → release
+            settled = True
+        raise
+    finally:
+        if permit is not None and not settled:
+            await breaker.release(permit)   # 4b. Safety net — must never fire
+                                             # if all paths are correct
 ```
 
 Breaker success is recorded immediately after the vendor returns a well-formed
@@ -553,11 +575,17 @@ Note: `displayed_level` mismatch → CANDIDATE.  Since STRONG is required for co
 a level-misread observation cannot be auto-adopted.  This is conservative by design — a
 screenshot whose displayed level doesn't match local data is flagged for human review.
 
-### 6.5 Catalog Cache
+### 6.5 Catalog Cache (Repository-Level)
 
-ValidationPipeline holds an in-memory `SongCatalog` snapshot. On first call, load
-via `get_song_catalog()`. On subsequent calls, re-load only if `catalog.version`
-differs from the last seen version. No Redis needed.
+`ChartRepository` is responsible for caching the `SongCatalog` — application code
+simply calls `get_song_catalog()` on every validation.  The repository internally:
+
+1. Queries the current `chart_data_version` (lightweight, single row).
+2. If the version matches the cached snapshot, returns the cached `SongCatalog`.
+3. If the version changed, re-loads songs (with aliases) and builds a fresh snapshot.
+
+This keeps cache invalidation inside the adapter where the data lives.
+ValidationPipeline does not maintain its own catalog cache.
 
 ## 7. Application: RecognizeScore
 
@@ -579,7 +607,6 @@ class RecognizeScore:
     def __init__(
         self,
         race: VisionRace,
-        charts: ChartRepository,
         scores: ScoreRepository,
     ) -> None: ...
 
@@ -591,6 +618,10 @@ class RecognizeScore:
         source_gateway: str,
     ) -> RecognizeResult:
 ```
+
+`charts` is not a constructor dependency — `selected.primary.chart` is already
+populated by ValidationPipeline, so RecognizeScore does not need its own
+ChartRepository reference.
 
 ### 7.3 Flow
 
@@ -634,10 +665,17 @@ class RecognizeScore:
 
    GLOBAL_TIMEOUT:
      → Application decides (not gateway):
-        - If outcome.selected exists and is STRONG: treat as DEGRADED_SINGLE
-          (adopt the single strong result)
-        - If candidates exist from partial results: return candidates
-        - Otherwise: return recoverable error (user can retry)
+        VisionRace sets `outcome.selected` on GLOBAL_TIMEOUT as follows:
+          - Exactly one completed result with STRONG validation →
+            `selected` points to it
+          - Multiple completed STRONG results that disagree →
+            `selected = None`
+          - No STRONG results → `selected = None`
+        RecognizeScore then:
+          - If outcome.selected exists and is STRONG: treat as DEGRADED_SINGLE
+            (adopt the single strong result)
+          - If candidates exist from partial results: return candidates
+          - Otherwise: return recoverable error (user can retry)
      → This policy lives in RecognizeScore, not in VisionRace and not in gateway.
 ```
 
@@ -768,12 +806,25 @@ version (the exact version number is determined at plan time by inspecting the c
 migration directory — write the plan to use `N+1` where N is the latest version on disk).
 
 ```sql
-ALTER TABLE songs ADD COLUMN aliases TEXT NOT NULL DEFAULT '';
+ALTER TABLE songs ADD COLUMN aliases TEXT NOT NULL DEFAULT '[]';
 ```
 
-Phase 3a repository reads aliases (split on a delimiter, e.g. newline, into
-`tuple[str, ...]`).  Population of aliases from old emu-bot DB is deferred —
-for now only ja/cn/en titles participate in matching.
+Format: JSON array of non-empty strings, e.g. `["初音ミクの消失", "消失"]`.
+
+Repository parsing:
+```python
+aliases = tuple(json.loads(row["aliases"]))
+```
+
+Validation on read:
+- Must be a JSON list
+- Elements must be non-empty strings
+- Duplicates removed
+- Corrupt JSON → logged as data error, treated as empty tuple (no crash)
+
+Old emu-bot alias data is already stored as JSON arrays; using the same format in
+the new schema preserves compatibility and avoids migration complexity.  Population
+of aliases from the old DB is deferred to the data-migration phase.
 
 ## 12. Test Plan
 
@@ -788,7 +839,7 @@ for now only ja/cn/en titles participate in matching.
 | Test file | Coverage |
 |-----------|----------|
 | `test_vision_policy.py` | Validation rejects invalid values, unique engine_id, unique provider among enabled, consensus_threshold vs enabled provider count, ≤3 provider rule, threshold must be 2 |
-| `test_vision_race.py` | Two providers agree → consensus; slow third cancelled + awaited + permit released; single success + others fail → degraded_single; two providers disagree → disagreement; one engine throws → others unaffected; consensus cancel calls breaker.release NOT record_failure; circuit-rejected engines skipped; all fail → all_failed; global timeout → partial results; caller cancel → all permits released + re-raised; completion order randomized → result deterministic; same provider ×2 models → cannot form independent consensus; semaphore before permit ordering; breaker.record_success called before validation |
+| `test_vision_race.py` | Two providers agree → consensus; slow third cancelled + awaited (permit released by worker, not orchestrator); single success + others fail → degraded_single; two providers disagree → disagreement; one engine throws → others unaffected; consensus cancel → worker calls breaker.release NOT record_failure; orchestrator never touches permits; circuit-rejected engines skipped; all fail → all_failed; global timeout → partial results + selected populated per rules; caller cancel → workers release permits + re-raised; completion order randomized → result deterministic; same provider ×2 models → cannot form independent consensus; semaphore before permit ordering; breaker.record_success called before validation; settled flag prevents double-settlement |
 | `test_validate_ocr.py` | First match fail → second match succeed; EXACT + note + level → STRONG; weak fuzzy + note match → CANDIDATE; PREFIX → max CANDIDATE; song exists + difficulty missing → CANDIDATE; note ±1 pass / ±2 fail; level match / conflict → CANDIDATE; all candidates rejected → REJECTED; catalog loads once and invalidates on version change; returns domain objects not dicts |
 | `test_recognize_score.py` | Consensus → score recorded (verify accuracy/rating/status via calculate_*); degraded_single → score recorded; disagreement → candidates returned + no score recorded; all_failed → error info + no score; global_timeout + strong single → adopted as degraded_single; global_timeout + no strong → recoverable error; transaction rollback on score write failure; source_gateway propagated to ScoreAttempt |
 
