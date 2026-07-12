@@ -5,8 +5,15 @@ import pytest
 from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.ocr import (
     Candidate,
+    EngineIdentity,
     OcrObservation,
     ValidatedObservation,
+    VisionConnectionError,
+    VisionEngineError,
+    VisionRateLimitError,
+    VisionResponseError,
+    VisionServerError,
+    VisionTimeoutError,
     observations_agree,
     rank_candidates,
     validated_observations_agree,
@@ -194,3 +201,34 @@ class TestRankCandidates:
         )
         result = rank_candidates([c1, c2])
         assert result[0].matched_chart_id == 5
+
+
+class TestEngineIdentity:
+    def test_identity_equality(self) -> None:
+        a = EngineIdentity("g", "google", "gemini-2.5-flash")
+        b = EngineIdentity("g", "google", "gemini-2.5-flash")
+        assert a == b
+
+    def test_identity_inequality(self) -> None:
+        a = EngineIdentity("g", "google", "gemini-2.5-flash")
+        b = EngineIdentity("z", "zhipu", "glm-4v-flash")
+        assert a != b
+
+    def test_identity_fields(self) -> None:
+        eid = EngineIdentity("gemini-2.5-flash", "google", "gemini-2.5-flash")
+        assert eid.engine_id == "gemini-2.5-flash"
+        assert eid.provider == "google"
+        assert eid.model == "gemini-2.5-flash"
+
+
+class TestVisionEngineErrors:
+    def test_error_hierarchy(self) -> None:
+        assert issubclass(VisionTimeoutError, VisionEngineError)
+        assert issubclass(VisionConnectionError, VisionEngineError)
+        assert issubclass(VisionRateLimitError, VisionEngineError)
+        assert issubclass(VisionServerError, VisionEngineError)
+        assert issubclass(VisionResponseError, VisionEngineError)
+
+    def test_error_is_exception(self) -> None:
+        with pytest.raises(VisionEngineError):
+            raise VisionTimeoutError("timed out")

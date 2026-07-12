@@ -94,3 +94,39 @@ def rank_candidates(candidates: list[Candidate]) -> list[Candidate]:
             c.matched_chart_id if c.matched_chart_id is not None else 999_999_999,
         ),
     )
+
+
+# ── Engine identity ──────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class EngineIdentity:
+    """Stable identity for a vision engine instance.
+
+    engine_id: globally unique instance identifier, e.g. "gemini-2.5-flash"
+    provider:  vendor name, e.g. "google" — the consensus voting unit
+    model:     model name, e.g. "gemini-2.5-flash"
+    """
+    engine_id: str
+    provider: str
+    model: str
+
+
+# ── Vision engine error hierarchy ────────────────────────────────────────
+
+class VisionEngineError(Exception):
+    """Base for all vendor-engine failures."""
+
+class VisionTimeoutError(VisionEngineError):
+    """Request exceeded the allotted timeout."""
+
+class VisionConnectionError(VisionEngineError):
+    """Network-level connection failure."""
+
+class VisionRateLimitError(VisionEngineError):
+    """Vendor returned rate-limiting (HTTP 429)."""
+
+class VisionServerError(VisionEngineError):
+    """Vendor returned a server-side error (HTTP 5xx)."""
+
+class VisionResponseError(VisionEngineError):
+    """Vendor returned an unexpected response (HTTP 4xx ≠ 429, or invalid JSON)."""
