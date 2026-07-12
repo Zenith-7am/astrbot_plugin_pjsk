@@ -66,13 +66,18 @@ class SqliteChartRepository:
         return [self._row_to_chart(r) for r in rows]
 
     async def get_song_catalog(self) -> SongCatalog:
-        """Return the full list of songs as SongCandidates."""
+        """Return the full list of songs as SongCandidates, including aliases."""
         rows = await self._conn.execute_fetchall(
-            "SELECT id, title_ja, title_cn, title_en FROM songs ORDER BY id"
+            "SELECT id, title_ja, title_cn, title_en, aliases FROM songs ORDER BY id"
         )
         candidates = tuple(
-            SongCandidate(song_id=r["id"], title_ja=r["title_ja"],
-                          title_cn=r["title_cn"], title_en=r["title_en"])
+            SongCandidate(
+                song_id=r["id"],
+                title_ja=r["title_ja"],
+                title_cn=r["title_cn"],
+                title_en=r["title_en"],
+                aliases=self._parse_aliases(r["aliases"]),
+            )
             for r in rows
         )
         # Use the highest chart_data_version across all charts as catalog version
@@ -97,6 +102,29 @@ class SqliteChartRepository:
         if not rows:
             return None
         return self._row_to_chart(rows[0])
+
+    @staticmethod
+    def _parse_aliases(raw: str) -> tuple[str, ...]:
+        """Parse JSON aliases column into a deduplicated tuple of non-empty strings.
+
+        Returns an empty tuple on corrupt/missing data so callers never
+        have to handle JSON errors."""
+        import json
+        try:
+            parsed = json.loads(raw)
+            if not isinstance(parsed, list):
+                return ()
+            result = tuple(a for a in parsed if isinstance(a, str) and a.strip())
+            # Dedup preserving order
+            seen: set[str] = set()
+            deduped: list[str] = []
+            for a in result:
+                if a not in seen:
+                    deduped.append(a)
+                    seen.add(a)
+            return tuple(deduped)
+        except (json.JSONDecodeError, TypeError):
+            return ()
 
     def _row_to_chart(self, row: Row) -> Chart:
         return Chart(

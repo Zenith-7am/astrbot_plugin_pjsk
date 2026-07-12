@@ -127,3 +127,56 @@ class TestChartSortOrder:
         assert constants == ["32.6-", "32.5+", "32.5", "32.5-"], (
             f"Expected [32.6-, 32.5+, 32.5, 32.5-], got {constants}"
         )
+
+
+class TestSongCatalog:
+    """Song catalog with aliases column (migration 003)."""
+
+    async def test_get_song_catalog(self, repo: SqliteChartRepository) -> None:
+        await _seed_song_and_chart(repo._conn, song_id=1)
+        catalog = await repo.get_song_catalog()
+        assert catalog.version != ""
+        assert len(catalog.candidates) >= 1
+        assert catalog.candidates[0].song_id == 1
+
+    async def test_get_song_catalog_includes_aliases(
+        self, repo: SqliteChartRepository,
+    ) -> None:
+        await repo._conn.execute(
+            "INSERT INTO songs(id, title_ja, aliases) VALUES (99, 'Test', '[\"alias1\", \"alias2\"]')"
+        )
+        await repo._conn.commit()
+        catalog = await repo.get_song_catalog()
+        c = next(c for c in catalog.candidates if c.song_id == 99)
+        assert "alias1" in c.aliases
+        assert "alias2" in c.aliases
+
+    async def test_get_song_catalog_bad_json_graceful(
+        self, repo: SqliteChartRepository,
+    ) -> None:
+        await repo._conn.execute(
+            "INSERT INTO songs(id, title_ja, aliases) VALUES (88, 'Bad', 'not-json')"
+        )
+        await repo._conn.commit()
+        catalog = await repo.get_song_catalog()
+        c = next(c for c in catalog.candidates if c.song_id == 88)
+        assert c.aliases == ()
+
+
+class TestGetBySongAndDifficulty:
+    """get_by_song_and_difficulty — exact chart lookup by song_id + difficulty."""
+
+    async def test_existing_chart(self, repo: SqliteChartRepository) -> None:
+        await _seed_song_and_chart(repo._conn, song_id=42, difficulty="master")
+        chart = await repo.get_by_song_and_difficulty(42, Difficulty.MASTER)
+        assert chart is not None
+        assert chart.song_id == 42
+
+    async def test_nonexistent_difficulty(self, repo: SqliteChartRepository) -> None:
+        await _seed_song_and_chart(repo._conn, song_id=42, difficulty="master")
+        chart = await repo.get_by_song_and_difficulty(42, Difficulty.EASY)
+        assert chart is None
+
+    async def test_nonexistent_song(self, repo: SqliteChartRepository) -> None:
+        chart = await repo.get_by_song_and_difficulty(999, Difficulty.MASTER)
+        assert chart is None
