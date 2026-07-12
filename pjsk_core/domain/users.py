@@ -1,6 +1,7 @@
 """User identity value objects — QQ number, user ID, and user entity."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,8 @@ class User:
     id: UserId
     qq_number: QqNumber
     game_id: str | None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if self.game_id is not None and self.game_id == "":
