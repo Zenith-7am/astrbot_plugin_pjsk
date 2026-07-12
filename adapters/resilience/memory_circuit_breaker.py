@@ -28,6 +28,14 @@ class MemoryCircuitBreaker:
         failure_threshold: int = 3,
         cooldown_seconds: float = 30.0,
     ) -> None:
+        if failure_threshold < 1:
+            raise ValueError(
+                f"failure_threshold must be >= 1, got {failure_threshold}"
+            )
+        if cooldown_seconds <= 0:
+            raise ValueError(
+                f"cooldown_seconds must be > 0, got {cooldown_seconds}"
+            )
         self._threshold = failure_threshold
         self._cooldown = cooldown_seconds
         self._states: dict[str, CircuitState] = {}

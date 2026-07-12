@@ -16,10 +16,18 @@ class SqliteChartRepository:
 
     Expects the songs and charts tables to have been created by
     the migration system. Returns domain Chart objects.
+
+    Caches the SongCatalog across calls within the same schema version.
+    The cache is invalidated when ``MAX(chart_data_version)`` changes,
+    which is a cheap version-only query.  Note that this is not an atomic
+    snapshot with the data query — between the version check and the
+    SELECT a concurrent import could complete.  In practice the import
+    runs outside the hot path so the window is negligible.
     """
 
     def __init__(self, conn: Connection) -> None:
         self._conn = conn
+        self._catalog_cache: SongCatalog | None = None
 
     async def get_by_id(self, chart_id: int) -> Chart | None:
         rows = list(
@@ -66,7 +74,24 @@ class SqliteChartRepository:
         return [self._row_to_chart(r) for r in rows]
 
     async def get_song_catalog(self) -> SongCatalog:
-        """Return the full list of songs as SongCandidates, including aliases."""
+        """Return the full list of songs as SongCandidates, including aliases.
+
+        Uses an instance-level cache keyed on ``MAX(chart_data_version)``.
+        A cheap version-only query avoids the full table scan when the
+        catalog has not changed since the last call.
+        """
+        # Quick version check — no need to load everything if catalog is fresh
+        version_rows = list(
+            await self._conn.execute_fetchall(
+                "SELECT MAX(chart_data_version) AS v FROM charts"
+            )
+        )
+        current_version = version_rows[0]["v"] if version_rows else "unknown"
+
+        if (self._catalog_cache is not None
+                and self._catalog_cache.version == current_version):
+            return self._catalog_cache
+
         rows = await self._conn.execute_fetchall(
             "SELECT id, title_ja, title_cn, title_en, aliases FROM songs ORDER BY id"
         )
@@ -80,14 +105,9 @@ class SqliteChartRepository:
             )
             for r in rows
         )
-        # Use the highest chart_data_version across all charts as catalog version
-        version_rows = list(
-            await self._conn.execute_fetchall(
-                "SELECT MAX(chart_data_version) AS v FROM charts"
-            )
-        )
-        version = version_rows[0]["v"] if version_rows else "unknown"
-        return SongCatalog(version=version, candidates=candidates)
+        catalog = SongCatalog(version=current_version, candidates=candidates)
+        self._catalog_cache = catalog
+        return catalog
 
     async def get_by_song_and_difficulty(
         self, song_id: int, difficulty: Difficulty,

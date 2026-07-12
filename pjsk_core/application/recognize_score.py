@@ -6,15 +6,22 @@ from datetime import datetime, timezone
 from dataclasses import dataclass
 
 from pjsk_core.application.vision_race import (
+    EngineResultStatus,
     VisionRace,
     VisionRaceDecision,
     VisionRaceOutcome,
 )
 from pjsk_core.application.validate_ocr import (
+    ValidatedCandidate,
     ValidatedObservation,
     ValidationStatus,
 )
-from pjsk_core.domain.ocr import Candidate
+from pjsk_core.domain.ocr import (
+    Candidate,
+    EngineIdentity,
+    OcrObservation,
+    rank_candidates,
+)
 from pjsk_core.domain.scores import (
     ScoreAttempt,
     calculate_accuracy,
@@ -85,11 +92,10 @@ class RecognizeScore:
             )
 
         if outcome.decision == VisionRaceDecision.DISAGREEMENT:
-            # Collect candidates from all engine results
-            # (simplified for now — full candidate merge in Phase 3b)
+            candidates = self._collect_candidates(outcome)
             return RecognizeResult(
                 outcome=outcome, validated=outcome.selected,
-                candidates_for_user=(), score_attempt=None,
+                candidates_for_user=candidates, score_attempt=None,
             )
 
         if outcome.decision == VisionRaceDecision.GLOBAL_TIMEOUT:
@@ -107,6 +113,67 @@ class RecognizeScore:
             outcome=outcome, validated=None,
             candidates_for_user=(), score_attempt=None,
         )
+
+    @staticmethod
+    def _collect_candidates(
+        outcome: VisionRaceOutcome,
+    ) -> tuple[Candidate, ...]:
+        """Collect, dedup, and rank candidates from all engine results on disagreement.
+
+        Iterates over every Successful engine result, flattens their
+        :class:`ValidatedCandidate` entries, groups by ``song_id``,
+        counts model support (number of unique engine identities that
+        agree on that song), and ranks via the domain
+        :func:`~pjsk_core.domain.ocr.rank_candidates` function.
+        """
+        # Group by song_id: {(song_id): [(identity, vc, observation), ...]}
+        song_groups: dict[
+            int,
+            list[tuple[EngineIdentity, ValidatedCandidate, OcrObservation]],
+        ] = {}
+        for result in outcome.results:
+            if result.status != EngineResultStatus.SUCCESS:
+                continue
+            if result.validated is None or result.observation is None:
+                continue
+            for vc in result.validated.candidates:
+                sid = vc.song_match.song_id
+                if sid not in song_groups:
+                    song_groups[sid] = []
+                song_groups[sid].append(
+                    (result.identity, vc, result.observation)
+                )
+
+        if not song_groups:
+            return ()
+
+        # Dedup by song_id — keep the highest-scoring match per song
+        candidate_list: list[Candidate] = []
+        for _sid, entries in song_groups.items():
+            # Sort by match score descending within the group
+            entries.sort(key=lambda e: -e[1].song_match.score)
+            best_vc = entries[0][1]
+            obs = entries[0][2]
+            # Count unique engine identities supporting this song
+            supporting = {e[0].engine_id for e in entries}
+            candidate_list.append(Candidate(
+                observation=obs,
+                model_support=len(supporting),
+                note_validated=best_vc.note_validated,
+                title_similarity=best_vc.song_match.score,
+                note_distance=(
+                    best_vc.note_distance
+                    if best_vc.note_distance is not None
+                    else 9999
+                ),
+                matched_chart_id=(
+                    best_vc.chart.id
+                    if best_vc.chart is not None
+                    else None
+                ),
+            ))
+
+        return tuple(rank_candidates(candidate_list))
 
     async def _record(
         self,

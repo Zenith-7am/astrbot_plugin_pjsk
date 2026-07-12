@@ -25,6 +25,13 @@ class ValidatedObservation:
     Consensus should compare validated observations — not raw song_title
     strings — because two models may produce different spellings of the
     same song that both match to the same chart.
+
+    .. deprecated::
+       Use :class:`pjsk_core.application.validate_ocr.ValidatedObservation`
+       instead.  This domain-level version uses ``displayed_level`` for
+       consensus comparisons, which is fragile.  The application-level
+       version has richer validation state (STRONG/CANDIDATE/REJECTED)
+       and per-candidate metadata.
     """
 
     observation: OcrObservation

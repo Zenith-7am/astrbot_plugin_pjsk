@@ -95,3 +95,19 @@ class TestMemoryCircuitBreaker:
         p2 = await cb.acquire("gemini")
         assert p2 is not None
         assert p2.probe is True
+
+    def test_zero_failure_threshold_raises(self) -> None:
+        with pytest.raises(ValueError, match="failure_threshold"):
+            MemoryCircuitBreaker(failure_threshold=0)
+
+    def test_negative_failure_threshold_raises(self) -> None:
+        with pytest.raises(ValueError, match="failure_threshold"):
+            MemoryCircuitBreaker(failure_threshold=-1)
+
+    def test_zero_cooldown_seconds_raises(self) -> None:
+        with pytest.raises(ValueError, match="cooldown_seconds"):
+            MemoryCircuitBreaker(failure_threshold=1, cooldown_seconds=0)
+
+    def test_negative_cooldown_seconds_raises(self) -> None:
+        with pytest.raises(ValueError, match="cooldown_seconds"):
+            MemoryCircuitBreaker(failure_threshold=1, cooldown_seconds=-0.1)

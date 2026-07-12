@@ -18,6 +18,7 @@ from pjsk_core.domain.ocr import (
     EngineIdentity,
     OcrObservation,
     VisionEngineError,
+    VisionResponseError,
 )
 from pjsk_core.domain.scores import Judgements
 from pjsk_core.ports.circuit_breaker import (
@@ -167,6 +168,20 @@ class VisionRace:
                     f"({r.engine.identity.engine_id})"
                 )
 
+        # Validate provider constraints among enabled runtimes
+        enabled = [r for r in runtimes if r.policy.enabled]
+        enabled_providers = [r.engine.identity.provider for r in enabled]
+        if len(set(enabled_providers)) != len(enabled_providers):
+            raise ValueError(
+                f"Duplicate providers among enabled engines: "
+                f"{enabled_providers}"
+            )
+        if len(set(enabled_providers)) > 3:
+            raise ValueError(
+                f"At most 3 distinct providers allowed, "
+                f"got {len(set(enabled_providers))}"
+            )
+
         self._runtimes = tuple(runtimes)
         self._breaker = breaker
         self._validator = validator
@@ -238,14 +253,18 @@ class VisionRace:
                 except Exception:
                     pass  # Worker already appended to ctx.worker_results
 
-            # Check for consensus
-            decision, outcome = self._evaluate_consensus(ctx)
+            # Check for consensus (discard outcome — rebuild after drain)
+            decision, _ = self._evaluate_consensus(ctx)
             if decision is not None:
-                # Cancel remaining workers
+                # Cancel remaining workers first, then drain so their
+                # CANCELLED_BY_CONSENSUS results are collected into
+                # ctx.worker_results before building the final outcome.
                 for t in pending:
                     t.cancel()
                 if pending:
                     await asyncio.gather(*pending, return_exceptions=True)
+                # Rebuild outcome with all results including cancelled ones
+                _, outcome = self._evaluate_consensus(ctx)
                 assert outcome is not None
                 return outcome
 
@@ -511,6 +530,29 @@ class VisionRace:
                     observation=None,
                     validated=None,
                     error=e,
+                    elapsed_ms=elapsed,
+                )
+                ctx.worker_results.append(result)
+                return result
+
+            except Exception as e:
+                # Catch non-VisionEngineError exceptions (e.g. TypeError,
+                # ValueError from unexpected data) and wrap them as a
+                # VisionResponseError so the worker returns a FAILED result
+                # instead of silently vanishing.
+                await self._breaker.record_failure(
+                    permit, _error_to_failure(VisionEngineError(str(e))),
+                )
+                settled = True
+                elapsed = int((_time.monotonic() - started) * 1000)
+                result = EngineResult(
+                    identity=runtime.engine.identity,
+                    status=EngineResultStatus.FAILED,
+                    observation=None,
+                    validated=None,
+                    error=VisionResponseError(
+                        f"Unexpected error from {runtime.engine.identity.engine_id}: {e}"
+                    ),
                     elapsed_ms=elapsed,
                 )
                 ctx.worker_results.append(result)

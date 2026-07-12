@@ -94,13 +94,15 @@ class GeminiVisionEngine:
                 ]
             }],
         }
+        headers = {"x-goog-api-key": self._api_key.reveal()}
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/"
             f"models/{self._model}:generateContent"
-            f"?key={self._api_key.reveal()}"
         )
         try:
-            response = await self._client.post(url, json=body, timeout=timeout)
+            response = await self._client.post(
+                url, json=body, headers=headers, timeout=timeout,
+            )
         except httpx.RequestError as e:
             raise map_request_error(e) from e
 
@@ -130,39 +132,40 @@ class GeminiVisionEngine:
         try:
             text = data["candidates"][0]["content"]["parts"][0]["text"]
             parsed = json.loads(text)
-        except (KeyError, IndexError, json.JSONDecodeError) as e:
+
+            diff_map: dict[str, Difficulty] = {
+                "EASY": Difficulty.EASY,
+                "NORMAL": Difficulty.NORMAL,
+                "HARD": Difficulty.HARD,
+                "EXPERT": Difficulty.EXPERT,
+                "MASTER": Difficulty.MASTER,
+                "APPEND": Difficulty.APPEND,
+            }
+            difficulty = diff_map.get(parsed.get("difficulty", "").upper())
+            if difficulty is None:
+                raise VisionResponseError(
+                    f"Unknown difficulty: {parsed.get('difficulty')}"
+                )
+
+            return OcrObservation(
+                song_title=str(parsed.get("song_title", "")),
+                difficulty=difficulty,
+                displayed_level=int(parsed.get("level", 0)),
+                judgements=Judgements(
+                    perfect=int(parsed.get("perfect", 0)),
+                    great=int(parsed.get("great", 0)),
+                    good=int(parsed.get("good", 0)),
+                    bad=int(parsed.get("bad", 0)),
+                    miss=int(parsed.get("miss", 0)),
+                ),
+                engine=f"gemini-{self._model}",
+                elapsed_ms=0,
+            )
+        except (KeyError, IndexError, json.JSONDecodeError,
+                ValueError, TypeError, AttributeError) as e:
             raise VisionResponseError(
                 f"Cannot parse Gemini response: {e}"
             ) from e
-
-        diff_map: dict[str, Difficulty] = {
-            "EASY": Difficulty.EASY,
-            "NORMAL": Difficulty.NORMAL,
-            "HARD": Difficulty.HARD,
-            "EXPERT": Difficulty.EXPERT,
-            "MASTER": Difficulty.MASTER,
-            "APPEND": Difficulty.APPEND,
-        }
-        difficulty = diff_map.get(parsed.get("difficulty", "").upper())
-        if difficulty is None:
-            raise VisionResponseError(
-                f"Unknown difficulty: {parsed.get('difficulty')}"
-            )
-
-        return OcrObservation(
-            song_title=str(parsed.get("song_title", "")),
-            difficulty=difficulty,
-            displayed_level=int(parsed.get("level", 0)),
-            judgements=Judgements(
-                perfect=int(parsed.get("perfect", 0)),
-                great=int(parsed.get("great", 0)),
-                good=int(parsed.get("good", 0)),
-                bad=int(parsed.get("bad", 0)),
-                miss=int(parsed.get("miss", 0)),
-            ),
-            engine=f"gemini-{self._model}",
-            elapsed_ms=0,
-        )
 
 
 def _encode_base64(data: bytes) -> str:

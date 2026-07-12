@@ -45,11 +45,26 @@ def load_vision_race_policy(raw: dict[str, Any]) -> VisionRacePolicy:
         raise ValueError("'engines' must be a non-empty dict")
 
     policies: list[EnginePolicy] = []
+    enabled_providers: list[str] = []
     for engine_id, cfg in engines_raw.items():
+        provider = cfg.get("provider", "")
+        if not provider:
+            raise ValueError(
+                f"Engine '{engine_id}': 'provider' is required and must be non-empty"
+            )
+        enabled = bool(cfg.get("enabled", True))
+        if enabled:
+            if provider in enabled_providers:
+                raise ValueError(
+                    f"Duplicate provider '{provider}' among enabled engines. "
+                    f"Each provider must have at most one enabled engine."
+                )
+            enabled_providers.append(provider)
+
         policies.append(EnginePolicy(
             engine_id=engine_id,
             priority=int(cfg.get("priority", len(policies) + 1)),
-            enabled=bool(cfg.get("enabled", True)),
+            enabled=enabled,
             timeout_seconds=float(cfg.get("timeout", 15.0)),
             max_concurrency=int(cfg.get("max_concurrency", 3)),
         ))

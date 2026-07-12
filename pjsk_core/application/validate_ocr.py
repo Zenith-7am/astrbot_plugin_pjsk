@@ -34,6 +34,14 @@ class ValidationStatus(Enum):
     REJECTED = "rejected"
 
 
+_STATUS_SORT = {
+    ValidationStatus.STRONG: 0,
+    ValidationStatus.CANDIDATE: 1,
+    ValidationStatus.REJECTED: 2,
+}
+"""Sort priority for candidate ordering — STRONG before CANDIDATE before REJECTED."""
+
+
 @dataclass(frozen=True)
 class ValidatedCandidate:
     """Validation result for a single song-match candidate."""
@@ -96,6 +104,7 @@ class ValidationPipeline:
 
         validated_candidates.sort(
             key=lambda vc: (
+                _STATUS_SORT[vc.status],
                 not vc.note_validated,
                 vc.chart is None,
                 -(vc.song_match.score),

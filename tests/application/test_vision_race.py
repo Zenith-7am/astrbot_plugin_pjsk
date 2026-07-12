@@ -227,22 +227,16 @@ class TestVisionRace:
         # At least 2 providers form the consensus
         assert len(outcome.consensus.supporting_providers) >= 2
 
-    async def test_same_provider_not_independent(self) -> None:
-        """Two engines from the same provider cannot form consensus alone."""
-        race = self._race(
-            [
-                _runtime("g", "google", [_obs("Song A")]),
-                _runtime("g2", "google", [_obs("Song A")]),
-                _runtime("z", "zhipu", [_obs("Song A")]),
-            ]
-        )
-        # g + g2 are same provider (google), so need zhipu too = 2 providers
-        outcome = await race.run(b"fake_image")
-        assert outcome.decision == VisionRaceDecision.CONSENSUS
-        assert outcome.consensus is not None
-        # Both google and zhipu supported
-        assert "google" in outcome.consensus.supporting_providers
-        assert "zhipu" in outcome.consensus.supporting_providers
+    async def test_duplicate_provider_raises(self) -> None:
+        """Two engines with the same provider must raise ValueError."""
+        import pytest
+        with pytest.raises(ValueError, match="Duplicate providers"):
+            self._race(
+                [
+                    _runtime("g", "google", [_obs("Song A")]),
+                    _runtime("g2", "google", [_obs("Song A")]),
+                ]
+            )
 
     async def test_disagreement(self) -> None:
         """Three engines each produce a different song -> DISAGREEMENT."""

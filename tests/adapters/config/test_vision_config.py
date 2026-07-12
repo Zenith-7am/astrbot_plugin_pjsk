@@ -63,3 +63,93 @@ class TestLoadVisionRacePolicy:
 
         with pytest.raises(ValueError, match="at least one"):
             load_vision_race_policy(raw)
+
+    def test_missing_provider_raises(self) -> None:
+        """Engine without a provider field must raise ValueError."""
+        raw = {
+            "engines": {
+                "g": {
+                    "enabled": True,
+                    "priority": 1,
+                    "timeout": 15.0,
+                    "max_concurrency": 3,
+                },
+            },
+            "global_timeout_seconds": 30.0,
+        }
+        with pytest.raises(ValueError, match="required and must be non-empty"):
+            load_vision_race_policy(raw)
+
+    def test_empty_provider_raises(self) -> None:
+        """Engine with empty provider must raise ValueError."""
+        raw = {
+            "engines": {
+                "g": {
+                    "provider": "",
+                    "enabled": True,
+                    "priority": 1,
+                    "timeout": 15.0,
+                    "max_concurrency": 3,
+                },
+            },
+            "global_timeout_seconds": 30.0,
+        }
+        with pytest.raises(ValueError, match="required and must be non-empty"):
+            load_vision_race_policy(raw)
+
+    def test_duplicate_provider_raises(self) -> None:
+        """Two enabled engines with the same provider must raise ValueError."""
+        raw = {
+            "engines": {
+                "g": {
+                    "provider": "google",
+                    "enabled": True,
+                    "priority": 1,
+                    "timeout": 15.0,
+                    "max_concurrency": 3,
+                },
+                "g2": {
+                    "provider": "google",
+                    "enabled": True,
+                    "priority": 2,
+                    "timeout": 15.0,
+                    "max_concurrency": 3,
+                },
+            },
+            "global_timeout_seconds": 30.0,
+        }
+        with pytest.raises(ValueError, match="Duplicate provider"):
+            load_vision_race_policy(raw)
+
+    def test_same_provider_disabled_does_not_raise(self) -> None:
+        """Two engines with same provider, one disabled, should not raise."""
+        raw = {
+            "engines": {
+                "g": {
+                    "provider": "google",
+                    "enabled": True,
+                    "priority": 1,
+                    "timeout": 15.0,
+                    "max_concurrency": 3,
+                },
+                "g2": {
+                    "provider": "google",
+                    "enabled": False,
+                    "priority": 2,
+                    "timeout": 15.0,
+                    "max_concurrency": 3,
+                },
+                "z": {
+                    "provider": "zhipu",
+                    "enabled": True,
+                    "priority": 3,
+                    "timeout": 15.0,
+                    "max_concurrency": 3,
+                },
+            },
+            "global_timeout_seconds": 30.0,
+        }
+        policy = load_vision_race_policy(raw)
+        assert len(policy.engines) == 3
+        assert policy.engines[0].enabled is True
+        assert policy.engines[1].enabled is False

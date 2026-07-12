@@ -122,31 +122,32 @@ class StepFunVisionEngine:
         try:
             text = data["choices"][0]["message"]["content"]
             parsed = json.loads(text)
-        except (KeyError, IndexError, json.JSONDecodeError) as e:
+
+            difficulty = _DIFF_MAP.get(parsed.get("difficulty", "").upper())
+            if difficulty is None:
+                raise VisionResponseError(
+                    f"Unknown difficulty: {parsed.get('difficulty')}"
+                )
+
+            return OcrObservation(
+                song_title=str(parsed.get("song_title", "")),
+                difficulty=difficulty,
+                displayed_level=int(parsed.get("level", 0)),
+                judgements=Judgements(
+                    perfect=int(parsed.get("perfect", 0)),
+                    great=int(parsed.get("great", 0)),
+                    good=int(parsed.get("good", 0)),
+                    bad=int(parsed.get("bad", 0)),
+                    miss=int(parsed.get("miss", 0)),
+                ),
+                engine=f"stepfun-{self._model}",
+                elapsed_ms=0,
+            )
+        except (KeyError, IndexError, json.JSONDecodeError,
+                ValueError, TypeError, AttributeError) as e:
             raise VisionResponseError(
                 f"Cannot parse StepFun response: {e}"
             ) from e
-
-        difficulty = _DIFF_MAP.get(parsed.get("difficulty", "").upper())
-        if difficulty is None:
-            raise VisionResponseError(
-                f"Unknown difficulty: {parsed.get('difficulty')}"
-            )
-
-        return OcrObservation(
-            song_title=str(parsed.get("song_title", "")),
-            difficulty=difficulty,
-            displayed_level=int(parsed.get("level", 0)),
-            judgements=Judgements(
-                perfect=int(parsed.get("perfect", 0)),
-                great=int(parsed.get("great", 0)),
-                good=int(parsed.get("good", 0)),
-                bad=int(parsed.get("bad", 0)),
-                miss=int(parsed.get("miss", 0)),
-            ),
-            engine=f"stepfun-{self._model}",
-            elapsed_ms=0,
-        )
 
 
 def _encode_base64(data: bytes) -> str:
