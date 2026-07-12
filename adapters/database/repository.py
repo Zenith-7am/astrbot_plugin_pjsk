@@ -149,46 +149,51 @@ class SqliteScoreRepository:
         self._conn = conn
 
     async def record_attempt(self, attempt: ScoreAttempt) -> ScoreAttempt:
-        now = attempt.created_at.isoformat()
-        cursor = await self._conn.execute(
-            """INSERT INTO score_attempts
-               (user_id, chart_id, perfect, great, good, bad, miss,
-                accuracy, rating, status, image_sha256, source_gateway,
-                ocr_run_id, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                attempt.user_id.value, attempt.chart_id,
-                attempt.judgements.perfect, attempt.judgements.great,
-                attempt.judgements.good, attempt.judgements.bad,
-                attempt.judgements.miss,
-                attempt.accuracy, attempt.rating, attempt.status.value,
-                attempt.image_sha256, attempt.source_gateway,
-                attempt.ocr_run_id, now,
-            ),
-        )
-        attempt_id = cursor.lastrowid
-        if attempt_id is None:
-            raise RuntimeError("INSERT did not return a row id")
-
-        # Update personal_best in same transaction
-        best = list(
-            await self._conn.execute_fetchall(
-                "SELECT rating FROM personal_bests WHERE user_id = ? AND chart_id = ?",
-                (attempt.user_id.value, attempt.chart_id),
-            )
-        )
-        if not best or attempt.rating >= best[0][0]:
-            await self._conn.execute(
-                """INSERT OR REPLACE INTO personal_bests
-                   (user_id, chart_id, best_attempt_id, accuracy, rating, status, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        await self._conn.execute("BEGIN")
+        try:
+            now = attempt.created_at.isoformat()
+            cursor = await self._conn.execute(
+                """INSERT INTO score_attempts
+                   (user_id, chart_id, perfect, great, good, bad, miss,
+                    accuracy, rating, status, image_sha256, source_gateway,
+                    ocr_run_id, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    attempt.user_id.value, attempt.chart_id, attempt_id,
-                    attempt.accuracy, attempt.rating, attempt.status.value, now,
+                    attempt.user_id.value, attempt.chart_id,
+                    attempt.judgements.perfect, attempt.judgements.great,
+                    attempt.judgements.good, attempt.judgements.bad,
+                    attempt.judgements.miss,
+                    attempt.accuracy, attempt.rating, attempt.status.value,
+                    attempt.image_sha256, attempt.source_gateway,
+                    attempt.ocr_run_id, now,
                 ),
             )
+            attempt_id = cursor.lastrowid
+            if attempt_id is None:
+                raise RuntimeError("INSERT did not return a row id")
 
-        await self._conn.commit()
+            # Update personal_best in same transaction
+            best = list(
+                await self._conn.execute_fetchall(
+                    "SELECT rating FROM personal_bests WHERE user_id = ? AND chart_id = ?",
+                    (attempt.user_id.value, attempt.chart_id),
+                )
+            )
+            if not best or attempt.rating >= best[0][0]:
+                await self._conn.execute(
+                    """INSERT OR REPLACE INTO personal_bests
+                       (user_id, chart_id, best_attempt_id, accuracy, rating, status, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        attempt.user_id.value, attempt.chart_id, attempt_id,
+                        attempt.accuracy, attempt.rating, attempt.status.value, now,
+                    ),
+                )
+
+            await self._conn.commit()
+        except Exception:
+            await self._conn.rollback()
+            raise
 
         return ScoreAttempt(
             id=attempt_id,

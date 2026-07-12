@@ -130,3 +130,35 @@ class TestSqliteScoreRepository:
             UserId(1), status_filter={ScoreStatus.FC, ScoreStatus.AP}
         )
         assert len(both) == 1
+
+    async def test_rollback_on_failure(self, repos: _Repos) -> None:
+        """A failed record_attempt must leave the database unchanged.
+        Subsequent operations on the same connection must still work."""
+        score_repo, _, _ = repos
+        now = datetime.now(timezone.utc)
+
+        # chart_id=999 does not exist → FK violation triggers rollback
+        bad_attempt = ScoreAttempt(
+            id=None, user_id=UserId(1), chart_id=999,
+            judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
+            accuracy=100.0, rating=1000.0, status=ScoreStatus.FC,
+            image_sha256="bad", source_gateway="astrbot", ocr_run_id=None,
+            created_at=now,
+        )
+        with pytest.raises(Exception):
+            await score_repo.record_attempt(bad_attempt)
+
+        # Verify no attempt was persisted
+        bests = await score_repo.list_personal_bests(UserId(1))
+        assert len(bests) == 0  # rollback cleaned up
+
+        # Connection is still usable after rollback
+        good = ScoreAttempt(
+            id=None, user_id=UserId(1), chart_id=1,
+            judgements=Judgements(perfect=1000, great=0, good=0, bad=0, miss=0),
+            accuracy=101.0, rating=3200.0, status=ScoreStatus.AP,
+            image_sha256="good", source_gateway="astrbot", ocr_run_id=None,
+            created_at=now,
+        )
+        saved = await score_repo.record_attempt(good)
+        assert saved.id == 1  # only the good attempt was saved

@@ -11,7 +11,7 @@ the PJSK player ID. Evidence:
 
 - `SELECT COUNT(*) FROM scores s JOIN users u ON s.game_id = u.qq_id` → **2,246/2,246** (100%)
 - `SELECT COUNT(*) FROM scores s JOIN users u ON s.game_id = u.game_id` → **0/2,246** (0%)
-- Sample: `s.game_id = '107268701'`, `u.qq_id = '107268701'`, `u.game_id = NULL`
+- Sampled rows confirm `scores.game_id` values match `users.qq_id` pattern, not PJSK game IDs
 
 Migration can directly map `scores.game_id` → the new `users.qq_number` column.
 No identity reconstruction needed.

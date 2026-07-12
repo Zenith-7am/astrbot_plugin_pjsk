@@ -1,5 +1,6 @@
 """Rating calculation tests — aligned with old emu-bot test_kn_power.py fixtures."""
 
+import pytest
 from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.rating import calculate_rating
 from pjsk_core.domain.scores import ScoreStatus
@@ -148,6 +149,55 @@ class TestClearRating:
         )
         assert power == 30 * (90 + 6.5)  # = 2895.0
 
+    def test_clear_90_boundary(self) -> None:
+        """At exactly 90%: s_clear = 0."""
+        power = calculate_rating(
+            official_level=30,
+            community_constant="30.0",
+            status=ScoreStatus.CLEAR,
+            accuracy=90.0,
+            difficulty=Difficulty.MASTER,
+        )
+        assert power == 30 * 90.0  # s = 0
+
+    def test_clear_97_to_100(self) -> None:
+        """97% ≤ acc < 100%: s = 3 + (acc-97)/3*2."""
+        power = calculate_rating(
+            official_level=30,
+            community_constant="30.0",
+            status=ScoreStatus.CLEAR,
+            accuracy=98.5,
+            difficulty=Difficulty.MASTER,
+        )
+        # s = 3 + (98.5-97)/3*2 = 3 + 1.0 = 4.0
+        expected = 30 * (90 + 4.0)
+        assert abs(power - expected) < 0.01
+
+    def test_clear_100_to_1005(self) -> None:
+        """100% ≤ acc < 100.5%: s = 5 + (acc-100)/0.5."""
+        power = calculate_rating(
+            official_level=30,
+            community_constant="30.0",
+            status=ScoreStatus.CLEAR,
+            accuracy=100.25,
+            difficulty=Difficulty.MASTER,
+        )
+        # s = 5 + (100.25-100)/0.5 = 5 + 0.5 = 5.5
+        expected = 30 * (90 + 5.5)
+        assert abs(power - expected) < 0.01
+
+    def test_clear_100_boundary(self) -> None:
+        """At exactly 100%: s = 3 + (100-97)/3*2 = 3 + 2 = 5."""
+        power = calculate_rating(
+            official_level=30,
+            community_constant="30.0",
+            status=ScoreStatus.CLEAR,
+            accuracy=100.0,
+            difficulty=Difficulty.MASTER,
+        )
+        expected = 30 * (90 + 5.0)
+        assert abs(power - expected) < 0.01
+
 
 class TestRatingEdgeCases:
     def test_invalid_constant_falls_back_to_level(self) -> None:
@@ -183,3 +233,16 @@ class TestRatingEdgeCases:
             difficulty=Difficulty.APPEND,
         )
         assert power == 32 * 101 + 70  # const_bonus=0
+
+    def test_non_numeric_constant_raises(self) -> None:
+        """Illegal community_constant must raise ValueError, not return 0.
+        New architecture validates inputs early; domain does not swallow
+        garbage.  This differs from old bot which returned 0.0."""
+        with pytest.raises(ValueError):
+            calculate_rating(
+                official_level=30,
+                community_constant="abc",
+                status=ScoreStatus.FC,
+                accuracy=100.0,
+                difficulty=Difficulty.MASTER,
+            )

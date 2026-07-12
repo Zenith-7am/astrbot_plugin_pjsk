@@ -110,7 +110,7 @@ ops/                    香港 VPS 原子发布与 systemd
 
 ## 5. 领域规则参考（PJSK 游戏机制）
 
-> 以下规则从旧 `emu-bot` 提取，是 **`domain` 层实现依据**。实现时必须 **TDD 对齐旧仓库 fixtures**（`D:\emu-bot\tests\test_accuracy.py`、`test_kn_power.py` 等），任何与旧结果的差异都要**记录并经批准**，不得静默"归一化"。当前阶段**只作参考，禁止实现**（见 §16）。
+> 以下规则从旧 `emu-bot` 提取，是 **`domain` 层实现依据**。已按 TDD 对齐旧仓库 fixtures（`D:\emu-bot\tests\test_accuracy.py`、`test_kn_power.py` 等），任何与旧结果的差异均已**记录并经批准**。当前执行边界见 §16。
 
 ### 5.1 判定系统
 
