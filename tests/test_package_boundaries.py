@@ -12,9 +12,8 @@ FORBIDDEN_IMPORTS = (
 )
 
 
-def _import_from_names(node: ast.ImportFrom) -> list[str]:
+def _import_from_names(node: ast.ImportFrom, package: list[str]) -> list[str]:
     if node.level:
-        package = ["pjsk_core", "domain"]
         package = package[: max(0, len(package) - node.level + 1)]
         module = ".".join((*package, *((node.module or "").split("."))))
         module = module.rstrip(".")
@@ -28,13 +27,14 @@ def _import_from_names(node: ast.ImportFrom) -> list[str]:
 def find_forbidden_imports(domain: Path) -> list[tuple[Path, str]]:
     violations: list[tuple[Path, str]] = []
     for path in domain.rglob("*.py"):
+        package = ["pjsk_core", "domain", *path.parent.relative_to(domain).parts]
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             names: list[str] = []
             if isinstance(node, ast.Import):
                 names = [alias.name for alias in node.names]
             elif isinstance(node, ast.ImportFrom):
-                names = _import_from_names(node)
+                names = _import_from_names(node, package)
             violations.extend(
                 (path, name)
                 for name in names
@@ -56,6 +56,20 @@ def test_finds_forbidden_imports_in_nested_modules(tmp_path: Path) -> None:
 
     assert find_forbidden_imports(domain) == [
         (nested / "rule.py", "pjsk_core.application")
+    ]
+
+
+def test_resolves_relative_import_from_nested_module_package(tmp_path: Path) -> None:
+    domain = tmp_path / "pjsk_core" / "domain"
+    nested = domain / "nested"
+    nested.mkdir(parents=True)
+    source = nested / "rule.py"
+    source.write_text(
+        "from ...application import service\n", encoding="utf-8"
+    )
+
+    assert find_forbidden_imports(domain) == [
+        (source, "pjsk_core.application")
     ]
 
 
