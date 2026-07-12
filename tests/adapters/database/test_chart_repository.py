@@ -9,6 +9,7 @@ from adapters.database.connection import get_connection
 from adapters.database.migrator import run_migrations
 from adapters.database.repository import SqliteChartRepository
 from pjsk_core.domain.charts import Difficulty
+from pjsk_core.ports.repositories import ChartRepository
 
 
 @pytest.fixture
@@ -86,3 +87,12 @@ class TestSqliteChartRepository:
 
         level32 = await repo.list_by_difficulty_level(Difficulty.MASTER, 32)
         assert len(level32) == 0
+
+    async def test_conforms_to_chart_repository_protocol(
+        self, repo: SqliteChartRepository
+    ) -> None:
+        """Structural conformance: SqliteChartRepository satisfies ChartRepository."""
+        _: ChartRepository = repo
+        assert callable(repo.get_by_id)
+        assert callable(repo.find_by_song_and_difficulty)
+        assert callable(repo.list_by_difficulty_level)

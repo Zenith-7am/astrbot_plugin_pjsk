@@ -8,6 +8,7 @@ from adapters.database.connection import get_connection
 from adapters.database.migrator import run_migrations
 from adapters.database.repository import SqliteUserRepository
 from pjsk_core.domain.users import QqNumber, UserId
+from pjsk_core.ports.repositories import UserRepository
 
 
 @pytest.fixture
@@ -61,3 +62,13 @@ class TestSqliteUserRepository:
         assert fetched is not None
         assert fetched.created_at is not None
         assert fetched.created_at.tzinfo is not None  # timezone-aware
+
+    async def test_conforms_to_user_repository_protocol(
+        self, repo: SqliteUserRepository
+    ) -> None:
+        """Structural conformance: SqliteUserRepository satisfies UserRepository."""
+        _: UserRepository = repo
+        # Basic sanity that all protocol methods are callable
+        assert callable(repo.get_by_id)
+        assert callable(repo.get_by_qq)
+        assert callable(repo.create)
