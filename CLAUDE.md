@@ -367,13 +367,36 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 
 ## 16. 当前执行边界（最重要）
 
-> 用户最新指令：**「先别动业务代码，先搭建框架。」**
+> **当前阶段：Phase 2 — Chart Data and Persistence Layer**
+> 用户最新指令（2026-07-12）：**「继续」进入 Phase 2。**
 
-工程骨架已完成并通过审查（HEAD `554cd94`；pytest 4 passed、Ruff/Mypy/边界测试全绿、worktree 干净）。
+Phase 1（Foundation and Legacy Audit）已完成：
+- ✅ 工程骨架、包边界测试
+- ✅ Domain 数据类（User/Chart/Score/OCR）
+- ✅ Application 回复类型
+- ✅ Ports 协议（7 个 Protocol）
+- ✅ Accuracy、Rating、B20 纯规则（对齐旧 fixtures）
+- ✅ OCR 共识与 Candidate 排序
+- ✅ AstrBot 插件入口壳
+- ✅ 只读旧库审计器（审计已完成并修正）
 
-**除非用户进一步明确授权，禁止实现**：准确率 / Rating / B20 / OCR / 数据库 / AstrBot 插件 / Redis / 渲染 / 任何业务逻辑。
+### 当前授权：Phase 2
 
-若指令仍是"整理框架"，**只允许**：完善目录结构、工程配置、架构文档、空包、架构边界测试、开发工具配置。**不要创建 placeholder 函数或假实现。**
+**允许**：
+- `chart_data/` 定数数据文件与 manifest
+- `adapters/database/` — SQLite schema、版本化迁移、connection factory
+- `adapters/database/repository.py` — User/Chart/Score Repository 的 SQLite 实现
+- `tools/import_chart_data.py` — 定数数据导入与校验
+- 以上各项的测试
+
+**禁止**：
+- 视觉模型 HTTP 调用（Gemini/智谱/StepFun）
+- AstrBot 业务 handler（`/pjsk b20` 等命令）
+- 旧库数据迁移（从审计快照导入生产数据）
+- VPS 写操作
+- Redis adapter
+- 渲染服务实现
+- 没有计划的新功能
 
 ---
 
