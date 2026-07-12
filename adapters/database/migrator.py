@@ -59,7 +59,7 @@ async def run_migrations(
             "SELECT COALESCE(MAX(version), 0) FROM schema_version"
         )
         row = await cursor.fetchone()
-        return row[0] if row else 0
+        return int(row[0]) if row else 0
     finally:
         await conn.close()
 
