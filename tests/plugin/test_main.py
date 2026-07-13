@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from plugin.main import _handle_image, _handle_selection, _image_count
+from plugin.rate_limiter import UserRateLimiter
 from plugin.reply_builder import PluginErrorCode
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
 from pjsk_core.domain.users import QqNumber, User, UserId
@@ -151,6 +152,9 @@ class _FakeRuntime:
     confirm_candidate = _FakeConfirmCandidate()
     candidate_store = _FakeCandidateStore()
     image_buffer = None
+    rate_limiter = UserRateLimiter()
+    pending_candidate_sets: dict[int, str] = {}
+    pending_display_text: dict[int, str] = {}
 
     async def close(self) -> None:
         pass

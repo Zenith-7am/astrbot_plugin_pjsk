@@ -15,6 +15,7 @@ class PluginErrorCode(Enum):
     IMAGE_TOO_LARGE = "image_too_large"
     MULTIPLE_IMAGES = "multiple_images"
     USER_RATE_LIMITED = "user_rate_limited"
+    CANDIDATES_AVAILABLE = "candidates_available"
 
 
 _MESSAGES = {
@@ -35,20 +36,25 @@ class _FakePlainText:
     type: str = "plain"
 
 
+try:
+    from astrbot.api.message_components import Plain as _AstroPlain
+except ImportError:
+    _AstroPlain = _FakePlainText  # fallback for dev/testing
+
+
 class ReplyBuilder:
     """Build AstrBot message chains from plugin results.
 
-    Uses fake Plain component type that matches AstrBot's wire format.
-    When running inside a real AstrBot instance, the framework's
-    Plain/Image components are used instead via monkey-patch or
-    import-time detection.
+    Uses ``_AstroPlain`` at runtime (resolved from AstrBot's ``Plain``
+    component when the framework is installed, otherwise falls back to
+    ``_FakePlainText`` for pure testing).
     """
 
     @staticmethod
     def text(plain_text: str) -> list[Any]:
-        return [_FakePlainText(text=plain_text)]
+        return [_AstroPlain(text=plain_text)]
 
     @staticmethod
     def error(code: PluginErrorCode) -> list[Any]:
         msg = _MESSAGES.get(code, "未知错误")
-        return [_FakePlainText(text=msg)]
+        return [_AstroPlain(text=msg)]

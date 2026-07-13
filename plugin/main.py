@@ -18,9 +18,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from plugin.candidate_presenter import CandidatePresenter
 from plugin.event_mapper import EventMapper
-from plugin.rate_limiter import UserRateLimiter
-from plugin.reply_builder import PluginErrorCode
+from plugin.reply_builder import PluginErrorCode, ReplyBuilder
 from plugin.runtime import PluginRuntime
 from pjsk_core.application.confirm_candidate import ConfirmError
 from pjsk_core.domain.users import UserId
@@ -60,7 +60,8 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
     3. Auto-register user if they do not exist yet.
     4. Rate-limit check (in-memory per-user cooldown).
     5. Run ``RecognizeScore`` use case.
-    6. Return ``SUCCESS`` on score or candidates,
+    6. Return ``SUCCESS`` on score, ``CANDIDATES_AVAILABLE`` on
+       disagreement (with candidate_set_id stored in runtime),
        ``NOT_PJSK_SCREENSHOT`` otherwise.
     """
     count = _image_count(event)
@@ -79,11 +80,10 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
     if user is None:
         user = await rt.user_repo.create(ctx.qq_number, game_id=None)
 
-    # Rate limit check
-    limiter = UserRateLimiter()
-    if not limiter.check(user.id):
+    # Rate limit check (C3: use shared limiter from PluginRuntime)
+    if not rt.rate_limiter.check(user.id):
         return PluginErrorCode.USER_RATE_LIMITED
-    limiter.mark(user.id)
+    rt.rate_limiter.mark(user.id)
 
     result = await rt.recognize_score.recognize(
         user.id, ctx.image_bytes, source_gateway=ctx.source_gateway,
@@ -93,7 +93,19 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
         return PluginErrorCode.SUCCESS
 
     if result.candidates_for_user:
-        return PluginErrorCode.SUCCESS  # candidates sent, user must confirm
+        cid = result.candidate_set_id
+        if cid is not None:
+            # Build display text via CandidatePresenter
+            from pjsk_core.ports.cache import CandidateSet as _CSet
+            display_cs = _CSet(
+                candidates=result.candidates_for_user,
+                image_sha256="", source_gateway="",
+                ocr_run_id=0, chart_data_version="",
+            )
+            display_text = CandidatePresenter.format(display_cs, cid)
+            rt.pending_candidate_sets[user.id.value] = cid
+            rt.pending_display_text[user.id.value] = display_text
+        return PluginErrorCode.CANDIDATES_AVAILABLE
 
     return PluginErrorCode.NOT_PJSK_SCREENSHOT
 
@@ -111,15 +123,30 @@ async def _handle_selection(
     ``ConfirmError`` on failure, or ``None`` on success (when
     ``ConfirmResult.error`` is ``None``).
     """
-    # Peek at current candidates via a dummy selection.
-    # NOTE: consume_selection is destructive in production -- we need a
-    # way to peek first.  In the real handler the candidate_set_id is
-    # stored per-user in memory alongside the candidate set.  This is a
-    # simplified test path.
-    _ = await rt.candidate_store.consume_selection(
-        current_candidate_set_id, user_id, 0,
+    import re
+    text = text.strip()
+
+    selection: int | None = None
+
+    # Priority: explicit "选 <id> <num>" format
+    m = re.match(r'选\s+(\S+)\s+(\d+)', text)
+    if m:
+        cid, num = m.group(1), int(m.group(2))
+        if cid == current_candidate_set_id:
+            selection = num
+
+    # Priority: pure number
+    if selection is None:
+        try:
+            num = int(text)
+        except ValueError:
+            return None  # Not a selection
+        selection = num
+
+    result = await rt.confirm_candidate.confirm(
+        user_id, current_candidate_set_id, selection,
     )
-    return None  # Passthrough -- full integration wires in later tasks
+    return result.error
 
 
 # ── AstrBot Plugin class ────────────────────────────────────────────────────
@@ -161,17 +188,81 @@ class PjskPlugin(_Star):  # type: ignore[misc]
         _logger.info("PJSK plugin runtime initialized")
 
     async def on_message(self, event: AstrMessageEvent) -> None:
-        """Handle incoming messages -- image recognition and text routing.
+        """Handle incoming messages -- candidate selection, image recognition.
 
-        If the message contains an image, runs OCR recognition via
-        ``_handle_image``.  Otherwise, the message passes through to
-        AstrBot's chat personality (no reply sent).
+        Flow
+        ----
+        1. Try candidate selection for text-only messages (I4).
+        2. If the message contains an image, run OCR recognition via
+           ``_handle_image`` and send a reply (C2).
+        3. Otherwise, passthrough to AstrBot's chat personality.
         """
         if self._runtime is None:
             return
-        image_code = await _handle_image(event, self._runtime)
+
+        rt = self._runtime
+
+        # I4: Try candidate selection for text-only messages
+        if _image_count(event) == 0:
+            try:
+                text = event.message_obj.message_str or ""
+            except (AttributeError, TypeError):
+                text = ""
+            if text.strip():
+                mapper = EventMapper()
+                qq = mapper.extract_qq(event)
+                user = await rt.user_repo.get_by_qq(qq)
+                if (user is not None
+                        and user.id.value in rt.pending_candidate_sets):
+                    cid = rt.pending_candidate_sets[user.id.value]
+                    err = await _handle_selection(
+                        text, user.id, cid, rt,
+                    )
+                    if err is not None:
+                        reply = ReplyBuilder.text(f"确认失败：{err.value}")
+                    else:
+                        reply = ReplyBuilder.text("已确认成绩")
+                    # Clean up pending
+                    del rt.pending_candidate_sets[user.id.value]
+                    rt.pending_display_text.pop(user.id.value, None)
+                    # Send reply and stop event
+                    try:
+                        event.chain_result(reply)
+                    except (AttributeError, TypeError):
+                        for component in reply:
+                            await event.send(component)
+                    try:
+                        event.stop_event()
+                    except (AttributeError, TypeError):
+                        pass
+                    return
+
+        # C2: Image handling with reply sending
+        image_code = await _handle_image(event, rt)
         if image_code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
-            return  # Handled -- no further processing needed
+            if image_code == PluginErrorCode.CANDIDATES_AVAILABLE:
+                mapper = EventMapper()
+                qq = mapper.extract_qq(event)
+                user = await rt.user_repo.get_by_qq(qq)
+                if (user is not None
+                        and user.id.value in rt.pending_display_text):
+                    display = rt.pending_display_text[user.id.value]
+                    reply = ReplyBuilder.text(display)
+                else:
+                    reply = ReplyBuilder.error(PluginErrorCode.SUCCESS)
+            else:
+                reply = ReplyBuilder.error(image_code)
+
+            try:
+                event.chain_result(reply)
+            except (AttributeError, TypeError):
+                for component in reply:
+                    await event.send(component)
+            try:
+                event.stop_event()
+            except (AttributeError, TypeError):
+                pass
+            return
 
         # Passthrough: let AstrBot's personality handle it
 
@@ -180,6 +271,18 @@ class PjskPlugin(_Star):  # type: ignore[misc]
         if self._runtime:
             await self._runtime.close()
             self._runtime = None
+
+    # C1: Conditionally apply AstrBot lifecycle decorators so they work
+    # both in development/testing and inside a real AstrBot instance.
+    try:
+        from astrbot.api.filter import filter as _filter
+
+        on_astrbot_loaded = _filter.on_astrbot_loaded()(on_astrbot_loaded)
+        on_message = _filter.event_message_type(
+            _filter.EventMessageType.ALL,
+        )(on_message)
+    except ImportError:
+        pass  # dev / testing — decorators are no-ops
 
 
 # Conditionally apply AstrBot's ``@filter.command_group("pjsk")`` decorator.

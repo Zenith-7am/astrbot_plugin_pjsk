@@ -1,4 +1,5 @@
 """Tests for PluginRuntime."""
+from plugin.rate_limiter import UserRateLimiter
 from plugin.runtime import PluginRuntime
 from pjsk_core.domain.users import UserId
 
@@ -37,6 +38,7 @@ class TestPluginRuntime:
             confirm_candidate=_FakeConfirmCandidate(),  # type: ignore[arg-type]
             candidate_store=_FakeCandidateStore(),      # type: ignore[arg-type]
             image_buffer=_FakeImageBuffer(),
+            rate_limiter=UserRateLimiter(),
         )
         assert rt.user_repo is not None
         assert rt.recognize_score is not None
@@ -52,5 +54,6 @@ class TestPluginRuntime:
             confirm_candidate=_FakeConfirmCandidate(),  # type: ignore[arg-type]
             candidate_store=_FakeCandidateStore(),      # type: ignore[arg-type]
             image_buffer=_FakeImageBuffer(),
+            rate_limiter=UserRateLimiter(),
         )
         await rt.close()

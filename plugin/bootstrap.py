@@ -30,6 +30,7 @@ from pjsk_core.application.validate_ocr import ValidationPipeline
 from pjsk_core.application.vision_policy import EnginePolicy, VisionRacePolicy
 from pjsk_core.application.vision_race import EngineRuntime, VisionRace
 from plugin.ephemeral import EphemeralImageBuffer
+from plugin.rate_limiter import UserRateLimiter
 from plugin.runtime import PluginRuntime
 
 
@@ -118,4 +119,7 @@ async def assemble_plugin_runtime(db_path: Path) -> PluginRuntime:
         confirm_candidate=confirm_candidate,
         candidate_store=candidate_store,
         image_buffer=image_buffer,
+        rate_limiter=UserRateLimiter(),
+        http_client=http_client,
+        db_conn=conn,
     )
