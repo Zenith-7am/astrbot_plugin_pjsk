@@ -36,22 +36,40 @@ import json
 import os
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
-# ── Engine factory (lightweight — no Composition Root) ────────────────────
+import httpx
 
-_ENGINE_BUILDERS: dict[str, Any] = {}
+# ── Engine builder types ─────────────────────────────────────────────────
 
 
-def _register(name: str, builder):
-    _ENGINE_BUILDERS[name] = builder
-    return builder
+class VisionEngine(Protocol):
+    """Subset of what every vision engine exposes — enough for the benchmark."""
+    identity: Any  # EngineIdentity
+
+    async def recognize(
+        self, image: bytes, *, timeout: float,
+    ) -> Any: ...  # OcrObservation
+
+
+EngineBuilder = Callable[[httpx.AsyncClient], VisionEngine]
+
+_ENGINE_BUILDERS: dict[str, EngineBuilder] = {}
+
+
+def _register(name: str) -> Callable[[EngineBuilder], EngineBuilder]:
+    """Decorator that registers an engine builder under *name*."""
+    def decorator(builder: EngineBuilder) -> EngineBuilder:
+        _ENGINE_BUILDERS[name] = builder
+        return builder
+    return decorator
 
 
 @_register("gemini")
-def _build_gemini(client) -> Any:
+def _build_gemini(client: httpx.AsyncClient) -> VisionEngine:
     from adapters.vision.gemini import GeminiVisionEngine
     return GeminiVisionEngine(
         api_key=os.environ["GEMINI_API_KEY"],
@@ -61,10 +79,9 @@ def _build_gemini(client) -> Any:
 
 
 @_register("zhipu")
-def _build_zhipu(client) -> Any:
+def _build_zhipu(client: httpx.AsyncClient) -> VisionEngine:
     from adapters.vision.zhipu import ZhipuVisionEngine
-    return ZhipuVisionEngine(
-        api_key=os.environ["ZHIPU_API_KEY"],
+    return ZhipuVisionEngine(        api_key=os.environ["ZHIPU_API_KEY"],
         model=os.environ.get("ZHIPU_MODEL", "glm-4.6v-flash"),
         client=client,
         thinking_enabled=os.environ.get("ZHIPU_THINKING", "") == "1",
@@ -72,20 +89,18 @@ def _build_zhipu(client) -> Any:
 
 
 @_register("stepfun")
-def _build_stepfun(client) -> Any:
+def _build_stepfun(client: httpx.AsyncClient) -> VisionEngine:
     from adapters.vision.stepfun import StepFunVisionEngine
-    return StepFunVisionEngine(
-        api_key=os.environ["STEPFUN_API_KEY"],
+    return StepFunVisionEngine(        api_key=os.environ["STEPFUN_API_KEY"],
         model=os.environ.get("STEPFUN_MODEL", "step-1v-32k"),
         client=client,
     )
 
 
 @_register("modelscope")
-def _build_modelscope(client) -> Any:
+def _build_modelscope(client: httpx.AsyncClient) -> VisionEngine:
     from adapters.vision.modelscope import ModelScopeVisionEngine
-    return ModelScopeVisionEngine(
-        api_key=os.environ["MODELSCOPE_API_KEY"],
+    return ModelScopeVisionEngine(        api_key=os.environ["MODELSCOPE_API_KEY"],
         model=os.environ.get("MODELSCOPE_MODEL", "Qwen/QVQ-72B-Preview"),
         client=client,
     )
@@ -152,18 +167,53 @@ def _percentile(data: list[int], pct: float) -> float:
     return float(sorted_data[f])
 
 
+# ── Truth loading ──────────────────────────────────────────────────────────
+
+_TRUTH_REQUIRED_KEYS = frozenset({
+    "song_title", "difficulty", "level", "perfect",
+    "great", "good", "bad", "miss",
+})
+
+
+def _load_truth(truth_path: Path) -> dict[str, dict[str, object]]:
+    """Load and validate ground_truth.json.
+
+    Returns ``{filename: {song_title, difficulty, level, perfect, …}}``.
+    Raises ``ValueError`` when the top-level value is not a dict of dicts
+    or when any entry is missing required keys.
+    """
+    with open(truth_path, encoding="utf-8") as f:
+        raw: Any = json.load(f)
+
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"ground_truth.json must be a JSON object mapping filenames "
+            f"to entries, got {type(raw).__name__}"
+        )
+
+    result: dict[str, dict[str, object]] = {}
+    for filename, entry in raw.items():
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"ground_truth.json[{filename!r}] must be a JSON object, "
+                f"got {type(entry).__name__}"
+            )
+        missing = _TRUTH_REQUIRED_KEYS - entry.keys()
+        if missing:
+            raise ValueError(
+                f"ground_truth.json[{filename!r}] missing keys: {sorted(missing)}"
+            )
+        result[str(filename)] = dict(entry)
+    return result
+
+
 # ── Main logic ────────────────────────────────────────────────────────────
 
 
-def _load_truth(truth_path: Path) -> dict[str, dict[str, Any]]:
-    with open(truth_path, encoding="utf-8") as f:
-        return json.load(f)
-
-
 async def _run_one(
-    engine: Any,
+    engine: VisionEngine,
     image_path: Path,
-    truth: dict[str, Any],
+    truth: dict[str, object],
     timeout: float,
 ) -> SingleResult:
     image_bytes = image_path.read_bytes()
@@ -184,14 +234,14 @@ async def _run_one(
         engine=engine.identity.engine_id,
         image=image_path.name,
         elapsed_ms=elapsed,
-        song_ok=obs.song_title.lower() == truth["song_title"].lower(),
-        difficulty_ok=obs.difficulty.value == truth["difficulty"],
+        song_ok=obs.song_title.lower() == str(truth["song_title"]).lower(),
+        difficulty_ok=obs.difficulty.value == str(truth["difficulty"]),
         judgements_ok=(
-            obs.judgements.perfect == truth["perfect"]
-            and obs.judgements.great == truth["great"]
-            and obs.judgements.good == truth["good"]
-            and obs.judgements.bad == truth["bad"]
-            and obs.judgements.miss == truth["miss"]
+            obs.judgements.perfect == int(str(truth["perfect"]))
+            and obs.judgements.great == int(str(truth["great"]))
+            and obs.judgements.good == int(str(truth["good"]))
+            and obs.judgements.bad == int(str(truth["bad"]))
+            and obs.judgements.miss == int(str(truth["miss"]))
         ),
     )
 
@@ -203,8 +253,8 @@ async def main() -> None:
         help="Directory containing anonymised screenshots + ground_truth.json",
     )
     parser.add_argument(
-        "--engines", nargs="+", default=["zhipu", "modelscope"],
-        help="Engines to test (default: zhipu modelscope)",
+        "--engines", nargs="+", default=["zhipu"],
+        help="Engines to test (default: zhipu)",
     )
     parser.add_argument(
         "--timeout", type=float, default=30.0,
@@ -226,9 +276,8 @@ async def main() -> None:
         sys.exit(1)
 
     # Build engines
-    import httpx
     async with httpx.AsyncClient(timeout=args.timeout + 5) as client:
-        engines: list[Any] = []
+        engines: list[VisionEngine] = []
         for name in args.engines:
             if name not in _ENGINE_BUILDERS:
                 print(f"Unknown engine: {name}.  Choices: {sorted(_ENGINE_BUILDERS)}")
@@ -282,7 +331,7 @@ async def main() -> None:
                     rep.latencies_ms.append(r.elapsed_ms)
 
         # ── Print reports ──────────────────────────────────────────────
-        for eng_id, rep in reports.items():
+        for _eng_id, rep in reports.items():
             print(rep.summary())
         print()
         print("Done — benchmark complete.")
