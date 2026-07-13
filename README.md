@@ -46,11 +46,14 @@ git pull
 | 配置项 | 说明 | 默认值 |
 |--------|------|--------|
 | `gemini_api_key` | Google Gemini API Key | （空=禁用） |
-| `zhipu_api_key` | 智谱 GLM-4V API Key | （空=禁用） |
+| `zhipu_api_key` | 智谱 API Key | （空=禁用） |
 | `stepfun_api_key` | StepFun API Key | （空=禁用） |
+| `modelscope_api_key` | ModelScope API Token | （空=禁用，免费额度） |
 | `gemini_model` | Gemini 模型名 | `2.5-flash` |
 | `zhipu_model` | 智谱模型名 | `glm-4.6v-flash`（免费） |
+| `zhipu_thinking` | 智谱思考模式 | `false` |
 | `stepfun_model` | StepFun 模型名 | `step-1v-32k` |
+| `modelscope_model` | ModelScope 模型 | `Qwen/QVQ-72B-Preview`（免费） |
 | `ocr_timeout_seconds` | 单引擎超时（秒） | `15` |
 | `ocr_concurrency` | 每引擎最大并发 | `3` |
 | `image_window_seconds` | 群聊图片等待窗口（秒） | `15` |
@@ -59,11 +62,14 @@ git pull
 
 **至少配置一个 API Key 插件才能工作。** 推荐同时启用 2–3 个引擎以获得最佳准确率。
 
+> ⚠️ 注意：当前 VisionRace 并发启动所有已启用引擎。如果启用了 ModelScope，**每张截图都会消耗一次 ModelScope 调用**。ModelScope 不是"仅其他引擎失败时才调用"的降级方案。免费额度为每天 2000 次调用（每模型 500 次）。
+
 ### 获取 API Key
 
 - **Gemini**：[Google AI Studio](https://aistudio.google.com/) → Get API Key → 免费额度
 - **智谱**：[智谱开放平台](https://open.bigmodel.cn/) → API Keys → 新用户有赠送
 - **StepFun**：[StepFun 平台](https://platform.stepfun.com/) → API Keys
+- **ModelScope**：[ModelScope](https://modelscope.cn/) → 注册+绑定阿里云 → [访问令牌](https://modelscope.cn/my/access/token) → 免费额度：2000 次/天、500 次/模型。注意免费模型动态上下线，请在 [ModelScope 模型列表](https://modelscope.cn/models) 筛选 API-Inference 确认当前可用模型
 
 ## 命令
 
@@ -115,7 +121,7 @@ git pull
 
 ```text
 [PJSK] v0.1.0-alpha.1 starting  schema_version=5  chart_data=2026-07-12  charts=1533
-[PJSK] engines: gemini-2.5-flash, zhipu-glm-4.6v-flash
+[PJSK] engines: gemini-2.5-flash, zhipu-glm-4.6v-flash, modelscope-Qwen/QVQ-72B-Preview
 ```
 
 ## 平台支持

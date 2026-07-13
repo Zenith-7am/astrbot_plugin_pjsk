@@ -29,6 +29,7 @@ from adapters.database.repository import (
 )
 from adapters.resilience.memory_circuit_breaker import MemoryCircuitBreaker
 from adapters.vision.gemini import GeminiVisionEngine
+from adapters.vision.modelscope import ModelScopeVisionEngine
 from adapters.vision.stepfun import StepFunVisionEngine
 from adapters.vision.zhipu import ZhipuVisionEngine
 from pjsk_core.application.confirm_candidate import ConfirmCandidate
@@ -221,6 +222,23 @@ async def assemble_plugin_runtime(
                 semaphore=asyncio.Semaphore(ocr_concurrency),
             ))
             enabled_names.append("stepfun-" + stepfun_model)
+
+        modelscope_key = cfg.get("modelscope_api_key", "")
+        modelscope_model = cfg.get("modelscope_model", "Qwen/QVQ-72B-Preview")
+        if modelscope_key:
+            ms_eng = ModelScopeVisionEngine(
+                api_key=modelscope_key, model=modelscope_model,
+                client=http_client,
+            )
+            # Priority 4 (lowest), concurrency 1 for free tier
+            engines.append(EngineRuntime(
+                engine=ms_eng,
+                policy=EnginePolicy(
+                    "modelscope-" + modelscope_model, 4, True, ocr_timeout, 3,
+                ),
+                semaphore=asyncio.Semaphore(1),
+            ))
+            enabled_names.append("modelscope-" + modelscope_model)
 
         validator = ValidationPipeline(charts=chart_repo)
         race: VisionRace | None = None

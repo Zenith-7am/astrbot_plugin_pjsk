@@ -76,6 +76,19 @@
     "max": 600,
     "hint": "OCR 分歧时候选列表的有效时间，超时需重新发图。"
   },
+  "modelscope_api_key": {
+    "description": "ModelScope API Token",
+    "type": "string",
+    "Sensitive": true,
+    "default": "",
+    "hint": "从 https://modelscope.cn/my/access/token 获取（需绑定阿里云账号）。留空则禁用 ModelScope 引擎。免费额度：每天 2000 次调用，每模型 500 次。"
+  },
+  "modelscope_model": {
+    "description": "ModelScope 模型",
+    "type": "string",
+    "default": "Qwen/QVQ-72B-Preview",
+    "hint": "ModelScope 模型 ID。免费模型会动态上下线，请定期检查。当前默认 QVQ-72B-Preview（视觉推理）。"
+  },
   "user_cooldown_seconds": {
     "description": "用户识别冷却（秒）",
     "type": "int",
