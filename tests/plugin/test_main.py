@@ -9,8 +9,8 @@ from typing import Any
 
 import pytest
 
-from plugin.ephemeral import EphemeralImageBuffer
-from plugin.main import (
+from pjsk_emubot.ephemeral import EphemeralImageBuffer
+from pjsk_emubot.main import (
     PjskPlugin,
     _get_self_id,
     _handle_image,
@@ -20,8 +20,8 @@ from plugin.main import (
     _is_group_chat,
     _text_beyond_components,
 )
-from plugin.rate_limiter import UserRateLimiter
-from plugin.reply_builder import PluginErrorCode
+from pjsk_emubot.rate_limiter import UserRateLimiter
+from pjsk_emubot.reply_builder import PluginErrorCode
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
 from pjsk_core.domain.users import QqNumber, User, UserId
 
@@ -383,13 +383,13 @@ class TestQQOfficialBypass:
     """QQ Official must not construct QqNumber and must return early."""
 
     def test_qq_official_event_is_detected(self) -> None:
-        from plugin.event_mapper import EventMapper
+        from pjsk_emubot.event_mapper import EventMapper
         mapper = EventMapper()
         event = FakeEvent(platform_id="qq_official", sender_id="openid-abc")
         assert mapper.is_qq_official(event) is True
 
     def test_onebot_event_is_not_qq_official(self) -> None:
-        from plugin.event_mapper import EventMapper
+        from pjsk_emubot.event_mapper import EventMapper
         mapper = EventMapper()
         event = FakeEvent(platform_id="onebot_v11", sender_id="123456")
         assert mapper.is_qq_official(event) is False
@@ -397,7 +397,7 @@ class TestQQOfficialBypass:
     def test_qq_official_context_has_null_qq(self) -> None:
         """QQ Official ImageContext must have qq_number=None, not QqNumber('0')."""
         import asyncio as _asyncio
-        from plugin.event_mapper import EventMapper
+        from pjsk_emubot.event_mapper import EventMapper
         mapper = EventMapper()
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             f.write(b"test-image-data")

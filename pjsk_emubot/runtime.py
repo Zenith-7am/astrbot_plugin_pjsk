@@ -7,7 +7,7 @@ from typing import Protocol
 import aiosqlite
 import httpx
 
-from plugin.rate_limiter import UserRateLimiter
+from pjsk_emubot.rate_limiter import UserRateLimiter
 from pjsk_core.application.confirm_candidate import ConfirmCandidate
 from pjsk_core.application.recognize_score import RecognizeScore
 from pjsk_core.ports.cache import CandidateStore

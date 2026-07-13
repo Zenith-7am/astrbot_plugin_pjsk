@@ -1,6 +1,6 @@
 """Tests for PluginRuntime."""
-from plugin.rate_limiter import UserRateLimiter
-from plugin.runtime import PluginRuntime
+from pjsk_emubot.rate_limiter import UserRateLimiter
+from pjsk_emubot.runtime import PluginRuntime
 from pjsk_core.domain.users import UserId
 
 

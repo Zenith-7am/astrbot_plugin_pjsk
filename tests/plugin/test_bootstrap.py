@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 import pytest
-from plugin.bootstrap import _resolve_db_path, assemble_plugin_runtime
+from pjsk_emubot.bootstrap import _resolve_db_path, assemble_plugin_runtime
 
 
 @pytest.fixture(autouse=True)

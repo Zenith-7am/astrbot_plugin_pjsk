@@ -13,10 +13,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from plugin.candidate_presenter import CandidatePresenter
-from plugin.event_mapper import EventMapper
-from plugin.reply_builder import PluginErrorCode, ReplyBuilder
-from plugin.runtime import PluginRuntime
+from pjsk_emubot.candidate_presenter import CandidatePresenter
+from pjsk_emubot.event_mapper import EventMapper
+from pjsk_emubot.reply_builder import PluginErrorCode, ReplyBuilder
+from pjsk_emubot.runtime import PluginRuntime
 from pjsk_core.domain.users import UserId
 from pjsk_core.ports.cache import CandidateSet as _CandidateSet
 
@@ -362,7 +362,7 @@ class PjskPlugin(Star):  # type: ignore
 
     async def initialize(self) -> None:
         """Called by AstrBot after plugin instantiation."""
-        from plugin.bootstrap import assemble_plugin_runtime
+        from pjsk_emubot.bootstrap import assemble_plugin_runtime
 
         conf = getattr(self, "config", None)
         if not isinstance(conf, dict):

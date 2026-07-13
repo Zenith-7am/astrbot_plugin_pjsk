@@ -1,5 +1,5 @@
 """Tests for ReplyBuilder."""
-from plugin.reply_builder import PluginErrorCode, ReplyBuilder
+from pjsk_emubot.reply_builder import PluginErrorCode, ReplyBuilder
 
 
 class TestReplyBuilder:

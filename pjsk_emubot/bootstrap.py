@@ -37,9 +37,9 @@ from pjsk_core.application.recognize_score import RecognizeScore
 from pjsk_core.application.validate_ocr import ValidationPipeline
 from pjsk_core.application.vision_policy import EnginePolicy, VisionRacePolicy
 from pjsk_core.application.vision_race import EngineRuntime, VisionRace
-from plugin.ephemeral import EphemeralImageBuffer
-from plugin.rate_limiter import UserRateLimiter
-from plugin.runtime import PluginRuntime
+from pjsk_emubot.ephemeral import EphemeralImageBuffer
+from pjsk_emubot.rate_limiter import UserRateLimiter
+from pjsk_emubot.runtime import PluginRuntime
 
 _logger = logging.getLogger(__name__)
 

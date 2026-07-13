@@ -1,5 +1,5 @@
 """Tests for CandidatePresenter."""
-from plugin.candidate_presenter import CandidatePresenter
+from pjsk_emubot.candidate_presenter import CandidatePresenter
 from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.ocr import Candidate, OcrObservation
 from pjsk_core.domain.scores import Judgements

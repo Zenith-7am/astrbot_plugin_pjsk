@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from plugin.event_mapper import (
+from pjsk_emubot.event_mapper import (
     MAX_IMAGE_BYTES,
     EventMapper,
     _read_local_file,

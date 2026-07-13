@@ -1,6 +1,6 @@
 """Tests for EphemeralImageBuffer."""
 
-from plugin.ephemeral import EphemeralImageBuffer
+from pjsk_emubot.ephemeral import EphemeralImageBuffer
 from pjsk_core.domain.users import QqNumber
 
 

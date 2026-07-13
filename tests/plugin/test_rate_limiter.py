@@ -1,7 +1,7 @@
 """Tests for UserRateLimiter."""
 import time
 
-from plugin.rate_limiter import UserRateLimiter
+from pjsk_emubot.rate_limiter import UserRateLimiter
 from pjsk_core.domain.users import UserId
 
 
