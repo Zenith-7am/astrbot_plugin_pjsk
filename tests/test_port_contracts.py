@@ -1,6 +1,7 @@
 """Contract tests: every Protocol has a fake implementation that type-checks
 and passes a basic async smoke call."""
 
+import asyncio
 from datetime import datetime, timezone
 
 
@@ -8,7 +9,12 @@ from pjsk_core.domain.charts import Chart, Difficulty
 from pjsk_core.domain.ocr import EngineIdentity, OcrObservation
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
 from pjsk_core.domain.users import QqNumber, User, UserId
-from pjsk_core.ports.cache import CandidateStore
+from pjsk_core.ports.cache import (
+    CandidateConsumeResult,
+    CandidateConsumeStatus,
+    CandidateSet,
+    CandidateStore,
+)
 from pjsk_core.ports.identity import IdentityResolver
 from pjsk_core.ports.renderer import RenderRequest, RenderResult, Renderer
 from pjsk_core.ports.repositories import (
@@ -18,11 +24,13 @@ from pjsk_core.ports.repositories import (
     UserRepository,
 )
 from pjsk_core.ports.vision import VisionEngine
+from pjsk_core.domain.ocr_runs import OcrEngineRecord, OcrRunRecord
 from pjsk_core.ports.circuit_breaker import (
     CircuitBreaker,
     CircuitPermit,
     CircuitState,
 )
+from pjsk_core.ports.ocr_runs import OcrRunRepository
 
 
 # ── Fake implementations ────────────────────────────────────────────
@@ -159,26 +167,43 @@ class FakeIdentityResolver:
 
 class FakeCandidateStore:
     def __init__(self) -> None:
-        self._store: dict[str, tuple[UserId, list[OcrObservation]]] = {}
-        self._consumed: set[str] = set()
+        self._store: dict[str, tuple[UserId, CandidateSet]] = {}
+        self._lock = asyncio.Lock()
 
     async def put(
-        self, user_id: UserId, candidates: list[OcrObservation], ttl_seconds: int
+        self, user_id: UserId, candidate_set: CandidateSet, ttl_seconds: int,
     ) -> str:
-        key = f"candidate-{len(self._store)}"
-        self._store[key] = (user_id, candidates)
+        key = f"cs-{len(self._store)}"
+        async with self._lock:
+            self._store[key] = (user_id, candidate_set)
         return key
 
-    async def consume(
-        self, candidate_set_id: str, user_id: UserId,
-    ) -> list[OcrObservation] | None:
-        if candidate_set_id in self._consumed:
-            return None
-        entry = self._store.get(candidate_set_id)
-        if entry is None or entry[0] != user_id:
-            return None  # not found or wrong owner
-        self._consumed.add(candidate_set_id)
-        return entry[1]
+    async def consume_selection(
+        self, candidate_set_id: str, user_id: UserId, selection: int,
+    ) -> CandidateConsumeResult:
+        async with self._lock:
+            entry = self._store.pop(candidate_set_id, None)
+        if entry is None:
+            return CandidateConsumeResult(
+                status=CandidateConsumeStatus.NOT_FOUND,
+                candidate=None, candidate_set=None,
+            )
+        owner, cs = entry
+        if owner != user_id:
+            return CandidateConsumeResult(
+                status=CandidateConsumeStatus.FORBIDDEN,
+                candidate=None, candidate_set=None,
+            )
+        if selection < 1 or selection > len(cs.candidates):
+            return CandidateConsumeResult(
+                status=CandidateConsumeStatus.INVALID_SELECTION,
+                candidate=None, candidate_set=None,
+            )
+        return CandidateConsumeResult(
+            status=CandidateConsumeStatus.OK,
+            candidate=cs.candidates[selection - 1],
+            candidate_set=cs,
+        )
 
 
 # ── Contract tests ──────────────────────────────────────────────────
@@ -257,21 +282,42 @@ async def test_identity_resolver_contract() -> None:
 
 async def test_candidate_store_contract() -> None:
     store: CandidateStore = FakeCandidateStore()
+    from pjsk_core.domain.ocr import Candidate
     obs = OcrObservation(
         song_title="Test", difficulty=Difficulty.HARD,
         displayed_level=15,
         judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
         engine="test", elapsed_ms=0,
     )
-    cid = await store.put(UserId(1), [obs], ttl_seconds=60)
+    candidate = Candidate(
+        observation=obs, model_support=1, note_validated=True,
+        title_similarity=1.0, note_distance=0, matched_chart_id=1,
+    )
+    cs = CandidateSet(
+        candidates=(candidate,), image_sha256="a" * 64,
+        source_gateway="astrbot", ocr_run_id=1, chart_data_version="v1",
+    )
+    cid = await store.put(UserId(1), cs, ttl_seconds=300)
     assert cid is not None
 
-    result = await store.consume(cid, UserId(1))
-    assert result == [obs]
+    result = await store.consume_selection(cid, UserId(1), 1)
+    assert result.status == CandidateConsumeStatus.OK
+    assert result.candidate is not None
+    assert result.candidate_set is not None
 
-    # Second consume returns None (already consumed)
-    result2 = await store.consume(cid, UserId(1))
-    assert result2 is None
+    # Second consume returns NOT_FOUND
+    result2 = await store.consume_selection(cid, UserId(1), 1)
+    assert result2.status == CandidateConsumeStatus.NOT_FOUND
+
+    # Wrong user
+    cid2 = await store.put(UserId(1), cs, ttl_seconds=300)
+    result3 = await store.consume_selection(cid2, UserId(2), 1)
+    assert result3.status == CandidateConsumeStatus.FORBIDDEN
+
+    # Invalid selection
+    cid3 = await store.put(UserId(1), cs, ttl_seconds=300)
+    result4 = await store.consume_selection(cid3, UserId(1), 5)
+    assert result4.status == CandidateConsumeStatus.INVALID_SELECTION
 
 
 # ── CircuitBreaker contract tests ──────────────────────────────────
@@ -317,3 +363,57 @@ class TestChartRepositoryExtended:
 
     def test_get_by_song_and_difficulty_exists(self) -> None:
         assert hasattr(ChartRepository, "get_by_song_and_difficulty")
+
+
+# ── OcrRunRepository contract tests ──────────────────────────────────
+
+
+class FakeOcrRunRepository:
+    def __init__(self) -> None:
+        self._store: dict[int, OcrRunRecord] = {}
+        self._next_id = 1
+
+    async def save(self, record: OcrRunRecord) -> OcrRunRecord:
+        stored = OcrRunRecord(
+            id=self._next_id, user_id=record.user_id,
+            image_sha256=record.image_sha256,
+            source_gateway=record.source_gateway,
+            final_state=record.final_state,
+            selected_engine=record.selected_engine,
+            observations=record.observations,
+            created_at=record.created_at,
+        )
+        self._next_id += 1
+        assert stored.id is not None
+        self._store[stored.id] = stored
+        return stored
+
+    async def get_by_id(self, run_id: int) -> OcrRunRecord | None:
+        return self._store.get(run_id)
+
+
+async def test_ocr_run_repository_contract() -> None:
+    repo: OcrRunRepository = FakeOcrRunRepository()
+    obs = OcrEngineRecord(
+        engine_id="g", provider="google", result_status="success",
+        elapsed_ms=500, song_title="Test", difficulty=Difficulty.MASTER,
+        displayed_level=30,
+        judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
+        matched_chart_id=1, validation_status="strong", error_type=None,
+    )
+    record = OcrRunRecord(
+        id=None, user_id=UserId(1),
+        image_sha256="a" * 64, source_gateway="astrbot",
+        final_state="consensus", selected_engine="g",
+        observations=(obs,), created_at=datetime.now(timezone.utc),
+    )
+    saved = await repo.save(record)
+    assert saved.id is not None
+    assert saved.id == 1
+
+    fetched = await repo.get_by_id(1)
+    assert fetched is not None
+    assert fetched.final_state == "consensus"
+
+    not_found = await repo.get_by_id(999)
+    assert not_found is None
