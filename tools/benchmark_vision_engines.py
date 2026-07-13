@@ -97,15 +97,6 @@ def _build_stepfun(client: httpx.AsyncClient) -> VisionEngine:
     )
 
 
-@_register("modelscope")
-def _build_modelscope(client: httpx.AsyncClient) -> VisionEngine:
-    from adapters.vision.modelscope import ModelScopeVisionEngine
-    return ModelScopeVisionEngine(        api_key=os.environ["MODELSCOPE_API_KEY"],
-        model=os.environ.get("MODELSCOPE_MODEL", "Qwen/QVQ-72B-Preview"),
-        client=client,
-    )
-
-
 # ── Data types ────────────────────────────────────────────────────────────
 
 
