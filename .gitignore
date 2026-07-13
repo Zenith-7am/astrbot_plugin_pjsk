@@ -1,5 +1,6 @@
 .worktrees/
 
+# Python
 .venv/
 __pycache__/
 *.py[cod]
@@ -9,3 +10,13 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+
+# AstrBot runtime data (never commit live databases, configs, or caches)
+data/
+
+# Superpowers scratch
+.superpowers/
+
+# OS
+Thumbs.db
+.DS_Store

@@ -56,6 +56,12 @@ class FakeUserRepository:
         self._users[uid.value] = user
         return user
 
+    async def get_or_create(self, qq: QqNumber) -> User:
+        existing = await self.get_by_qq(qq)
+        if existing is not None:
+            return existing
+        return await self.create(qq, game_id=None)
+
     async def bind_game_id(self, user_id: UserId, game_id: str) -> User:
         from pjsk_core.ports.repositories import (
             AlreadyBoundError,

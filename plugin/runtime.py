@@ -36,7 +36,7 @@ class PluginRuntime:
     chart_repo: ChartRepository
     score_repo: ScoreRepository
     ocr_run_repo: OcrRunRepository
-    recognize_score: RecognizeScore
+    recognize_score: RecognizeScore | None
     confirm_candidate: ConfirmCandidate
     candidate_store: CandidateStore
     image_buffer: EphemeralImageBuffer

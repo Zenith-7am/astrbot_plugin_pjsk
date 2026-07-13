@@ -1,5 +1,7 @@
-name: pjsk-astrbot
-desc: PJSK score tracking, B20, and chart rankings via multi-model vision OCR.
-version: 0.0.0
+name: astrobot_plugin_pjsk
+desc: PJSK 成绩截图 OCR 识别 — 多视觉模型竞速、个人最佳入库、候选确认
+version: 0.1.0-alpha.1
 author: leoviria
-astrbot_version: ">=4.16"
+astrbot_version: ">=4.16,<5"
+support_platforms: [aiocqhttp]
+repo: https://github.com/leoviria/astrbot_plugin_pjsk

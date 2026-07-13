@@ -18,6 +18,7 @@ from plugin.main import (
     _image_count,
     _is_at_bot,
     _is_group_chat,
+    _text_beyond_components,
 )
 from plugin.rate_limiter import UserRateLimiter
 from plugin.reply_builder import PluginErrorCode
@@ -95,6 +96,9 @@ class _FakeUserRepo:
 
     async def create(self, qq: QqNumber, game_id: str | None) -> User:
         return User(id=UserId(1), qq_number=qq, game_id=game_id)
+
+    async def get_or_create(self, qq: QqNumber) -> User:
+        return User(id=UserId(1), qq_number=qq, game_id=None)
 
     async def bind_game_id(self, user_id: UserId, game_id: str) -> User:
         return User(id=user_id, qq_number=QqNumber("123456789"), game_id=game_id)
@@ -653,3 +657,50 @@ class TestOnMessageStateMachine:
         )
         replies = await self._collect_replies(plugin.on_message(event))
         assert replies == []  # Not OCR, cached silently
+
+    # ── Scenario 8: @Bot + text → no arm, passthrough ─────────────
+
+    async def test_at_bot_with_text_does_not_arm(self) -> None:
+        """@Bot + text ('@Bot 你好') → no arm, passthrough to personality."""
+        plugin = self._make_plugin()
+        bot_id = "bot123"
+        at = At(target=bot_id)
+        event = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_str="@Bot 你好",
+            message_obj=FakeMessageObj(message=[at], self_id=bot_id),
+        )
+        replies = await self._collect_replies(plugin.on_message(event))
+        assert replies == []  # Passthrough — no arm, no reply
+
+
+class TestTextBeyondComponents:
+    """Tests for _text_beyond_components — R5 empty @Bot gating."""
+
+    def test_empty_at_returns_empty(self) -> None:
+        event = FakeEvent(
+            message_str="@Bot",
+            message_obj=FakeMessageObj(message=[At(target="bot123")]),
+        )
+        assert _text_beyond_components(event) == ""
+
+    def test_at_with_text_returns_text(self) -> None:
+        """@Bot 你好 — the '你好' is from a non-Image/At component."""
+        # Simulate a text component
+        class Text:
+            pass
+        event = FakeEvent(
+            message_str="@Bot 你好",
+            message_obj=FakeMessageObj(
+                message=[At(target="bot123"), Text()],
+            ),
+        )
+        result = _text_beyond_components(event)
+        assert result != ""
+
+    def test_image_only_returns_empty(self) -> None:
+        event = FakeEvent(
+            message_obj=FakeMessageObj(message=[Image()]),
+        )
+        assert _text_beyond_components(event) == ""

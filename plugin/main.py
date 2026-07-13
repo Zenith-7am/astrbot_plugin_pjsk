@@ -80,6 +80,40 @@ def _image_count(event: Any) -> int:
     )
 
 
+def _text_beyond_components(event: Any) -> str:
+    """Return message text after stripping components understood by the plugin.
+
+    Removes Image and At components from consideration — any remaining
+    text is what the user typed beyond structural elements.  An empty
+    string means the message is effectively "empty" from the plugin's
+    perspective (e.g. a bare @Bot mention with no text).
+    """
+    try:
+        raw = event.message_str or ""
+    except (AttributeError, TypeError):
+        raw = ""
+    # AstrBot stores the plain-text rendering in message_str.
+    # At-mentions are rendered as e.g. "@BotName" in the text, so we
+    # strip known patterns.  The simplest reliable approach: if there
+    # are only At + Image components and no other text, the message
+    # is effectively empty.
+    #
+    # We count non-Image, non-At components.  If all components are
+    # Image or At, the message has no text beyond those.
+    try:
+        components = list(event.message_obj.message)
+    except (AttributeError, TypeError):
+        components = []
+    non_structural = [
+        c for c in components
+        if c.__class__.__name__ not in ("Image", "At")
+    ]
+    if non_structural:
+        return raw.strip()
+    # Only Image/At components — consider empty (no text beyond @ / image)
+    return ""
+
+
 def _is_at_bot(event: Any, bot_self_id: str) -> bool:
     """Check if the event message @mentions the bot specifically.
 
@@ -151,15 +185,16 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
     if ctx.qq_number is None:
         return PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND
 
-    # Auto-register: ensure user exists
-    user = await rt.user_repo.get_by_qq(ctx.qq_number)
-    if user is None:
-        user = await rt.user_repo.create(ctx.qq_number, game_id=None)
+    # Auto-register: get_or_create is safe for concurrent first-time callers
+    user = await rt.user_repo.get_or_create(ctx.qq_number)
 
     # Rate limit check
     if not rt.rate_limiter.check(user.id):
         return PluginErrorCode.USER_RATE_LIMITED
     rt.rate_limiter.mark(user.id)
+
+    if rt.recognize_score is None:
+        return PluginErrorCode.ALL_ENGINES_DOWN
 
     result = await rt.recognize_score.recognize(
         user.id, ctx.image_bytes, source_gateway=ctx.source_gateway,
@@ -260,12 +295,12 @@ async def _handle_buffered_image(
     if mapper.is_qq_official(event):
         return PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND
     qq = mapper.extract_qq(event)
-    user = await rt.user_repo.get_by_qq(qq)
-    if user is None:
-        user = await rt.user_repo.create(qq, game_id=None)
+    user = await rt.user_repo.get_or_create(qq)
     if not rt.rate_limiter.check(user.id):
         return PluginErrorCode.USER_RATE_LIMITED
     rt.rate_limiter.mark(user.id)
+    if rt.recognize_score is None:
+        return PluginErrorCode.ALL_ENGINES_DOWN
     gateway = EventMapper._gateway_name(event.get_platform_id())
     result = await rt.recognize_score.recognize(
         user.id, image_bytes, source_gateway=gateway,
@@ -327,15 +362,12 @@ class PjskPlugin(Star):  # type: ignore
 
     async def initialize(self) -> None:
         """Called by AstrBot after plugin instantiation."""
-        from pathlib import Path
         from plugin.bootstrap import assemble_plugin_runtime
 
-        conf = getattr(self, "config", {})
-        if isinstance(conf, dict):
-            db_path_str = conf.get("pjsk_db_path", "data/pjsk.db")
-        else:
-            db_path_str = "data/pjsk.db"
-        self._runtime = await assemble_plugin_runtime(Path(db_path_str))
+        conf = getattr(self, "config", None)
+        if not isinstance(conf, dict):
+            conf = None
+        self._runtime = await assemble_plugin_runtime(conf)
         _logger.info("PJSK plugin runtime initialized")
 
     # ── Commands ─────────────────────────────────────────────────────────
@@ -451,9 +483,13 @@ class PjskPlugin(Star):  # type: ignore
                     yield event.plain_result(reply_text)
                     event.stop_event()
                 return
-            # No buffered image — arm and passthrough
-            rt.image_buffer.arm(platform_id, group_id, sender_qq)
-            return  # Passthrough to AstrBot personality
+            # No buffered image — only arm on empty @Bot (no text beyond @)
+            if not _text_beyond_components(event):
+                rt.image_buffer.arm(platform_id, group_id, sender_qq)
+                event.stop_event()  # Prevent AstrBot empty_mention_waiting
+                return
+            # @Bot with text → passthrough to personality (don't arm)
+            return
 
         # ── 3. Candidate selection (non-image messages) ───────────────
         if img_count == 0:

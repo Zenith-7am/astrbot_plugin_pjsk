@@ -233,6 +233,28 @@ class SqliteUserRepository:
             )
         return result
 
+    async def get_or_create(self, qq: QqNumber) -> User:
+        """Return the existing user for *qq*, or create one with game_id=None.
+
+        Uses ``INSERT OR IGNORE`` so two concurrent first-time callers
+        both receive the same row — the first INSERT wins, the second
+        is silently ignored, and both callers re-read the existing row.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        await self._conn.execute(
+            "INSERT OR IGNORE INTO users (qq_number, game_id, created_at, updated_at) "
+            "VALUES (?, NULL, ?, ?)",
+            (qq.value, now, now),
+        )
+        await self._conn.commit()
+        result = await self.get_by_qq(qq)
+        if result is None:
+            raise RuntimeError(
+                f"get_or_create failed for qq={qq.value}: "
+                f"row not found after INSERT OR IGNORE"
+            )
+        return result
+
     async def bind_game_id(self, user_id: UserId, game_id: str) -> User:
         """Atomically bind a game_id to an existing user.
 

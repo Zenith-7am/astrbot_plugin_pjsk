@@ -2,11 +2,18 @@
 
 This is the ONLY place where concrete adapters are instantiated.
 Everything else in plugin/ depends on ports and application interfaces.
+
+The database path is resolved from AstrBot's ``data/plugin_data/``
+convention (with a local fallback for dev/testing).  On first install,
+migrations 001–005 are applied and the 1,533 chart constant rows are
+imported from ``chart_data/``.
 """
 from __future__ import annotations
 
 import asyncio
+import logging
 from pathlib import Path
+from typing import Any
 
 import aiosqlite
 import httpx
@@ -34,25 +41,122 @@ from plugin.ephemeral import EphemeralImageBuffer
 from plugin.rate_limiter import UserRateLimiter
 from plugin.runtime import PluginRuntime
 
+_logger = logging.getLogger(__name__)
 
-async def assemble_plugin_runtime(db_path: Path) -> PluginRuntime:
+PLUGIN_NAME = "astrbot_plugin_pjsk"
+PLUGIN_VERSION = "0.1.0-alpha.1"
+
+
+# ── Path resolution ─────────────────────────────────────────────────────────
+
+
+def _resolve_db_path() -> Path:
+    """Return the database path using AstrBot's plugin-data convention.
+
+    In production (AstrBot ≥ 4.16): ``data/plugin_data/astrbot_plugin_pjsk/pjsk.db``.
+    In dev/testing (no AstrBot import): ``data/pjsk.db``.
+    The parent directory is created if it does not exist.
+    """
+    try:
+        from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+        base = Path(get_astrbot_data_path())
+    except ImportError:
+        base = Path("data")
+    plugin_data = base / "plugin_data" / PLUGIN_NAME
+    plugin_data.mkdir(parents=True, exist_ok=True)
+    return plugin_data / "pjsk.db"
+
+
+def _chart_data_dir() -> Path:
+    """Return the ``chart_data/`` directory shipped with the plugin."""
+    return Path(__file__).parent.parent / "chart_data"
+
+
+# ── Config helpers ───────────────────────────────────────────────────────────
+
+
+def _read_config(config: dict[str, Any] | None) -> dict[str, Any]:
+    """Merge AstrBot WebUI config with environment-variable fallbacks.
+
+    API keys are read from env vars first (dev convenience), then from
+    the config dict (WebUI settings).  Numeric values use config defaults
+    when the key is absent.
+    """
+    import os
+
+    cfg: dict[str, Any] = dict(config) if config else {}
+
+    # API keys — env vars take precedence (dev / CI)
+    if not cfg.get("gemini_api_key"):
+        cfg["gemini_api_key"] = os.environ.get("GEMINI_API_KEY", "")
+    if not cfg.get("zhipu_api_key"):
+        cfg["zhipu_api_key"] = os.environ.get("ZHIPU_API_KEY", "")
+    if not cfg.get("stepfun_api_key"):
+        cfg["stepfun_api_key"] = os.environ.get("STEPFUN_API_KEY", "")
+
+    return cfg
+
+
+# ── Assembly ─────────────────────────────────────────────────────────────────
+
+
+async def assemble_plugin_runtime(
+    config: dict[str, Any] | None = None,
+) -> PluginRuntime:
     """Build all dependencies and return a PluginRuntime.
 
-    Called once at plugin startup.  Uses try/finally to close resources
-    on mid-assembly failure.  Each repository gets its own SQLite
-    connection (independent connections avoid nested BEGIN errors).
+    Called once at plugin startup.  Handles first-install initialisation
+    (migrations + chart-data import) and emits a startup log line.
     """
+    cfg = _read_config(config)
+
     user_conn: aiosqlite.Connection | None = None
     chart_conn: aiosqlite.Connection | None = None
     score_conn: aiosqlite.Connection | None = None
     http_client: httpx.AsyncClient | None = None
     runtime: PluginRuntime | None = None
 
-    try:
-        # ── Database ──────────────────────────────────────────────
-        await run_migrations(db_path)
+    db_path = _resolve_db_path()
 
-        # Independent connections — one per repository
+    try:
+        # ── Database: migrate + first-install chart import ────────────
+        schema_version = await run_migrations(db_path)
+
+        # Check whether charts table is empty (first install)
+        chart_count = 0
+        init_conn = await get_connection(db_path)
+        try:
+            rows = list(await init_conn.execute_fetchall(
+                "SELECT COUNT(*) AS cnt FROM charts"
+            ))
+            chart_count = rows[0]["cnt"] if rows else 0
+        finally:
+            await init_conn.close()
+
+        chart_data_ver = "none"
+        if chart_count == 0:
+            _logger.info(
+                "[PJSK] first install detected — importing chart constants …"
+            )
+            from tools.import_chart_data import import_chart_data
+            result = await import_chart_data(db_path, _chart_data_dir())
+            _logger.info(
+                "[PJSK] chart import complete: inserted=%d updated=%d unchanged=%d",
+                result["inserted"], result["updated"], result["unchanged"],
+            )
+            chart_count = result["inserted"] + result["updated"] + result["unchanged"]
+
+        # Read chart_data version for logging
+        try:
+            import json
+            manifest = json.loads(
+                (_chart_data_dir() / "manifest.json").read_text(encoding="utf-8"),
+            )
+            chart_data_ver = manifest.get("version", "unknown")
+        except Exception:
+            chart_data_ver = "unknown"
+
+        # ── Connections (independent per repository) ──────────────────
         user_conn = await get_connection(db_path)
         chart_conn = await get_connection(db_path)
         score_conn = await get_connection(db_path)
@@ -62,66 +166,91 @@ async def assemble_plugin_runtime(db_path: Path) -> PluginRuntime:
         score_repo = SqliteScoreRepository(score_conn)
         ocr_run_repo = SqliteOcrRunRepository(db_path)
 
-        # ── Vision Engines ────────────────────────────────────────
-        import os
-        gemini_key = os.environ.get("GEMINI_API_KEY", "")
-        zhipu_key = os.environ.get("ZHIPU_API_KEY", "")
-        stepfun_key = os.environ.get("STEPFUN_API_KEY", "")
+        # ── Vision Engines ────────────────────────────────────────────
+        gemini_key = cfg.get("gemini_api_key", "")
+        zhipu_key = cfg.get("zhipu_api_key", "")
+        stepfun_key = cfg.get("stepfun_api_key", "")
+
+        gemini_model = cfg.get("gemini_model", "2.5-flash")
+        zhipu_model = cfg.get("zhipu_model", "glm-4v-plus")
+        stepfun_model = cfg.get("stepfun_model", "step-1v-32k")
+
+        ocr_timeout = float(cfg.get("ocr_timeout_seconds", 15))
+        ocr_concurrency = int(cfg.get("ocr_concurrency", 3))
 
         http_client = httpx.AsyncClient(timeout=30.0)
         breaker = MemoryCircuitBreaker()
 
         engines: list[EngineRuntime] = []
+        enabled_names: list[str] = []
+
         if gemini_key:
             gemini_eng = GeminiVisionEngine(
-                api_key=gemini_key, model="2.5-flash", client=http_client,
+                api_key=gemini_key, model=gemini_model, client=http_client,
             )
             engines.append(EngineRuntime(
                 engine=gemini_eng,
-                policy=EnginePolicy("gemini-2.5-flash", 1, True, 15.0, 3),
-                semaphore=asyncio.Semaphore(3),
+                policy=EnginePolicy(
+                    "gemini-" + gemini_model, 1, True, ocr_timeout, 3,
+                ),
+                semaphore=asyncio.Semaphore(ocr_concurrency),
             ))
+            enabled_names.append("gemini-" + gemini_model)
         if zhipu_key:
             zhipu_eng = ZhipuVisionEngine(
-                api_key=zhipu_key, model="glm-4v-plus", client=http_client,
+                api_key=zhipu_key, model=zhipu_model, client=http_client,
             )
             engines.append(EngineRuntime(
                 engine=zhipu_eng,
-                policy=EnginePolicy("zhipu-glm-4v-plus", 2, True, 15.0, 3),
-                semaphore=asyncio.Semaphore(3),
+                policy=EnginePolicy(
+                    "zhipu-" + zhipu_model, 2, True, ocr_timeout, 3,
+                ),
+                semaphore=asyncio.Semaphore(ocr_concurrency),
             ))
+            enabled_names.append("zhipu-" + zhipu_model)
         if stepfun_key:
             stepfun_eng = StepFunVisionEngine(
-                api_key=stepfun_key, model="step-1v-32k", client=http_client,
+                api_key=stepfun_key, model=stepfun_model, client=http_client,
             )
             engines.append(EngineRuntime(
                 engine=stepfun_eng,
-                policy=EnginePolicy("stepfun-step-1v-32k", 3, True, 15.0, 3),
-                semaphore=asyncio.Semaphore(3),
+                policy=EnginePolicy(
+                    "stepfun-" + stepfun_model, 3, True, ocr_timeout, 3,
+                ),
+                semaphore=asyncio.Semaphore(ocr_concurrency),
             ))
-
-        policy = VisionRacePolicy(
-            engines=tuple(e.policy for e in engines),
-            global_timeout_seconds=30.0,
-            consensus_threshold=2,
-        )
+            enabled_names.append("stepfun-" + stepfun_model)
 
         validator = ValidationPipeline(charts=chart_repo)
-        race = VisionRace(runtimes=engines, breaker=breaker, validator=validator, policy=policy)
+        race: VisionRace | None = None
+        if engines:
+            policy = VisionRacePolicy(
+                engines=tuple(e.policy for e in engines),
+                global_timeout_seconds=30.0,
+                consensus_threshold=2,
+            )
+            race = VisionRace(
+                runtimes=engines, breaker=breaker, validator=validator,
+                policy=policy,
+            )
 
-        # ── Application Use Cases ─────────────────────────────────
+        # ── Application Use Cases ─────────────────────────────────────
+        candidate_ttl = int(cfg.get("candidate_ttl_seconds", 300))
         recorder = OcrRunRecorder(ocr_run_repo)
         candidate_store = MemoryCandidateStore()
-        recognize_score = RecognizeScore(
-            race=race, scores=score_repo,
-            recorder=recorder, store=candidate_store, charts=chart_repo,
-            candidate_ttl_seconds=300,
-        )
+        recognize_score: RecognizeScore | None = None
+        if race is not None:
+            recognize_score = RecognizeScore(
+                race=race, scores=score_repo,
+                recorder=recorder, store=candidate_store, charts=chart_repo,
+                candidate_ttl_seconds=candidate_ttl,
+            )
         confirm_candidate = ConfirmCandidate(
             store=candidate_store, scores=score_repo, charts=chart_repo,
         )
 
-        # ── Plugin Infrastructure ─────────────────────────────────
+        # ── Plugin Infrastructure ─────────────────────────────────────
+        cooldown = float(cfg.get("user_cooldown_seconds", 5))
         image_buffer = EphemeralImageBuffer()
 
         runtime = PluginRuntime(
@@ -133,16 +262,24 @@ async def assemble_plugin_runtime(db_path: Path) -> PluginRuntime:
             confirm_candidate=confirm_candidate,
             candidate_store=candidate_store,
             image_buffer=image_buffer,
-            rate_limiter=UserRateLimiter(),
+            rate_limiter=UserRateLimiter(cooldown_seconds=cooldown),
             http_client=http_client,
-            db_conn=user_conn,  # Keep primary conn for close()
+            db_conn=user_conn,
             chart_db_conn=chart_conn,
             score_db_conn=score_conn,
         )
+
+        # ── Startup log (no secrets) ───────────────────────────────────
+        engine_list = ", ".join(enabled_names) if enabled_names else "(none)"
+        _logger.info(
+            "[PJSK] v%s starting  schema_version=%d  chart_data=%s  charts=%d",
+            PLUGIN_VERSION, schema_version, chart_data_ver, chart_count,
+        )
+        _logger.info("[PJSK] engines: %s", engine_list)
+
         return runtime
 
     except Exception:
-        # Clean up on mid-assembly failure
         if runtime is not None:
             await runtime.close()
         if http_client is not None:

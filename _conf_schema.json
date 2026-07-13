@@ -1,0 +1,81 @@
+{
+  "gemini_api_key": {
+    "description": "Gemini API Key",
+    "type": "string",
+    "Sensitive": true,
+    "default": "",
+    "hint": "从 Google AI Studio 获取。留空则禁用 Gemini 引擎。"
+  },
+  "zhipu_api_key": {
+    "description": "智谱 API Key",
+    "type": "string",
+    "Sensitive": true,
+    "default": "",
+    "hint": "从智谱开放平台获取。留空则禁用智谱引擎。"
+  },
+  "stepfun_api_key": {
+    "description": "StepFun API Key",
+    "type": "string",
+    "Sensitive": true,
+    "default": "",
+    "hint": "从 StepFun 平台获取。留空则禁用 StepFun 引擎。"
+  },
+  "gemini_model": {
+    "description": "Gemini 模型",
+    "type": "string",
+    "default": "2.5-flash",
+    "hint": "Gemini 视觉模型名称，如 2.5-flash、2.5-pro。"
+  },
+  "zhipu_model": {
+    "description": "智谱模型",
+    "type": "string",
+    "default": "glm-4v-plus",
+    "hint": "智谱视觉模型名称，如 glm-4v-plus、glm-4v-flash。"
+  },
+  "stepfun_model": {
+    "description": "StepFun 模型",
+    "type": "string",
+    "default": "step-1v-32k",
+    "hint": "StepFun 视觉模型名称。"
+  },
+  "ocr_timeout_seconds": {
+    "description": "单引擎 OCR 超时（秒）",
+    "type": "int",
+    "default": 15,
+    "min": 5,
+    "max": 60,
+    "hint": "每个视觉引擎的单个请求超时时间。"
+  },
+  "ocr_concurrency": {
+    "description": "每引擎最大并发",
+    "type": "int",
+    "default": 3,
+    "min": 1,
+    "max": 10,
+    "hint": "每个视觉引擎同时处理的最大请求数。"
+  },
+  "image_window_seconds": {
+    "description": "群聊图片等待窗口（秒）",
+    "type": "int",
+    "default": 15,
+    "min": 5,
+    "max": 60,
+    "hint": "群聊中先发图后 @Bot 的有效等待时间。"
+  },
+  "candidate_ttl_seconds": {
+    "description": "候选确认超时（秒）",
+    "type": "int",
+    "default": 300,
+    "min": 60,
+    "max": 600,
+    "hint": "OCR 分歧时候选列表的有效时间，超时需重新发图。"
+  },
+  "user_cooldown_seconds": {
+    "description": "用户识别冷却（秒）",
+    "type": "int",
+    "default": 5,
+    "min": 1,
+    "max": 30,
+    "hint": "同一用户两次 OCR 识别之间的最小间隔。"
+  }
+}
