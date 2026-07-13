@@ -172,7 +172,7 @@ async def assemble_plugin_runtime(
         stepfun_key = cfg.get("stepfun_api_key", "")
 
         gemini_model = cfg.get("gemini_model", "2.5-flash")
-        zhipu_model = cfg.get("zhipu_model", "glm-4v-plus")
+        zhipu_model = cfg.get("zhipu_model", "glm-4.6v-flash")
         stepfun_model = cfg.get("stepfun_model", "step-1v-32k")
 
         ocr_timeout = float(cfg.get("ocr_timeout_seconds", 15))
@@ -199,6 +199,7 @@ async def assemble_plugin_runtime(
         if zhipu_key:
             zhipu_eng = ZhipuVisionEngine(
                 api_key=zhipu_key, model=zhipu_model, client=http_client,
+                thinking_enabled=bool(cfg.get("zhipu_thinking", False)),
             )
             engines.append(EngineRuntime(
                 engine=zhipu_eng,

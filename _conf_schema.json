@@ -29,8 +29,14 @@
   "zhipu_model": {
     "description": "智谱模型",
     "type": "string",
-    "default": "glm-4v-plus",
-    "hint": "智谱视觉模型名称，如 glm-4v-plus、glm-4v-flash。"
+    "default": "glm-4.6v-flash",
+    "hint": "智谱视觉模型。默认 glm-4.6v-flash（免费）。老用户如保存了 glm-4v-plus 可继续使用，或手动切换至免费模型。"
+  },
+  "zhipu_thinking": {
+    "description": "智谱思考模式",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后模型会输出思考过程（增加延迟和 token 消耗）。仅 glm-4.6v-flash 等支持 thinking 的模型有效。"
   },
   "stepfun_model": {
     "description": "StepFun 模型",

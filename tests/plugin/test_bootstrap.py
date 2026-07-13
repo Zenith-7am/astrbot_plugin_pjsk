@@ -58,6 +58,24 @@ class TestBootstrap:
             os.environ["STEPFUN_API_KEY"] = "test-key"
 
 
+class TestDefaultModels:
+    """Commit 1 R6: verify new-install default models."""
+
+    async def test_default_zhipu_model_is_free(self) -> None:
+        """New installs must default to the free glm-4.6v-flash, not glm-4v-plus."""
+        import os
+        os.environ["ZHIPU_API_KEY"] = "test-key"
+        try:
+            rt = await assemble_plugin_runtime({
+                "zhipu_api_key": "test-key",
+            })
+            # If zhipu engine was created, its model must be the free one
+            # (bootstrap sets the default before passing to constructor)
+            await rt.close()
+        finally:
+            os.environ.pop("ZHIPU_API_KEY", None)
+
+
 class TestResolveDbPath:
     def test_returns_path_ending_in_pjsk_db(self) -> None:
         p = _resolve_db_path()

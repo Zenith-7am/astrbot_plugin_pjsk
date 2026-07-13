@@ -49,7 +49,7 @@ git pull
 | `zhipu_api_key` | 智谱 GLM-4V API Key | （空=禁用） |
 | `stepfun_api_key` | StepFun API Key | （空=禁用） |
 | `gemini_model` | Gemini 模型名 | `2.5-flash` |
-| `zhipu_model` | 智谱模型名 | `glm-4v-plus` |
+| `zhipu_model` | 智谱模型名 | `glm-4.6v-flash`（免费） |
 | `stepfun_model` | StepFun 模型名 | `step-1v-32k` |
 | `ocr_timeout_seconds` | 单引擎超时（秒） | `15` |
 | `ocr_concurrency` | 每引擎最大并发 | `3` |
@@ -115,7 +115,7 @@ git pull
 
 ```text
 [PJSK] v0.1.0-alpha.1 starting  schema_version=5  chart_data=2026-07-12  charts=1533
-[PJSK] engines: gemini-2.5-flash, zhipu-glm-4v-plus
+[PJSK] engines: gemini-2.5-flash, zhipu-glm-4.6v-flash
 ```
 
 ## 平台支持
