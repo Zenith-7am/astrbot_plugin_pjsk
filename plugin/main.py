@@ -1,11 +1,12 @@
-﻿"""PjskPlugin -- AstrBot Star plugin with OCR recognition and candidate confirmation.
+"""PjskPlugin -- AstrBot Star plugin with OCR recognition and candidate confirmation.
 
 Testable helper functions are at module level:
-* ``_image_count(event)`` -- count Image components in the event message.
-* ``_handle_image(event, rt)`` -- OCR recognition flow for incoming images.
-* ``_handle_selection(text, user_id, conversation_id, rt)`` -- candidate confirmation.
-* ``_is_at_bot(event)`` -- check if the event message @mentions the bot.
-* ``_is_group_chat(event)`` -- check if the event is from a group chat.
+* ``_image_count(event)`` — count Image components in the event message.
+* ``_handle_image(event, rt)`` — OCR recognition flow for incoming images.
+* ``_handle_selection(text, user_id, conversation_id, rt)`` — candidate confirmation.
+* ``_is_at_bot(event, bot_self_id)`` — check if the event message @mentions the bot.
+* ``_is_group_chat(event)`` — check if the event is from a group chat.
+* ``_get_self_id(event)`` — extract the bot's own ID from the event.
 """
 from __future__ import annotations
 
@@ -39,6 +40,16 @@ except ImportError:
             return lambda fn: fn
 
         @staticmethod
+        def command_group(name: str) -> Any:  # noqa: ARG004
+            """Mock command_group — returns a decorator that yields a group."""
+            class _FakeGroup:
+                def command(self, name: str) -> Any:  # noqa: ARG004
+                    return lambda fn: fn
+            def _decorator(fn: Any) -> _FakeGroup:
+                return _FakeGroup()
+            return _decorator
+
+        @staticmethod
         def event_message_type(etype: str) -> Any:  # noqa: ARG004
             return lambda fn: fn
 
@@ -69,18 +80,18 @@ def _image_count(event: Any) -> int:
     )
 
 
-def _is_at_bot(event: Any, bot_self_id: str = "") -> bool:
+def _is_at_bot(event: Any, bot_self_id: str) -> bool:
     """Check if the event message @mentions the bot specifically.
 
-    If ``bot_self_id`` is empty, falls back to checking for any At
-    component (best-effort). When available, only matches At components
-    whose ``target`` or ``qq`` attribute equals the bot's self_id.
+    Only matches At components whose ``qq`` or ``target`` attribute
+    equals the bot's self_id.  Returns ``False`` when ``bot_self_id``
+    is empty (cannot determine bot identity).
     """
+    if not bot_self_id:
+        return False
     for c in event.message_obj.message:
         if c.__class__.__name__ != "At":
             continue
-        if not bot_self_id:
-            return True  # best-effort: any At counts
         target = getattr(c, "target", "") or getattr(c, "qq", "")
         if str(target) == str(bot_self_id):
             return True
@@ -93,11 +104,24 @@ def _is_group_chat(event: Any) -> bool:
 
 
 def _get_self_id(event: Any) -> str:
-    """Get the bot's own ID from the event, or empty string."""
+    """Get the bot's own ID from the event.
+
+    Prefer ``event.message_obj.self_id`` (AstrBot v3), then
+    ``event.get_self_id()``.
+    """
     try:
-        return str(event.get_self_id() or "")
+        sid = event.message_obj.self_id
+        if sid is not None:
+            return str(sid)
     except (AttributeError, TypeError):
-        return ""
+        pass
+    try:
+        sid = event.get_self_id()
+        if sid is not None:
+            return str(sid)
+    except (AttributeError, TypeError):
+        pass
+    return ""
 
 
 async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
@@ -105,8 +129,8 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
 
     Flow
     ----
-    1. Count images -- reject 0 or >1 immediately.
-    2. Extract image context via ``EventMapper``.
+    1. Count images — reject 0 or >1 immediately.
+    2. Extract image context via ``EventMapper.extract_async()``.
     3. Auto-register user if they do not exist yet.
     4. Rate-limit check (in-memory per-user cooldown).
     5. Run ``RecognizeScore`` use case.
@@ -119,13 +143,12 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
         return PluginErrorCode.MULTIPLE_IMAGES
 
     mapper = EventMapper()
-    ctx = mapper.extract(event)
+    ctx = await mapper.extract_async(event, rt.http_client)
     if ctx is None:
         return PluginErrorCode.NOT_PJSK_SCREENSHOT
 
-    # QQ Official Bot: sender_id is OpenID, not QQ number
-    if mapper.is_qq_official(event):
-        # OpenID flow — first version requires bind
+    # QQ Official Bot already bypassed in on_message — qq_number must be set
+    if ctx.qq_number is None:
         return PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND
 
     # Auto-register: ensure user exists
@@ -155,7 +178,9 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
                 ocr_run_id=0, chart_data_version="",
             )
             display_text = CandidatePresenter.format(display_cs, cid)
-            rt.set_pending(user.id.value, conv_id, cid, display_text)
+            rt.set_pending(
+                user.id.value, ctx.platform_id, conv_id, cid, display_text,
+            )
         return PluginErrorCode.CANDIDATES_AVAILABLE
 
     return PluginErrorCode.NOT_PJSK_SCREENSHOT
@@ -164,6 +189,7 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
 async def _handle_selection(
     text: str,
     user_id: UserId,
+    platform_id: str,
     conversation_id: str,
     rt: PluginRuntime,
 ) -> tuple[bool, str | None]:
@@ -177,7 +203,9 @@ async def _handle_selection(
     import re
     text = text.strip()
 
-    cid = rt.get_pending_candidate_set_id(user_id.value, conversation_id)
+    cid = rt.get_pending_candidate_set_id(
+        user_id.value, platform_id, conversation_id,
+    )
     if cid is None:
         return False, None
 
@@ -200,28 +228,33 @@ async def _handle_selection(
     result = await rt.confirm_candidate.confirm(
         user_id, cid, selection,
     )
+
+    # Clear on expired/not_found — the candidate is gone
+    from pjsk_core.application.confirm_candidate import ConfirmError
+    if result.error in (ConfirmError.EXPIRED, ConfirmError.NOT_FOUND):
+        rt.clear_pending(user_id.value, platform_id, conversation_id)
+        return True, f"确认失败：{result.error.value}"
     if result.error is not None:
         return True, f"确认失败：{result.error.value}"
+
     # Success — clean up pending
-    rt.clear_pending(user_id.value, conversation_id)
+    rt.clear_pending(user_id.value, platform_id, conversation_id)
     return True, None
 
 
-def _read_single_image_bytes(event: Any) -> bytes | None:
-    """Read the first image from an event as raw bytes."""
+async def _read_single_image_bytes_async(
+    event: Any, http_client: Any,
+) -> bytes | None:
+    """Read the first image from an event as raw bytes (async path)."""
     for c in event.message_obj.message:
         if c.__class__.__name__ == "Image":
-            if hasattr(c, "file") and c.file:
-                import os
-                if os.path.isfile(c.file):
-                    with open(c.file, "rb") as f:
-                        return f.read()
-            if hasattr(c, "url") and c.url:
-                return None  # URL images need async client — handled in _handle_image
+            return await EventMapper._read_image_bytes_async(c, http_client)
     return None
 
 
-async def _handle_buffered_image(event: Any, rt: PluginRuntime, image_bytes: bytes) -> PluginErrorCode:
+async def _handle_buffered_image(
+    event: Any, rt: PluginRuntime, image_bytes: bytes,
+) -> PluginErrorCode:
     """Run OCR on buffered image bytes (from EphemeralImageBuffer)."""
     mapper = EventMapper()
     if mapper.is_qq_official(event):
@@ -233,7 +266,7 @@ async def _handle_buffered_image(event: Any, rt: PluginRuntime, image_bytes: byt
     if not rt.rate_limiter.check(user.id):
         return PluginErrorCode.USER_RATE_LIMITED
     rt.rate_limiter.mark(user.id)
-    gateway = mapper._gateway_name(event.get_platform_id())
+    gateway = EventMapper._gateway_name(event.get_platform_id())
     result = await rt.recognize_score.recognize(
         user.id, image_bytes, source_gateway=gateway,
     )
@@ -249,19 +282,26 @@ async def _handle_buffered_image(event: Any, rt: PluginRuntime, image_bytes: byt
                 ocr_run_id=0, chart_data_version="",
             )
             display_text = CandidatePresenter.format(display_cs, cid)
-            rt.set_pending(user.id.value, conv_id, cid, display_text)
+            rt.set_pending(
+                user.id.value, event.get_platform_id(), conv_id, cid, display_text,
+            )
         return PluginErrorCode.CANDIDATES_AVAILABLE
     return PluginErrorCode.NOT_PJSK_SCREENSHOT
 
 
-async def _get_image_result_text(event: Any, code: PluginErrorCode, rt: PluginRuntime, mapper: EventMapper) -> str:
+async def _get_image_result_text(
+    event: Any, code: PluginErrorCode, rt: PluginRuntime, mapper: EventMapper,
+) -> str:
     """Get the appropriate reply text for an image recognition result."""
     if code == PluginErrorCode.CANDIDATES_AVAILABLE:
         qq = mapper.extract_qq(event)
         user = await rt.user_repo.get_by_qq(qq)
         if user is not None:
+            platform_id = event.get_platform_id()
             conv_id = mapper.extract_conversation_id(event)
-            display = rt.get_pending_display_text(user.id.value, conv_id)
+            display = rt.get_pending_display_text(
+                user.id.value, platform_id, conv_id,
+            )
             if display is not None:
                 return display
     return ReplyBuilder.error_text(code)
@@ -283,41 +323,8 @@ class PjskPlugin(Star):  # type: ignore
         super().__init__(context)
         self._runtime: PluginRuntime | None = None
 
-    # ── Commands ─────────────────────────────────────────────────────────
-    @filter.command("pjsk")  # type: ignore
-    async def pjsk_command_group(self, event: Any) -> None:  # type: ignore
-        """``/pjsk`` — show available commands."""
-        yield event.plain_result(
-            "PJSK 插件命令：\n"
-            "/pjsk bind <游戏ID> — 绑定 PJSK 游戏 ID\n"
-            "/pjsk help — 查看帮助"
-        )
-
-    @filter.command("pjsk bind")  # type: ignore
-    async def pjsk_bind(self, event: Any) -> None:  # type: ignore
-        """``/pjsk bind <game_id>`` — bind PJSK game ID to your QQ."""
-        text = (event.message_str or "").strip()
-        parts = text.split(maxsplit=3) if text else []
-        game_id = parts[2] if len(parts) >= 3 else ""
-        if not game_id or not game_id.isdigit() or not (6 <= len(game_id) <= 16):
-            yield event.plain_result("游戏 ID 应为 6-16 位数字，例如：/pjsk bind 123456789")
-            return
-        mapper = EventMapper()
-        if mapper.is_qq_official(event):
-            yield event.plain_result("QQ 官方 Bot 暂不支持此功能，请使用 OneBot/NapCat 入口")
-            return
-        if self._runtime is None:
-            yield event.plain_result("插件尚未初始化")
-            return
-        qq = mapper.extract_qq(event)
-        user = await self._runtime.user_repo.get_by_qq(qq)
-        if user is not None:
-            yield event.plain_result(f"QQ {qq.value} 已绑定游戏 ID：{user.game_id or '未设置'}。重新绑定功能即将上线。")
-        else:
-            await self._runtime.user_repo.create(qq, game_id=game_id)
-            yield event.plain_result(f"已绑定：QQ {qq.value} → 游戏 ID {game_id}")
-
     # ── Lifecycle ─────────────────────────────────────────────────────────
+
     async def initialize(self) -> None:
         """Called by AstrBot after plugin instantiation."""
         from pathlib import Path
@@ -331,18 +338,93 @@ class PjskPlugin(Star):  # type: ignore
         self._runtime = await assemble_plugin_runtime(Path(db_path_str))
         _logger.info("PJSK plugin runtime initialized")
 
+    # ── Commands ─────────────────────────────────────────────────────────
+
+    @filter.command_group("pjsk")  # type: ignore
+    def pjsk_command_group(self) -> None:
+        """``/pjsk`` command group — sub-commands registered below."""
+        pass
+
+    @pjsk_command_group.command("bind")  # type: ignore
+    async def pjsk_bind(self, event: Any, game_id: str = "") -> None:  # type: ignore
+        """``/pjsk bind <game_id>`` — bind PJSK game ID to your QQ."""
+        # QQ Official early gate
+        mapper = EventMapper()
+        if mapper.is_qq_official(event):
+            yield event.plain_result("QQ 官方入口暂未开放，请暂时使用 OneBot/NapCat")
+            return
+
+        game_id = (game_id or "").strip()
+        if not game_id or not game_id.isdigit() or not (6 <= len(game_id) <= 16):
+            yield event.plain_result("游戏 ID 应为 6-16 位数字，例如：/pjsk bind 1234567890123456")
+            return
+
+        if self._runtime is None:
+            yield event.plain_result("插件尚未初始化")
+            return
+
+        qq = mapper.extract_qq(event)
+        rt = self._runtime
+        user = await rt.user_repo.get_by_qq(qq)
+
+        if user is None:
+            # First-time user: create with game_id
+            user = await rt.user_repo.create(qq, game_id=game_id)
+            yield event.plain_result(f"已绑定：QQ {qq.value} → 游戏 ID {game_id}")
+            return
+
+        if user.game_id == game_id:
+            # Idempotent: same game_id already bound
+            yield event.plain_result(f"QQ {qq.value} 已绑定游戏 ID：{game_id}")
+            return
+
+        if user.game_id is not None and user.game_id != game_id:
+            # Rebinding to a different game_id — reject for now
+            yield event.plain_result(
+                f"QQ {qq.value} 已绑定游戏 ID：{user.game_id}。"
+                f"更换绑定暂不支持，请联系管理员。"
+            )
+            return
+
+        # user.game_id is None → auto-registered, update
+        user = await rt.user_repo.bind_game_id(user.id, game_id)  # type: ignore[attr-defined]
+        yield event.plain_result(f"已绑定：QQ {qq.value} → 游戏 ID {game_id}")
+
     # ── Main message handler ──────────────────────────────────────────────
+
     @filter.event_message_type(filter.EventMessageType.ALL)  # type: ignore
     async def on_message(self, event: Any) -> None:  # type: ignore
-        """Handle incoming messages — candidate selection, image recognition."""
+        """Handle incoming messages — candidate selection, image recognition.
+
+        Processing order (group chat uses a deterministic state machine):
+        1.  QQ Official early bypass
+        2.  Candidate selection (non-image text)
+        3.  Private chat: single-image OCR / multi-image reject
+        4.  Group: @Bot+Image same message → OCR
+        5.  Group: @Bot only → consume buffer or arm wait
+        6.  Group: image only → consume arm or cache
+        7.  Everything else → passthrough to AstrBot personality
+        """
         if self._runtime is None:
             return
 
         rt = self._runtime
         mapper = EventMapper()
 
-        # ── Candidate selection ───────────────────────────────────────
-        if _image_count(event) == 0:
+        # ── 0. QQ Official early bypass ───────────────────────────────
+        if mapper.is_qq_official(event):
+            if _image_count(event) > 0:
+                yield event.plain_result(
+                    "QQ 官方入口暂未开放，请暂时使用 OneBot/NapCat"
+                )
+                event.stop_event()
+            return  # Text → passthrough (no QqNumber constructed)
+
+        # ── 1. /pjsk commands routed by framework — skip ──────────────
+
+        # ── 2. Candidate selection (non-image messages) ───────────────
+        img_count = _image_count(event)
+        if img_count == 0:
             try:
                 text = event.message_str or ""
             except (AttributeError, TypeError):
@@ -351,13 +433,14 @@ class PjskPlugin(Star):  # type: ignore
                 qq = mapper.extract_qq(event)
                 user = await rt.user_repo.get_by_qq(qq)
                 if user is not None:
+                    platform_id = event.get_platform_id()
                     conv_id = mapper.extract_conversation_id(event)
                     cid = rt.get_pending_candidate_set_id(
-                        user.id.value, conv_id,
+                        user.id.value, platform_id, conv_id,
                     )
                     if cid is not None:
                         is_selection, err_msg = await _handle_selection(
-                            text, user.id, conv_id, rt,
+                            text, user.id, platform_id, conv_id, rt,
                         )
                         if is_selection:
                             if err_msg is not None:
@@ -366,102 +449,98 @@ class PjskPlugin(Star):  # type: ignore
                                 yield event.plain_result("已确认成绩")
                             event.stop_event()
                             return
-            # Not a valid selection → fall through to passthrough
+                    # Not a selection, but had candidates → clear stale pointer
+                    # (expired/not-found/consumed candidates shouldn't block chat)
+                    # Only reached if _handle_selection didn't match
             return  # Passthrough to AstrBot personality
 
-        # ── Image handling ────────────────────────────────────────────
-        img_count = _image_count(event)
+        # ── 3. Private chat image handling ────────────────────────────
         group_chat = _is_group_chat(event)
-        bot_id = _get_self_id(event) if group_chat else ""
-        has_at_bot = _is_at_bot(event, bot_id) if group_chat else False
 
-        if img_count > 0:
-            if group_chat:
-                # ── Group chat: @Bot state machine ──────────────────────
-                if has_at_bot and img_count == 1:
-                    # @Bot + Image in same message → OCR immediately
-                    pass  # fall through to OCR below
-                elif has_at_bot and img_count > 1:
-                    yield event.plain_result("目前一次只能识别一张")
-                    event.stop_event()
-                    return
-                elif not has_at_bot:
-                    # Plain group image — buffer for potential future @Bot
-                    try:
-                        image_bytes = _read_single_image_bytes(event)
-                        if image_bytes is not None:
-                            sender_qq = mapper.extract_qq(event)
-                            gid = event.get_group_id() or ""
-                            rt.image_buffer.put(
-                                event.get_platform_id(), gid,
-                                sender_qq, image_bytes,
-                            )
-                    except Exception:
-                        pass  # Buffer is best-effort
-                    return  # No reply — wait for @Bot
-                # else: has_at_bot + no image → handled below
-            # Private chat: image → OCR immediately (fall through)
-
-        if img_count == 0 and group_chat and has_at_bot:
-            # @Bot without image — check buffer for recent images
-            sender_qq = mapper.extract_qq(event)
-            gid = event.get_group_id() or ""
-            buffered = rt.image_buffer.consume(
-                event.get_platform_id(), gid, sender_qq,
-                within_seconds=15.0,
-            )
-            if buffered is not None:
-                # Found a recent image — run OCR inline
-                img_count = 1  # Treat as single-image for OCR path below
-                # Build a synthetic image context for OCR
-                code = await _handle_buffered_image(
-                    event, rt, buffered,
-                )
-                if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
-                    reply_text = await _get_image_result_text(event, code, rt, mapper)
-                    yield event.plain_result(reply_text)
-                    event.stop_event()
-                    return
-            # No buffered image → passthrough to personality
-
-        if img_count > 0:
-            if group_chat and not has_at_bot and img_count == 0:
-                return  # Already handled above
-
-            code = await _handle_image(event, rt)
-
-            if code == PluginErrorCode.NOT_PJSK_SCREENSHOT:
-                return  # Passthrough — not a PJSK screenshot
-
-            if code == PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND:
-                yield event.plain_result(
-                    "请先用 /pjsk bind <QQ号> 绑定 QQ 号后再使用"
-                )
+        if not group_chat:
+            if img_count > 1:
+                yield event.plain_result("目前一次只能识别一张")
                 event.stop_event()
                 return
-
-            if code == PluginErrorCode.CANDIDATES_AVAILABLE:
-                qq = mapper.extract_qq(event)
-                user = await rt.user_repo.get_by_qq(qq)
-                if user is not None:
-                    conv_id = mapper.extract_conversation_id(event)
-                    display = rt.get_pending_display_text(
-                        user.id.value, conv_id,
-                    )
-                    if display is not None:
-                        yield event.plain_result(display)
-                    else:
-                        yield ReplyBuilder.error_text(PluginErrorCode.SUCCESS)
-            elif code != PluginErrorCode.SUCCESS:
-                yield event.plain_result(ReplyBuilder.error_text(code))
-            else:
-                yield event.plain_result(ReplyBuilder.error_text(PluginErrorCode.SUCCESS))
-
+            code = await _handle_image(event, rt)
+            if code == PluginErrorCode.NOT_PJSK_SCREENSHOT:
+                return  # Passthrough
+            reply_text = await _get_image_result_text(event, code, rt, mapper)
+            yield event.plain_result(reply_text)
             event.stop_event()
             return
 
-        # ── Passthrough ───────────────────────────────────────────────
-        # Not an image, not a candidate selection → AstrBot personality
+        # ── 4. Group chat state machine ───────────────────────────────
+        bot_id = _get_self_id(event)
+        has_at = _is_at_bot(event, bot_id)
+        platform_id = event.get_platform_id()
+        group_id = event.get_group_id() or ""
+        sender_qq = mapper.extract_qq(event)
+
+        # 4a. @Bot + Image same message → OCR immediately
+        if has_at and img_count == 1:
+            code = await _handle_image(event, rt)
+            if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
+                reply_text = await _get_image_result_text(event, code, rt, mapper)
+                yield event.plain_result(reply_text)
+                event.stop_event()
+            return
+
+        # 4b. @Bot + multiple images → reject
+        if has_at and img_count > 1:
+            yield event.plain_result("目前一次只能识别一张")
+            event.stop_event()
+            return
+
+        # 4c. @Bot without image → consume buffer or arm
+        if has_at and img_count == 0:
+            buffered = rt.image_buffer.consume(
+                platform_id, group_id, sender_qq, within_seconds=15.0,
+            )
+            if buffered is not None:
+                code = await _handle_buffered_image(event, rt, buffered)
+                if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
+                    reply_text = await _get_image_result_text(
+                        event, code, rt, mapper,
+                    )
+                    yield event.plain_result(reply_text)
+                    event.stop_event()
+                return
+            # No buffered image — arm and passthrough
+            rt.image_buffer.arm(platform_id, group_id, sender_qq)
+            return
+
+        # 4d. No @Bot — check arm or cache
+        if not has_at:
+            if img_count == 1:
+                armed = rt.image_buffer.consume_arm(
+                    platform_id, group_id, sender_qq, within_seconds=15.0,
+                )
+                if armed:
+                    code = await _handle_image(event, rt)
+                    if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
+                        reply_text = await _get_image_result_text(
+                            event, code, rt, mapper,
+                        )
+                        yield event.plain_result(reply_text)
+                        event.stop_event()
+                    return
+                # Cache image for potential future @Bot
+                try:
+                    image_bytes = await _read_single_image_bytes_async(
+                        event, rt.http_client,
+                    )
+                    if image_bytes is not None:
+                        rt.image_buffer.put(
+                            platform_id, group_id, sender_qq, image_bytes,
+                        )
+                except Exception:
+                    pass  # Buffer is best-effort
+            # Multi-image without @Bot → silently ignore
+            return
+
+        # ── 5. Passthrough ───────────────────────────────────────────
+        return
 
     async def terminate(self) -> None:
         """Clean up plugin resources."""

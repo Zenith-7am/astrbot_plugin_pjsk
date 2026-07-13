@@ -22,6 +22,11 @@ class EphemeralImageBuffer:
 
     Keyed by (platform_id, group_id, sender_qq). Only the most recent
     image per user is retained. Size-limited and TTL-gated.
+
+    ``arm`` / ``consume_arm`` implement the "mention-first" direction of
+    the 15-second window: a user @mentions the bot, *then* sends an image
+    within the TTL.  The arm is a lightweight boolean marker — it does not
+    hold image data.
     """
 
     MAX_TOTAL_BYTES = 50 * 1024 * 1024  # 50 MiB
@@ -33,6 +38,7 @@ class EphemeralImageBuffer:
         clock: Callable[[], float] | None = None,
     ) -> None:
         self._entries: dict[tuple[str, str, str], _Entry] = {}
+        self._arm_timestamps: dict[tuple[str, str, str], float] = {}
         self._max_size_bytes = max_size_bytes
         self._total_bytes = 0
         self._clock = clock if clock is not None else time.monotonic
@@ -78,6 +84,40 @@ class EphemeralImageBuffer:
             return None
         return entry.image_bytes
 
+    def arm(
+        self,
+        platform_id: str,
+        group_id: str,
+        sender_qq: object,
+    ) -> None:
+        """Mark that this user is waiting to send an image within the TTL.
+
+        Call after an empty @Bot mention — the next image from this user
+        in this group on this platform will trigger OCR immediately.
+        """
+        key = (platform_id, group_id, _key_from_identity(sender_qq))
+        self._arm_timestamps[key] = self._clock()
+
+    def consume_arm(
+        self,
+        platform_id: str,
+        group_id: str,
+        sender_qq: object,
+        *,
+        within_seconds: float = 15.0,
+    ) -> bool:
+        """Return True if there is an active arm for this user, consuming it.
+
+        An arm is "active" if it was set within ``within_seconds``.
+        Consuming removes the marker — it is one-shot.
+        """
+        key = (platform_id, group_id, _key_from_identity(sender_qq))
+        ts = self._arm_timestamps.pop(key, None)
+        if ts is None:
+            return False
+        age = self._clock() - ts
+        return age < within_seconds
+
     def _evict_oldest(self) -> None:
         if not self._entries:
             return
@@ -90,4 +130,5 @@ class EphemeralImageBuffer:
 
     async def close(self) -> None:
         self._entries.clear()
+        self._arm_timestamps.clear()
         self._total_bytes = 0

@@ -9,7 +9,14 @@ from typing import Any
 
 import pytest
 
-from plugin.main import _handle_image, _handle_selection, _image_count
+from plugin.main import (
+    _get_self_id,
+    _handle_image,
+    _handle_selection,
+    _image_count,
+    _is_at_bot,
+    _is_group_chat,
+)
 from plugin.rate_limiter import UserRateLimiter
 from plugin.reply_builder import PluginErrorCode
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
@@ -26,8 +33,16 @@ class Image:
 
 
 @dataclass
+class At:
+    """Fake for astrbot.api.message_components.At."""
+    target: str = ""
+    qq: str = ""
+
+
+@dataclass
 class FakeMessageObj:
     message: list[Any] = field(default_factory=list)
+    self_id: str | None = None
 
 
 @dataclass
@@ -35,6 +50,8 @@ class FakeEvent:
     message_obj: FakeMessageObj = field(default_factory=FakeMessageObj)
     platform_id: str = "onebot_v11"
     sender_id: str = "123456789"
+    _group_id: str | None = None
+    message_str: str = ""
 
     def get_platform_id(self) -> str:
         return self.platform_id
@@ -43,10 +60,13 @@ class FakeEvent:
         return self.sender_id
 
     def get_group_id(self) -> str | None:
-        return None
+        return self._group_id
 
     def get_message_type(self) -> str:
         return "private"
+
+    def get_self_id(self) -> str | None:
+        return self.message_obj.self_id
 
 
 # ── Fake Runtime dependencies ──────────────────────────────────────────────
@@ -153,23 +173,24 @@ class _FakeRuntime:
     candidate_store = _FakeCandidateStore()
     image_buffer = None
     rate_limiter = UserRateLimiter()
+    http_client = None  # Available for async image reads
 
-    def set_pending(self, uid: int, cid: str, csid: str, display: str) -> None:
-        self._pending_sets[(uid, cid)] = csid
-        self._pending_display[(uid, cid)] = display
+    def set_pending(self, uid: int, pid: str, cid: str, csid: str, display: str) -> None:
+        self._pending_sets[(uid, pid, cid)] = csid
+        self._pending_display[(uid, pid, cid)] = display
 
-    def get_pending_candidate_set_id(self, uid: int, cid: str) -> str | None:
-        return self._pending_sets.get((uid, cid))
+    def get_pending_candidate_set_id(self, uid: int, pid: str, cid: str) -> str | None:
+        return self._pending_sets.get((uid, pid, cid))
 
-    def get_pending_display_text(self, uid: int, cid: str) -> str | None:
-        return self._pending_display.get((uid, cid))
+    def get_pending_display_text(self, uid: int, pid: str, cid: str) -> str | None:
+        return self._pending_display.get((uid, pid, cid))
 
-    def clear_pending(self, uid: int, cid: str) -> None:
-        self._pending_sets.pop((uid, cid), None)
-        self._pending_display.pop((uid, cid), None)
+    def clear_pending(self, uid: int, pid: str, cid: str) -> None:
+        self._pending_sets.pop((uid, pid, cid), None)
+        self._pending_display.pop((uid, pid, cid), None)
 
-    _pending_sets: dict[tuple[int, str], str] = {}
-    _pending_display: dict[tuple[int, str], str] = {}
+    _pending_sets: dict[tuple[int, str, str], str] = {}
+    _pending_display: dict[tuple[int, str, str], str] = {}
 
     async def close(self) -> None:
         pass
@@ -236,7 +257,138 @@ class TestHandleSelection:
         """When no candidates exist, returns (False, None) — not a selection."""
         rt = _FakeRuntime()
         is_sel, err = await _handle_selection(
-            "2", UserId(1), "cs-1", rt,  # type: ignore[arg-type]
+            "2", UserId(1), "onebot", "cs-1", rt,  # type: ignore[arg-type]
         )
         assert is_sel is False
         assert err is None
+
+
+# ── @Bot detection tests (R4) ────────────────────────────────────────────────
+
+
+class TestIsAtBot:
+    """Tests for _is_at_bot — Commit 1 R4."""
+
+    def test_matches_exact_target(self) -> None:
+        event = FakeEvent(
+            message_obj=FakeMessageObj(
+                message=[At(target="bot123")],
+                self_id="bot123",
+            ),
+        )
+        assert _is_at_bot(event, "bot123") is True
+        assert _is_at_bot(event, "bot456") is False
+
+    def test_matches_qq_field(self) -> None:
+        event = FakeEvent(
+            message_obj=FakeMessageObj(
+                message=[At(qq="bot999")],
+                self_id="bot999",
+            ),
+        )
+        assert _is_at_bot(event, "bot999") is True
+
+    def test_empty_bot_self_id_returns_false(self) -> None:
+        event = FakeEvent(
+            message_obj=FakeMessageObj(
+                message=[At(target="bot123")],
+            ),
+        )
+        assert _is_at_bot(event, "") is False
+
+    def test_no_at_component_returns_false(self) -> None:
+        event = FakeEvent(
+            message_obj=FakeMessageObj(message=[Image()]),
+        )
+        assert _is_at_bot(event, "bot123") is False
+
+    def test_wrong_target_returns_false(self) -> None:
+        """@Other user + Image → no OCR trigger."""
+        event = FakeEvent(
+            message_obj=FakeMessageObj(
+                message=[At(target="other_user"), Image()],
+                self_id="bot123",
+            ),
+        )
+        assert _is_at_bot(event, "bot123") is False
+
+    def test_empty_message_returns_false(self) -> None:
+        event = FakeEvent(
+            message_obj=FakeMessageObj(message=[]),
+        )
+        assert _is_at_bot(event, "bot123") is False
+
+
+class TestGetSelfId:
+    """Tests for _get_self_id — Commit 1 R4."""
+
+    def test_from_message_obj(self) -> None:
+        event = FakeEvent(
+            message_obj=FakeMessageObj(self_id="self-from-msg"),
+        )
+        assert _get_self_id(event) == "self-from-msg"
+
+    def test_falls_back_to_get_self_id(self) -> None:
+        event = FakeEvent(
+            message_obj=FakeMessageObj(self_id=None),
+        )
+        # FakeEvent.get_self_id() returns message_obj.self_id, which is None
+        assert _get_self_id(event) == ""
+
+    def test_no_self_id_available_returns_empty(self) -> None:
+        event = FakeEvent(message_obj=FakeMessageObj())
+        # No self_id field at all
+        assert _get_self_id(event) == ""
+
+
+class TestIsGroupChat:
+    """Tests for _is_group_chat."""
+
+    def test_group_chat_returns_true(self) -> None:
+        event = FakeEvent(_group_id="12345")
+        assert _is_group_chat(event) is True
+
+    def test_private_chat_returns_false(self) -> None:
+        event = FakeEvent(_group_id=None)
+        assert _is_group_chat(event) is False
+
+
+# ── QQ Official tests (R4) ───────────────────────────────────────────────────
+
+
+class TestQQOfficialBypass:
+    """QQ Official must not construct QqNumber and must return early."""
+
+    def test_qq_official_event_is_detected(self) -> None:
+        from plugin.event_mapper import EventMapper
+        mapper = EventMapper()
+        event = FakeEvent(platform_id="qq_official", sender_id="openid-abc")
+        assert mapper.is_qq_official(event) is True
+
+    def test_onebot_event_is_not_qq_official(self) -> None:
+        from plugin.event_mapper import EventMapper
+        mapper = EventMapper()
+        event = FakeEvent(platform_id="onebot_v11", sender_id="123456")
+        assert mapper.is_qq_official(event) is False
+
+    def test_qq_official_context_has_null_qq(self) -> None:
+        """QQ Official ImageContext must have qq_number=None, not QqNumber('0')."""
+        import asyncio
+        from plugin.event_mapper import EventMapper
+        mapper = EventMapper()
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+            f.write(b"test-image-data")
+            tmp_path = f.name
+        try:
+            img = Image(file=tmp_path)
+            event = FakeEvent(
+                platform_id="qq_official",
+                sender_id="openid-abc123",
+                message_obj=FakeMessageObj(message=[img]),
+            )
+            ctx = asyncio.run(mapper.extract_async(event))
+            assert ctx is not None
+            assert ctx.qq_number is None
+            assert ctx.openid == "openid-abc123"
+        finally:
+            os.unlink(tmp_path)

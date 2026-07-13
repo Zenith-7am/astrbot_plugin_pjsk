@@ -75,3 +75,59 @@ class TestEphemeralImageBuffer:
         buf.put("onebot", "group:123", qq, b"data")
         await buf.close()
         assert buf.consume("onebot", "group:123", qq) is None
+
+
+class TestEphemeralImageBufferArm:
+    """Tests for arm/consume_arm — mention-window state (Commit 1 R4)."""
+
+    def test_arm_and_consume_within_window(self) -> None:
+        buf = EphemeralImageBuffer()
+        qq = QqNumber("123456")
+        buf.arm("onebot", "group:123", qq)
+        assert buf.consume_arm("onebot", "group:123", qq, within_seconds=15.0) is True
+
+    def test_consume_arm_is_one_shot(self) -> None:
+        buf = EphemeralImageBuffer()
+        qq = QqNumber("123456")
+        buf.arm("onebot", "group:123", qq)
+        buf.consume_arm("onebot", "group:123", qq)
+        assert buf.consume_arm("onebot", "group:123", qq) is False
+
+    def test_arm_without_prior_arm_returns_false(self) -> None:
+        buf = EphemeralImageBuffer()
+        qq = QqNumber("123456")
+        assert buf.consume_arm("onebot", "group:123", qq) is False
+
+    def test_arm_expires_after_ttl(self) -> None:
+        clock = FakeClock(0.0)
+        buf = EphemeralImageBuffer(clock=clock)
+        qq = QqNumber("123456")
+        buf.arm("onebot", "group:123", qq)
+        clock.advance(16.0)
+        assert buf.consume_arm("onebot", "group:123", qq, within_seconds=15.0) is False
+
+    def test_arm_different_user_does_not_match(self) -> None:
+        buf = EphemeralImageBuffer()
+        qq1 = QqNumber("111")
+        qq2 = QqNumber("222")
+        buf.arm("onebot", "group:123", qq1)
+        assert buf.consume_arm("onebot", "group:123", qq2) is False
+
+    def test_arm_different_group_does_not_match(self) -> None:
+        buf = EphemeralImageBuffer()
+        qq = QqNumber("123456")
+        buf.arm("onebot", "group:123", qq)
+        assert buf.consume_arm("onebot", "group:456", qq) is False
+
+    def test_arm_different_platform_does_not_match(self) -> None:
+        buf = EphemeralImageBuffer()
+        qq = QqNumber("123456")
+        buf.arm("onebot", "group:123", qq)
+        assert buf.consume_arm("qq_official", "group:123", qq) is False
+
+    async def test_close_clears_arms(self) -> None:
+        buf = EphemeralImageBuffer()
+        qq = QqNumber("123456")
+        buf.arm("onebot", "group:123", qq)
+        await buf.close()
+        assert buf.consume_arm("onebot", "group:123", qq) is False
