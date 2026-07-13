@@ -369,8 +369,8 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 
 ## 16. 当前执行边界（最重要）
 
-> **当前阶段：Phase 4a — AstrBot 首个可用纵向链路（设计阶段）**
-> Phase 1、2、3a、3b 已完成。
+> **当前阶段：Phase 4a — AstrBot 首个可用纵向链路** ✅ 已完成
+> Phase 1、2、3a、3b、4a 已完成。Head: `a058ba9`，369 tests。
 
 Phase 1（Foundation and Legacy Audit）已完成 ✅
 Phase 2（Chart Data and Persistence Layer）已完成 ✅
@@ -394,14 +394,26 @@ Phase 3b（CandidateStore + OCR 持久化 + 候选确认）已完成 ✅
 | CandidateStore（内存版，原子消费） | ✅ |
 | ConfirmCandidate 用例（5 项可确认性验证） | ✅ |
 
+### Phase 4a 交付物
+
+| 模块 | 状态 |
+|------|------|
+| PluginRuntime + PjskPlugin skeleton | ✅ |
+| EventMapper（ID/图片/会话提取） | ✅ |
+| CandidatePresenter（候选格式化与解析） | ✅ |
+| EphemeralImageBuffer（群聊 15s 窗口） | ✅ |
+| UserRateLimiter（用户冷却） | ✅ |
+| ReplyBuilder（错误码→中文回复） | ✅ |
+| Bootstrap（Composition Root 装配） | ✅ |
+| Main handlers（消息分流/图片识别/候选确认） | ✅ |
+
 ### 当前授权
 
-**Phase 4a 设计阶段：AstrBot 首个可用纵向链路**
+**Phase 4b：查询与渲染（待设计）**
 
 **允许**：brainstorming、设计规格、实施计划编写。
 
 **禁止**：
-- 实现任何 Phase 4a 代码
 - 旧库数据迁移
 - VPS 写操作
 - Redis adapter
