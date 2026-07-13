@@ -76,15 +76,15 @@ class VisionRacePolicy:
                 f"global_timeout_seconds must be > 0, "
                 f"got {self.global_timeout_seconds}"
             )
-        if self.consensus_threshold != 2:
-            raise ValueError(
-                f"V1 consensus_threshold must be exactly 2, "
-                f"got {self.consensus_threshold}"
-            )
-
         enabled = [e for e in self.engines if e.enabled]
         if not enabled:
             raise ValueError("at least one engine must be enabled")
+
+        if self.consensus_threshold < 1 or self.consensus_threshold > len(enabled):
+            raise ValueError(
+                f"consensus_threshold ({self.consensus_threshold}) "
+                f"must be between 1 and enabled engines ({len(enabled)})"
+            )
 
         ids = [e.engine_id for e in self.engines]
         if len(ids) != len(set(ids)):

@@ -114,19 +114,26 @@ class TestVisionRacePolicy:
         with pytest.raises(ValueError, match="consensus_threshold"):
             self._make_policy(consensus_threshold=3)
 
-    def test_consensus_threshold_below_2_raises(self) -> None:
+    def test_consensus_threshold_0_raises(self) -> None:
+        """Threshold must be at least 1."""
         with pytest.raises(ValueError, match="consensus_threshold"):
-            self._make_policy(consensus_threshold=1)
+            self._make_policy(consensus_threshold=0)
 
-    def test_consensus_threshold_3_raises_even_with_3_engines(self) -> None:
-        """V1 requires exactly 2, even when 3 engines are available."""
+    def test_consensus_threshold_1_with_single_engine_ok(self) -> None:
+        """Single engine with threshold=1 is valid."""
+        engines = (EnginePolicy("g", 1, True, 15.0, 3),)
+        p = VisionRacePolicy(engines=engines, global_timeout_seconds=30.0, consensus_threshold=1)
+        assert p.consensus_threshold == 1
+
+    def test_consensus_threshold_exceeds_engine_count_raises(self) -> None:
+        """Threshold must not exceed enabled engine count."""
         engines = (
             EnginePolicy("g", 1, True, 15.0, 3),
             EnginePolicy("z", 2, True, 15.0, 3),
             EnginePolicy("s", 3, True, 15.0, 3),
         )
-        with pytest.raises(ValueError, match="exactly 2"):
-            VisionRacePolicy(engines=engines, global_timeout_seconds=30.0, consensus_threshold=3)
+        with pytest.raises(ValueError, match="consensus_threshold"):
+            VisionRacePolicy(engines=engines, global_timeout_seconds=30.0, consensus_threshold=4)
 
     def test_global_timeout_zero_raises(self) -> None:
         with pytest.raises(ValueError, match="global_timeout"):
