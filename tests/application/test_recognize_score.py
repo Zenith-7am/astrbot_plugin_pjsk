@@ -56,6 +56,58 @@ class _FakeVisionRace:
         return self.outcome
 
 
+class _FakeOcrRunRecorder:
+    """Fake OcrRunRecorder — returns a record with id=42."""
+
+    def __init__(self) -> None:
+        self.recorded: list[object] = []
+
+    async def record(  # type: ignore[no-untyped-def]
+        self, user_id, image_sha256, source_gateway, outcome,
+    ) -> object:
+        from datetime import datetime, timezone
+
+        from pjsk_core.domain.ocr_runs import OcrRunRecord
+
+        record = OcrRunRecord(
+            id=42, user_id=user_id, image_sha256=image_sha256,
+            source_gateway=source_gateway,
+            final_state=outcome.decision.value if hasattr(outcome.decision, 'value') else str(outcome.decision),
+            selected_engine=None, observations=(),
+            created_at=datetime.now(timezone.utc),
+        )
+        self.recorded.append(record)
+        return record
+
+
+class _FakeCandidateStore:
+    def __init__(self) -> None:
+        self.put_calls: list[object] = []
+
+    async def put(  # type: ignore[no-untyped-def]
+        self, user_id, candidate_set, ttl_seconds,
+    ) -> str:
+        self.put_calls.append((user_id, candidate_set, ttl_seconds))
+        return "cs-test-123"
+
+    async def consume_selection(  # type: ignore[no-untyped-def]
+        self, candidate_set_id, user_id, selection,
+    ) -> None:
+        raise NotImplementedError("Not needed for RecognizeScore tests")
+
+
+class _FakeChartRepo:
+    async def get_song_catalog(self) -> object:
+        from pjsk_core.ports.repositories import SongCatalog
+
+        return SongCatalog(version="v1", candidates=())
+
+    async def get_by_id(  # type: ignore[no-untyped-def]
+        self, chart_id,
+    ) -> None:
+        return None  # not needed for consensus tests
+
+
 def _make_chart() -> Chart:
     return Chart(
         id=1, song_id=1, difficulty=Difficulty.MASTER,
@@ -124,7 +176,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -148,7 +203,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -163,7 +221,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -177,7 +238,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -194,7 +258,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -209,7 +276,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -224,7 +294,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -244,7 +317,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -262,7 +338,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo, clock=lambda: fixed_time)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts, clock=lambda: fixed_time)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -308,7 +387,10 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
@@ -374,9 +456,76 @@ class TestRecognizeScore:
 
         repo = _FakeScoreRepo()
         race = _FakeVisionRace(outcome)
-        recognize = RecognizeScore(race, repo)  # type: ignore[arg-type]
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
         result = await recognize.recognize(
             UserId(1), b"img", source_gateway="astrbot",
         )
 
         assert len(result.candidates_for_user) == 2
+
+    async def test_consensus_sets_ocr_run_id(self) -> None:
+        """On CONSENSUS, ScoreAttempt.ocr_run_id comes from recorded OCR run."""
+        validated = _make_validated_strong()
+        outcome = _make_outcome(VisionRaceDecision.CONSENSUS, selected=validated)
+        repo = _FakeScoreRepo()
+        race = _FakeVisionRace(outcome)
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
+        result = await recognize.recognize(UserId(1), b"img", source_gateway="astrbot")
+        assert result.score_attempt is not None
+        assert result.score_attempt.ocr_run_id == 42
+
+    async def test_disagreement_stores_candidates(self) -> None:
+        """DISAGREEMENT stores candidates and returns candidate_set_id."""
+        obs1 = OcrObservation(
+            "Song A", Difficulty.MASTER, 30,
+            Judgements(perfect=1000, great=0, good=0, bad=0, miss=0),
+            engine="g", elapsed_ms=100,
+        )
+        obs2 = OcrObservation(
+            "Song B", Difficulty.MASTER, 30,
+            Judgements(perfect=500, great=500, good=0, bad=0, miss=0),
+            engine="z", elapsed_ms=100,
+        )
+        chart = _make_chart()
+        sm = SongMatch(song_id=1, score=1.0, method=SongMatchMethod.EXACT, source=TitleSource.JAPANESE)
+        vc = ValidatedCandidate(
+            song_match=sm, chart=chart, note_distance=0,
+            note_validated=True, level_validated=True,
+            status=ValidationStatus.STRONG,
+        )
+        valid = ValidatedObservation(
+            observation=obs1, primary=vc, candidates=(vc,),
+            status=ValidationStatus.STRONG,
+        )
+        results = (
+            EngineResult(
+                EngineIdentity("g", "google", "g"),
+                EngineResultStatus.SUCCESS, obs1, valid, None, 100,
+            ),
+            EngineResult(
+                EngineIdentity("z", "zhipu", "z"),
+                EngineResultStatus.SUCCESS, obs2, valid, None, 100,
+            ),
+        )
+        outcome = VisionRaceOutcome(
+            decision=VisionRaceDecision.DISAGREEMENT,
+            selected=None, consensus=None,
+            results=results, circuit_rejects=(),
+        )
+        repo = _FakeScoreRepo()
+        race = _FakeVisionRace(outcome)
+        recorder = _FakeOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
+        result = await recognize.recognize(UserId(1), b"img", source_gateway="astrbot")
+        assert result.candidate_set_id == "cs-test-123"
+        assert len(result.candidates_for_user) > 0
+        assert result.score_attempt is None
+        assert len(store.put_calls) == 1

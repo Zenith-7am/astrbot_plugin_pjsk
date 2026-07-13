@@ -6,6 +6,9 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from dataclasses import dataclass
 
+import logging
+
+from pjsk_core.application.ocr_run_recorder import OcrRunRecorder
 from pjsk_core.application.vision_race import (
     EngineResultStatus,
     VisionRace,
@@ -32,7 +35,10 @@ from pjsk_core.domain.scores import (
 )
 from pjsk_core.domain.rating import calculate_rating
 from pjsk_core.domain.users import UserId
-from pjsk_core.ports.repositories import ScoreRepository
+from pjsk_core.ports.cache import CandidateSet, CandidateStore
+from pjsk_core.ports.repositories import ChartRepository, ScoreRepository
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,7 @@ class RecognizeResult:
     outcome: VisionRaceOutcome
     validated: ValidatedObservation | None
     candidates_for_user: tuple[Candidate, ...]
+    candidate_set_id: str | None
     score_attempt: ScoreAttempt | None
 
 
@@ -61,11 +68,19 @@ class RecognizeScore:
         self,
         race: VisionRace,
         scores: ScoreRepository,
+        recorder: OcrRunRecorder,
+        store: CandidateStore,
+        charts: ChartRepository,
         *,
+        candidate_ttl_seconds: int = 300,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._race = race
         self._scores = scores
+        self._recorder = recorder
+        self._store = store
+        self._charts = charts
+        self._candidate_ttl_seconds = candidate_ttl_seconds
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     async def recognize(
@@ -79,6 +94,19 @@ class RecognizeScore:
         image_sha256 = hashlib.sha256(image).hexdigest()
         outcome = await self._race.run(image)
 
+        # Record OCR run. On failure: warn and continue with ocr_run_id=None.
+        ocr_run_id: int | None = None
+        try:
+            ocr_run = await self._recorder.record(
+                user_id, image_sha256, source_gateway, outcome,
+            )
+            ocr_run_id = ocr_run.id
+        except Exception:
+            _logger.warning(
+                "Failed to persist OCR run for user=%s sha256=%s",
+                user_id, image_sha256[:16],
+            )
+
         if outcome.decision in (
             VisionRaceDecision.CONSENSUS,
             VisionRaceDecision.DEGRADED_SINGLE,
@@ -87,39 +115,56 @@ class RecognizeScore:
             if selected is None or selected.primary is None:
                 return RecognizeResult(
                     outcome=outcome, validated=selected,
-                    candidates_for_user=(), score_attempt=None,
+                    candidates_for_user=(), candidate_set_id=None,
+                    score_attempt=None,
                 )
             attempt = await self._record(
-                selected, user_id, image_sha256, source_gateway,
+                selected, user_id, image_sha256, source_gateway, ocr_run_id,
             )
             return RecognizeResult(
                 outcome=outcome, validated=selected,
-                candidates_for_user=(), score_attempt=attempt,
+                candidates_for_user=(), candidate_set_id=None,
+                score_attempt=attempt,
             )
 
         if outcome.decision == VisionRaceDecision.DISAGREEMENT:
             candidates = self._collect_candidates(outcome)
+            catalog = await self._charts.get_song_catalog()
+            cs = CandidateSet(
+                candidates=candidates,
+                image_sha256=image_sha256,
+                source_gateway=source_gateway,
+                ocr_run_id=ocr_run_id if ocr_run_id is not None else 0,
+                chart_data_version=catalog.version,
+            )
+            cid = await self._store.put(
+                user_id, cs, ttl_seconds=self._candidate_ttl_seconds,
+            )
             return RecognizeResult(
                 outcome=outcome, validated=outcome.selected,
-                candidates_for_user=candidates, score_attempt=None,
+                candidates_for_user=candidates,
+                candidate_set_id=cid,
+                score_attempt=None,
             )
 
         if outcome.decision == VisionRaceDecision.GLOBAL_TIMEOUT:
             if outcome.selected is not None:
                 return await self._adopt_timeout_result(
-                    outcome, user_id, image_sha256, source_gateway,
+                    outcome, user_id, image_sha256, source_gateway, ocr_run_id,
                 )
             # Return partial candidates from completed results even on timeout
             candidates = self._collect_candidates(outcome)
             return RecognizeResult(
                 outcome=outcome, validated=None,
-                candidates_for_user=candidates, score_attempt=None,
+                candidates_for_user=candidates, candidate_set_id=None,
+                score_attempt=None,
             )
 
         # ALL_FAILED, NO_AVAILABLE_ENGINES — no score
         return RecognizeResult(
             outcome=outcome, validated=None,
-            candidates_for_user=(), score_attempt=None,
+            candidates_for_user=(), candidate_set_id=None,
+            score_attempt=None,
         )
 
     @staticmethod
@@ -196,6 +241,7 @@ class RecognizeScore:
         user_id: UserId,
         image_sha256: str,
         source_gateway: str,
+        ocr_run_id: int | None,
     ) -> ScoreAttempt:
         """Construct and persist a ScoreAttempt from a validated observation."""
         primary = selected.primary
@@ -218,7 +264,7 @@ class RecognizeScore:
             judgements=judgements, accuracy=accuracy,
             rating=rating, status=status,
             image_sha256=image_sha256, source_gateway=source_gateway,
-            ocr_run_id=None, created_at=now,
+            ocr_run_id=ocr_run_id, created_at=now,
         )
         return await self._scores.record_attempt(attempt)
 
@@ -228,6 +274,7 @@ class RecognizeScore:
         user_id: UserId,
         image_sha256: str,
         source_gateway: str,
+        ocr_run_id: int | None,
     ) -> RecognizeResult:
         """Adopt a single STRONG result when global timeout fired.
 
@@ -237,12 +284,14 @@ class RecognizeScore:
                 or outcome.selected.status != ValidationStatus.STRONG):
             return RecognizeResult(
                 outcome=outcome, validated=None,
-                candidates_for_user=(), score_attempt=None,
+                candidates_for_user=(), candidate_set_id=None,
+                score_attempt=None,
             )
         attempt = await self._record(
-            outcome.selected, user_id, image_sha256, source_gateway,
+            outcome.selected, user_id, image_sha256, source_gateway, ocr_run_id,
         )
         return RecognizeResult(
             outcome=outcome, validated=outcome.selected,
-            candidates_for_user=(), score_attempt=attempt,
+            candidates_for_user=(), candidate_set_id=None,
+            score_attempt=attempt,
         )
