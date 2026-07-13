@@ -29,7 +29,20 @@ class EventMapper:
     Must be called within the handler (before AstrBot cleans up temp files).
     """
 
-    def extract(self, event: AstrMessageEvent) -> ImageContext | None:
+    async def extract_async(self, event: Any, http_client: Any = None) -> ImageContext | None:
+        """Extract with async HTTP support for URL images."""
+        images = [
+            c for c in event.message_obj.message
+            if c.__class__.__name__ == "Image"
+        ]
+        if len(images) != 1:
+            return None
+        image_bytes = await self._read_image_bytes_async(images[0], http_client)
+        if image_bytes is None or len(image_bytes) > 10 * 1024 * 1024:
+            return None
+        return self._build_context(event, image_bytes)
+
+    def extract(self, event: Any) -> ImageContext | None:
         """Extract image context from event, or None if no image found."""
         images = [
             c for c in event.message_obj.message
@@ -41,34 +54,10 @@ class EventMapper:
         image_bytes = self._read_image_bytes(img, event)
         if image_bytes is None:
             return None
-
-        platform_id = event.get_platform_id()
-        sender_id = event.get_sender_id()
-
-        # QQ Official Bot: sender_id is an OpenID, not a QQ number
-        if self.is_qq_official(event):
-            openid = sender_id
-            qq = QqNumber("0")  # placeholder — resolved via bind
-        else:
-            openid = None
-            qq = QqNumber(sender_id)
-
-        conv_id = self.extract_conversation_id(event)
-        gateway = self._gateway_name(platform_id)
-
         # Check 10 MiB size limit AFTER reading
-        MAX_SIZE = 10 * 1024 * 1024
-        if len(image_bytes) > MAX_SIZE:
+        if len(image_bytes) > 10 * 1024 * 1024:
             return None
-
-        return ImageContext(
-            image_bytes=image_bytes,
-            qq_number=qq,
-            openid=openid,
-            platform_id=platform_id,
-            conversation_id=conv_id,
-            source_gateway=gateway,
-        )
+        return self._build_context(event, image_bytes)
 
     def extract_qq(self, event: AstrMessageEvent) -> QqNumber:
         """Extract QQ number from sender_id.
@@ -98,6 +87,52 @@ class EventMapper:
         return any(
             c.__class__.__name__ == "Image"
             for c in event.message_obj.message
+        )
+
+    @staticmethod
+    async def _read_image_bytes_async(img: Any, http_client: Any = None) -> bytes | None:
+        """Read image bytes with async HTTP fallback for URL images."""
+        if hasattr(img, 'file') and img.file:
+            import os
+            if os.path.isfile(img.file):
+                with open(img.file, 'rb') as f:
+                    return f.read()
+        if hasattr(img, 'url') and img.url:
+            if http_client is not None and hasattr(http_client, 'get'):
+                try:
+                    resp = await http_client.get(img.url, timeout=15.0)
+                    resp.raise_for_status()
+                    return bytes(resp.content)
+                except Exception:
+                    return None
+            # Fallback: sync httpx (only if no async client available)
+            try:
+                import httpx
+                resp = httpx.get(img.url, timeout=15.0)
+                resp.raise_for_status()
+                return resp.content
+            except Exception:
+                return None
+        return None
+
+    def _build_context(self, event: Any, image_bytes: bytes) -> ImageContext:
+        platform_id = event.get_platform_id()
+        sender_id = event.get_sender_id()
+        if self.is_qq_official(event):
+            openid = sender_id
+            qq = QqNumber("0")
+        else:
+            openid = None
+            qq = QqNumber(sender_id)
+        conv_id = self.extract_conversation_id(event)
+        gateway = self._gateway_name(platform_id)
+        return ImageContext(
+            image_bytes=image_bytes,
+            qq_number=qq,
+            openid=openid,
+            platform_id=platform_id,
+            conversation_id=conv_id,
+            source_gateway=gateway,
         )
 
     @staticmethod
