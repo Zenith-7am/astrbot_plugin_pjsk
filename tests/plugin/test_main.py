@@ -153,8 +153,23 @@ class _FakeRuntime:
     candidate_store = _FakeCandidateStore()
     image_buffer = None
     rate_limiter = UserRateLimiter()
-    pending_candidate_sets: dict[int, str] = {}
-    pending_display_text: dict[int, str] = {}
+
+    def set_pending(self, uid: int, cid: str, csid: str, display: str) -> None:
+        self._pending_sets[(uid, cid)] = csid
+        self._pending_display[(uid, cid)] = display
+
+    def get_pending_candidate_set_id(self, uid: int, cid: str) -> str | None:
+        return self._pending_sets.get((uid, cid))
+
+    def get_pending_display_text(self, uid: int, cid: str) -> str | None:
+        return self._pending_display.get((uid, cid))
+
+    def clear_pending(self, uid: int, cid: str) -> None:
+        self._pending_sets.pop((uid, cid), None)
+        self._pending_display.pop((uid, cid), None)
+
+    _pending_sets: dict[tuple[int, str], str] = {}
+    _pending_display: dict[tuple[int, str], str] = {}
 
     async def close(self) -> None:
         pass
@@ -218,9 +233,10 @@ class TestHandleImage:
 
 class TestHandleSelection:
     async def test_no_candidates_returns_none(self) -> None:
-        """When no candidates exist, _handle_selection returns None (passthrough)."""
+        """When no candidates exist, returns (False, None) — not a selection."""
         rt = _FakeRuntime()
-        result = await _handle_selection(
+        is_sel, err = await _handle_selection(
             "2", UserId(1), "cs-1", rt,  # type: ignore[arg-type]
         )
-        assert result is None
+        assert is_sel is False
+        assert err is None

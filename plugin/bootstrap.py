@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+import aiosqlite
 import httpx
 
 from adapters.cache.memory_candidate_store import MemoryCandidateStore
@@ -37,89 +38,116 @@ from plugin.runtime import PluginRuntime
 async def assemble_plugin_runtime(db_path: Path) -> PluginRuntime:
     """Build all dependencies and return a PluginRuntime.
 
-    This is called once at plugin startup (on_astrbot_loaded).
+    Called once at plugin startup.  Uses try/finally to close resources
+    on mid-assembly failure.  Each repository gets its own SQLite
+    connection (independent connections avoid nested BEGIN errors).
     """
-    # ── Database ──────────────────────────────────────────────────
-    await run_migrations(db_path)
-    conn = await get_connection(db_path)
+    user_conn: aiosqlite.Connection | None = None
+    chart_conn: aiosqlite.Connection | None = None
+    score_conn: aiosqlite.Connection | None = None
+    http_client: httpx.AsyncClient | None = None
+    runtime: PluginRuntime | None = None
 
-    user_repo = SqliteUserRepository(conn)
-    chart_repo = SqliteChartRepository(conn)
-    score_repo = SqliteScoreRepository(conn)
-    ocr_run_repo = SqliteOcrRunRepository(db_path)
+    try:
+        # ── Database ──────────────────────────────────────────────
+        await run_migrations(db_path)
 
-    # ── Vision Engines ────────────────────────────────────────────
-    import os
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    zhipu_key = os.environ.get("ZHIPU_API_KEY", "")
-    stepfun_key = os.environ.get("STEPFUN_API_KEY", "")
+        # Independent connections — one per repository
+        user_conn = await get_connection(db_path)
+        chart_conn = await get_connection(db_path)
+        score_conn = await get_connection(db_path)
 
-    http_client = httpx.AsyncClient(timeout=30.0)
-    breaker = MemoryCircuitBreaker()
+        user_repo = SqliteUserRepository(user_conn)
+        chart_repo = SqliteChartRepository(chart_conn)
+        score_repo = SqliteScoreRepository(score_conn)
+        ocr_run_repo = SqliteOcrRunRepository(db_path)
 
-    engines: list[EngineRuntime] = []
-    if gemini_key:
-        gemini_eng = GeminiVisionEngine(
-            api_key=gemini_key, model="2.5-flash", client=http_client,
+        # ── Vision Engines ────────────────────────────────────────
+        import os
+        gemini_key = os.environ.get("GEMINI_API_KEY", "")
+        zhipu_key = os.environ.get("ZHIPU_API_KEY", "")
+        stepfun_key = os.environ.get("STEPFUN_API_KEY", "")
+
+        http_client = httpx.AsyncClient(timeout=30.0)
+        breaker = MemoryCircuitBreaker()
+
+        engines: list[EngineRuntime] = []
+        if gemini_key:
+            gemini_eng = GeminiVisionEngine(
+                api_key=gemini_key, model="2.5-flash", client=http_client,
+            )
+            engines.append(EngineRuntime(
+                engine=gemini_eng,
+                policy=EnginePolicy("gemini-2.5-flash", 1, True, 15.0, 3),
+                semaphore=asyncio.Semaphore(3),
+            ))
+        if zhipu_key:
+            zhipu_eng = ZhipuVisionEngine(
+                api_key=zhipu_key, model="glm-4v-plus", client=http_client,
+            )
+            engines.append(EngineRuntime(
+                engine=zhipu_eng,
+                policy=EnginePolicy("zhipu-glm-4v-plus", 2, True, 15.0, 3),
+                semaphore=asyncio.Semaphore(3),
+            ))
+        if stepfun_key:
+            stepfun_eng = StepFunVisionEngine(
+                api_key=stepfun_key, model="step-1v-32k", client=http_client,
+            )
+            engines.append(EngineRuntime(
+                engine=stepfun_eng,
+                policy=EnginePolicy("stepfun-step-1v-32k", 3, True, 15.0, 3),
+                semaphore=asyncio.Semaphore(3),
+            ))
+
+        policy = VisionRacePolicy(
+            engines=tuple(e.policy for e in engines),
+            global_timeout_seconds=30.0,
+            consensus_threshold=2,
         )
-        engines.append(EngineRuntime(
-            engine=gemini_eng,
-            policy=EnginePolicy("gemini-2.5-flash", 1, True, 15.0, 3),
-            semaphore=asyncio.Semaphore(3),
-        ))
-    if zhipu_key:
-        zhipu_eng = ZhipuVisionEngine(
-            api_key=zhipu_key, model="glm-4v-plus", client=http_client,
+
+        validator = ValidationPipeline(charts=chart_repo)
+        race = VisionRace(runtimes=engines, breaker=breaker, validator=validator, policy=policy)
+
+        # ── Application Use Cases ─────────────────────────────────
+        recorder = OcrRunRecorder(ocr_run_repo)
+        candidate_store = MemoryCandidateStore()
+        recognize_score = RecognizeScore(
+            race=race, scores=score_repo,
+            recorder=recorder, store=candidate_store, charts=chart_repo,
+            candidate_ttl_seconds=300,
         )
-        engines.append(EngineRuntime(
-            engine=zhipu_eng,
-            policy=EnginePolicy("zhipu-glm-4v-plus", 2, True, 15.0, 3),
-            semaphore=asyncio.Semaphore(3),
-        ))
-    if stepfun_key:
-        stepfun_eng = StepFunVisionEngine(
-            api_key=stepfun_key, model="step-1v-32k", client=http_client,
+        confirm_candidate = ConfirmCandidate(
+            store=candidate_store, scores=score_repo, charts=chart_repo,
         )
-        engines.append(EngineRuntime(
-            engine=stepfun_eng,
-            policy=EnginePolicy("stepfun-step-1v-32k", 3, True, 15.0, 3),
-            semaphore=asyncio.Semaphore(3),
-        ))
 
-    policy = VisionRacePolicy(
-        engines=tuple(e.policy for e in engines),
-        global_timeout_seconds=30.0,
-        consensus_threshold=2,
-    )
+        # ── Plugin Infrastructure ─────────────────────────────────
+        image_buffer = EphemeralImageBuffer()
 
-    validator = ValidationPipeline(charts=chart_repo)
-    race = VisionRace(runtimes=engines, breaker=breaker, validator=validator, policy=policy)
+        runtime = PluginRuntime(
+            user_repo=user_repo,
+            chart_repo=chart_repo,
+            score_repo=score_repo,
+            ocr_run_repo=ocr_run_repo,
+            recognize_score=recognize_score,
+            confirm_candidate=confirm_candidate,
+            candidate_store=candidate_store,
+            image_buffer=image_buffer,
+            rate_limiter=UserRateLimiter(),
+            http_client=http_client,
+            db_conn=user_conn,  # Keep primary conn for close()
+            chart_db_conn=chart_conn,
+            score_db_conn=score_conn,
+        )
+        return runtime
 
-    # ── Application Use Cases ─────────────────────────────────────
-    recorder = OcrRunRecorder(ocr_run_repo)
-    candidate_store = MemoryCandidateStore()
-    recognize_score = RecognizeScore(
-        race=race, scores=score_repo,
-        recorder=recorder, store=candidate_store, charts=chart_repo,
-        candidate_ttl_seconds=300,
-    )
-    confirm_candidate = ConfirmCandidate(
-        store=candidate_store, scores=score_repo, charts=chart_repo,
-    )
-
-    # ── Plugin Infrastructure ─────────────────────────────────────
-    image_buffer = EphemeralImageBuffer()
-
-    return PluginRuntime(
-        user_repo=user_repo,
-        chart_repo=chart_repo,
-        score_repo=score_repo,
-        ocr_run_repo=ocr_run_repo,
-        recognize_score=recognize_score,
-        confirm_candidate=confirm_candidate,
-        candidate_store=candidate_store,
-        image_buffer=image_buffer,
-        rate_limiter=UserRateLimiter(),
-        http_client=http_client,
-        db_conn=conn,
-    )
+    except Exception:
+        # Clean up on mid-assembly failure
+        if runtime is not None:
+            await runtime.close()
+        if http_client is not None:
+            await http_client.aclose()
+        for conn in (user_conn, chart_conn, score_conn):
+            if conn is not None:
+                await conn.close()
+        raise

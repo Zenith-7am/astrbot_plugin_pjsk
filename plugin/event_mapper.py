@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pjsk_core.domain.users import QqNumber
 
@@ -44,21 +44,49 @@ class EventMapper:
 
         platform_id = event.get_platform_id()
         sender_id = event.get_sender_id()
-        qq = QqNumber(sender_id)
+
+        # QQ Official Bot: sender_id is an OpenID, not a QQ number
+        if self.is_qq_official(event):
+            openid = sender_id
+            qq = QqNumber("0")  # placeholder — resolved via bind
+        else:
+            openid = None
+            qq = QqNumber(sender_id)
+
         conv_id = self.extract_conversation_id(event)
         gateway = self._gateway_name(platform_id)
+
+        # Check 10 MiB size limit AFTER reading
+        MAX_SIZE = 10 * 1024 * 1024
+        if len(image_bytes) > MAX_SIZE:
+            return None
 
         return ImageContext(
             image_bytes=image_bytes,
             qq_number=qq,
-            openid=None,  # QQ official bot OpenID — resolved later
+            openid=openid,
             platform_id=platform_id,
             conversation_id=conv_id,
             source_gateway=gateway,
         )
 
     def extract_qq(self, event: AstrMessageEvent) -> QqNumber:
+        """Extract QQ number from sender_id.
+
+        For OneBot platforms, sender_id is the QQ number.
+        For QQ Official Bot, sender_id is an OpenID — caller must use
+        ``is_qq_official()`` to detect this case and handle accordingly.
+        """
         return QqNumber(event.get_sender_id())
+
+    @staticmethod
+    def is_qq_official(event: Any) -> bool:
+        """Return True if the event is from a QQ Official Bot platform."""
+        try:
+            pid = event.get_platform_id()
+        except (AttributeError, TypeError):
+            return False
+        return "qq_official" in str(pid).lower() or "qqofficial" in str(pid).lower()
 
     def extract_conversation_id(self, event: AstrMessageEvent) -> str:
         group_id = event.get_group_id()

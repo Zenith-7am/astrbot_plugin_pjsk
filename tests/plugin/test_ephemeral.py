@@ -4,6 +4,18 @@ from plugin.ephemeral import EphemeralImageBuffer
 from pjsk_core.domain.users import QqNumber
 
 
+class FakeClock:
+    """Deterministic clock for TTL tests."""
+    def __init__(self, start: float = 0.0) -> None:
+        self._now = start
+
+    def __call__(self) -> float:
+        return self._now
+
+    def advance(self, seconds: float) -> None:
+        self._now += seconds
+
+
 class TestEphemeralImageBuffer:
     def test_put_and_consume_within_window(self) -> None:
         buf = EphemeralImageBuffer()
@@ -33,10 +45,12 @@ class TestEphemeralImageBuffer:
         assert buf.consume("onebot", "group:123", qq2) is None
 
     def test_expired_entry_returns_none(self) -> None:
-        buf = EphemeralImageBuffer()
+        clock = FakeClock(0.0)
+        buf = EphemeralImageBuffer(clock=clock)
         qq = QqNumber("123456")
         buf.put("onebot", "group:123", qq, b"data")
-        # consume with 0s window -> immediate expiry
+        # Advance past TTL — entry is now expired
+        clock.advance(0.1)
         result = buf.consume("onebot", "group:123", qq, within_seconds=0.0)
         assert result is None
 

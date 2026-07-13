@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 
@@ -25,10 +26,16 @@ class EphemeralImageBuffer:
 
     MAX_TOTAL_BYTES = 50 * 1024 * 1024  # 50 MiB
 
-    def __init__(self, max_size_bytes: int = 10 * 1024 * 1024) -> None:
+    def __init__(
+        self,
+        max_size_bytes: int = 10 * 1024 * 1024,
+        *,
+        clock: Callable[[], float] | None = None,
+    ) -> None:
         self._entries: dict[tuple[str, str, str], _Entry] = {}
         self._max_size_bytes = max_size_bytes
         self._total_bytes = 0
+        self._clock = clock if clock is not None else time.monotonic
 
     def put(
         self,
@@ -40,11 +47,18 @@ class EphemeralImageBuffer:
         key = (platform_id, group_id, _key_from_identity(sender_qq))
         if len(image_bytes) > self._max_size_bytes:
             return
-        if self._total_bytes + len(image_bytes) > self.MAX_TOTAL_BYTES:
+        # Deduct old entry size before overwriting
+        old = self._entries.get(key)
+        if old is not None:
+            self._total_bytes -= len(old.image_bytes)
+        # Evict until enough room (may need multiple rounds)
+        while self._total_bytes + len(image_bytes) > self.MAX_TOTAL_BYTES:
+            if not self._entries:
+                break
             self._evict_oldest()
         self._entries[key] = _Entry(
             image_bytes=image_bytes,
-            stored_at=time.monotonic(),
+            stored_at=self._clock(),
         )
         self._total_bytes += len(image_bytes)
 
@@ -61,8 +75,8 @@ class EphemeralImageBuffer:
         if entry is None:
             return None
         self._total_bytes -= len(entry.image_bytes)
-        age = time.monotonic() - entry.stored_at
-        if age > within_seconds:
+        age = self._clock() - entry.stored_at
+        if age >= within_seconds:
             return None
         return entry.image_bytes
 

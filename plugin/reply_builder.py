@@ -16,6 +16,7 @@ class PluginErrorCode(Enum):
     MULTIPLE_IMAGES = "multiple_images"
     USER_RATE_LIMITED = "user_rate_limited"
     CANDIDATES_AVAILABLE = "candidates_available"
+    QQ_OFFICIAL_NEEDS_BIND = "qq_official_needs_bind"
 
 
 _MESSAGES = {
@@ -58,3 +59,11 @@ class ReplyBuilder:
     def error(code: PluginErrorCode) -> list[Any]:
         msg = _MESSAGES.get(code, "未知错误")
         return [_AstroPlain(text=msg)]
+
+    @staticmethod
+    def error_text(code: PluginErrorCode) -> str:
+        """Return the user-facing text for an error code as a plain string.
+
+        Use with ``event.plain_result()`` for AstrBot reply generation.
+        """
+        return _MESSAGES.get(code, "未知错误")
