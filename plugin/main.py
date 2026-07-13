@@ -369,7 +369,14 @@ class PjskPlugin(Star):  # type: ignore
 
         if user is None:
             # First-time user: create with game_id
-            user = await rt.user_repo.create(qq, game_id=game_id)
+            import sqlite3 as _sqlite3
+            try:
+                user = await rt.user_repo.create(qq, game_id=game_id)
+            except _sqlite3.IntegrityError:
+                yield event.plain_result(
+                    f"游戏 ID {game_id} 已被其他 QQ 绑定，请检查输入是否正确"
+                )
+                return
             yield event.plain_result(f"已绑定：QQ {qq.value} → 游戏 ID {game_id}")
             return
 
@@ -387,7 +394,14 @@ class PjskPlugin(Star):  # type: ignore
             return
 
         # user.game_id is None → auto-registered, update
-        user = await rt.user_repo.bind_game_id(user.id, game_id)  # type: ignore[attr-defined]
+        from pjsk_core.ports.repositories import DuplicateGameIdError
+        try:
+            user = await rt.user_repo.bind_game_id(user.id, game_id)
+        except DuplicateGameIdError:
+            yield event.plain_result(
+                f"游戏 ID {game_id} 已被其他 QQ 绑定，请检查输入是否正确"
+            )
+            return
         yield event.plain_result(f"已绑定：QQ {qq.value} → 游戏 ID {game_id}")
 
     # ── Main message handler ──────────────────────────────────────────────

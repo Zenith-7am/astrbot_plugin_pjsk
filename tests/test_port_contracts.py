@@ -56,6 +56,20 @@ class FakeUserRepository:
         self._users[uid.value] = user
         return user
 
+    async def bind_game_id(self, user_id: UserId, game_id: str) -> User:
+        from pjsk_core.ports.repositories import DuplicateGameIdError
+        for u in self._users.values():
+            if u.game_id == game_id and u.id != user_id:
+                raise DuplicateGameIdError(
+                    f"game_id '{game_id}' is already bound to another user"
+                )
+        old = self._users[user_id.value]
+        updated = User(
+            id=old.id, qq_number=old.qq_number, game_id=game_id,
+        )
+        self._users[user_id.value] = updated
+        return updated
+
 
 class FakeChartRepository:
     def __init__(self) -> None:

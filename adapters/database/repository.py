@@ -2,13 +2,18 @@
 
 from datetime import datetime, timezone
 
+import sqlite3
+
 from aiosqlite import Connection, Row
 
 from pjsk_core.domain.charts import Chart, Difficulty
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
 from pjsk_core.domain.song_matcher import SongCandidate
 from pjsk_core.domain.users import QqNumber, User, UserId
-from pjsk_core.ports.repositories import SongCatalog
+from pjsk_core.ports.repositories import (
+    DuplicateGameIdError,
+    SongCatalog,
+)
 
 
 class SqliteChartRepository:
@@ -224,6 +229,34 @@ class SqliteUserRepository:
         if result is None:
             raise RuntimeError(
                 f"User row was inserted but could not be read back (id={uid})"
+            )
+        return result
+
+    async def bind_game_id(self, user_id: UserId, game_id: str) -> User:
+        """Atomically bind a game_id to an existing user.
+
+        Uses the UNIQUE partial index on ``users(game_id) WHERE game_id IS
+        NOT NULL`` (migration 005) to enforce the "one game_id per QQ"
+        invariant at the database level.
+
+        Raises ``DuplicateGameIdError`` when the game_id is already bound
+        to a different user (sqlite3.IntegrityError from the UNIQUE index).
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            await self._conn.execute(
+                "UPDATE users SET game_id = ?, updated_at = ? WHERE id = ?",
+                (game_id, now, user_id.value),
+            )
+            await self._conn.commit()
+        except sqlite3.IntegrityError:
+            raise DuplicateGameIdError(
+                f"game_id '{game_id}' is already bound to another user"
+            )
+        result = await self.get_by_id(user_id)
+        if result is None:
+            raise RuntimeError(
+                f"User {user_id} disappeared after bind_game_id"
             )
         return result
 

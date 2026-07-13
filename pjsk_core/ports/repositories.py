@@ -20,12 +20,30 @@ class SongCatalog:
     candidates: tuple[SongCandidate, ...]
 
 
+class BindError(Exception):
+    """Raised when a bind operation cannot complete."""
+
+
+class DuplicateGameIdError(BindError):
+    """The game_id is already bound to a different QQ account."""
+
+
+class AlreadyBoundError(BindError):
+    """The user already has a different game_id bound (re-binding not yet supported)."""
+
+
 class UserRepository(Protocol):
     """User identity persistence."""
 
     async def get_by_id(self, user_id: UserId) -> User | None: ...
     async def get_by_qq(self, qq: QqNumber) -> User | None: ...
     async def create(self, qq: QqNumber, game_id: str | None) -> User: ...
+    async def bind_game_id(self, user_id: UserId, game_id: str) -> User: ...
+    """Atomically bind a game_id to an existing user.
+
+    Raises:
+        DuplicateGameIdError: game_id already belongs to another user.
+    """
 
 
 class ChartRepository(Protocol):
