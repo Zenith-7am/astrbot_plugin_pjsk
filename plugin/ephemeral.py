@@ -4,13 +4,16 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
-from pjsk_core.domain.users import QqNumber
-
 
 @dataclass
 class _Entry:
     image_bytes: bytes
     stored_at: float  # monotonic timestamp
+
+
+def _key_from_identity(sender_qq: object) -> str:
+    """Extract a string key from a QQ identity object."""
+    return str(getattr(sender_qq, "value", sender_qq))
 
 
 class EphemeralImageBuffer:
@@ -31,10 +34,10 @@ class EphemeralImageBuffer:
         self,
         platform_id: str,
         group_id: str,
-        sender_qq: QqNumber,
+        sender_qq: object,
         image_bytes: bytes,
     ) -> None:
-        key = (platform_id, group_id, sender_qq.value)
+        key = (platform_id, group_id, _key_from_identity(sender_qq))
         if len(image_bytes) > self._max_size_bytes:
             return
         if self._total_bytes + len(image_bytes) > self.MAX_TOTAL_BYTES:
@@ -49,11 +52,11 @@ class EphemeralImageBuffer:
         self,
         platform_id: str,
         group_id: str,
-        sender_qq: QqNumber,
+        sender_qq: object,
         *,
         within_seconds: float = 15.0,
     ) -> bytes | None:
-        key = (platform_id, group_id, sender_qq.value)
+        key = (platform_id, group_id, _key_from_identity(sender_qq))
         entry = self._entries.pop(key, None)
         if entry is None:
             return None
