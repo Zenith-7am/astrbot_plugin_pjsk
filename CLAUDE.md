@@ -369,37 +369,40 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 
 ## 16. 当前执行边界（最重要）
 
-> **当前阶段：Phase 3a — 视觉识别编排（Vision Race）** ✅ 已完成
-> 最后完成任务：Task 12 — Vision config loader
+> **当前阶段：Phase 4a — AstrBot 首个可用纵向链路（设计阶段）**
+> Phase 1、2、3a、3b 已完成。
 
 Phase 1（Foundation and Legacy Audit）已完成 ✅
 Phase 2（Chart Data and Persistence Layer）已完成 ✅
 Phase 3a（Vision Race — 适配器、编排器、共识）已完成 ✅
+Phase 3b（CandidateStore + OCR 持久化 + 候选确认）已完成 ✅
 
-### Phase 3a 交付物
+### Phase 3 交付物总览
 
 | 模块 | 状态 |
 |------|------|
-| SongMatcher 曲名匹配（Task 1） | ✅ |
-| EngineIdentity / VisionEngineError（Task 2） | ✅ |
-| Ports 扩展：CircuitBreaker / VisionEngine revise（Task 3） | ✅ |
-| ChartRepository 扩展（Task 4） | ✅ |
-| VisionRacePolicy / EnginePolicy（Task 5） | ✅ |
-| ValidationPipeline（Task 6） | ✅ |
-| VisionRace 编排器（Task 7） | ✅ |
-| RecognizeScore 用例（Task 8） | ✅ |
-| Repository 扩展：aliases / catalog（Task 9） | ✅ |
-| Gemini 适配器 + MemoryCircuitBreaker（Task 10） | ✅ |
-| 智谱 / StepFun 适配器（Task 11） | ✅ |
-| Vision config loader（Task 12） | ✅ |
+| SongMatcher 曲名匹配 | ✅ |
+| VisionRacePolicy / EnginePolicy | ✅ |
+| ValidationPipeline | ✅ |
+| VisionRace 编排器（并发竞速+共识） | ✅ |
+| RecognizeScore 用例 | ✅ |
+| Gemini / 智谱 / StepFun 适配器 | ✅ |
+| MemoryCircuitBreaker | ✅ |
+| Vision config loader | ✅ |
+| Migration 004 — ocr_runs + ocr_observations | ✅ |
+| OcrRunRecorder 用例 | ✅ |
+| CandidateStore（内存版，原子消费） | ✅ |
+| ConfirmCandidate 用例（5 项可确认性验证） | ✅ |
 
-### 当前授权：待下一阶段计划
+### 当前授权
 
-**等待用户明确指令进入下一阶段。**
+**Phase 4a 设计阶段：AstrBot 首个可用纵向链路**
+
+**允许**：brainstorming、设计规格、实施计划编写。
 
 **禁止**：
-- AstrBot 业务 handler（`/pjsk b20` 等命令）
-- 旧库数据迁移（从审计快照导入生产数据）
+- 实现任何 Phase 4a 代码
+- 旧库数据迁移
 - VPS 写操作
 - Redis adapter
 - 渲染服务实现
