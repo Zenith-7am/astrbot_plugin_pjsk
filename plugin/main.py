@@ -367,40 +367,32 @@ class PjskPlugin(Star):  # type: ignore
         rt = self._runtime
         user = await rt.user_repo.get_by_qq(qq)
 
+        # Always create with game_id=None first, then atomically bind.
+        # This keeps the "check→update" race window inside the repository.
         if user is None:
-            # First-time user: create with game_id
-            import sqlite3 as _sqlite3
-            try:
-                user = await rt.user_repo.create(qq, game_id=game_id)
-            except _sqlite3.IntegrityError:
-                yield event.plain_result(
-                    f"游戏 ID {game_id} 已被其他 QQ 绑定，请检查输入是否正确"
-                )
-                return
-            yield event.plain_result(f"已绑定：QQ {qq.value} → 游戏 ID {game_id}")
-            return
+            user = await rt.user_repo.create(qq, game_id=None)
 
-        if user.game_id == game_id:
-            # Idempotent: same game_id already bound
-            yield event.plain_result(f"QQ {qq.value} 已绑定游戏 ID：{game_id}")
-            return
-
-        if user.game_id is not None and user.game_id != game_id:
-            # Rebinding to a different game_id — reject for now
-            yield event.plain_result(
-                f"QQ {qq.value} 已绑定游戏 ID：{user.game_id}。"
-                f"更换绑定暂不支持，请联系管理员。"
-            )
-            return
-
-        # user.game_id is None → auto-registered, update
-        from pjsk_core.ports.repositories import DuplicateGameIdError
+        from pjsk_core.ports.repositories import (
+            AlreadyBoundError,
+            DuplicateGameIdError,
+        )
         try:
             user = await rt.user_repo.bind_game_id(user.id, game_id)
         except DuplicateGameIdError:
             yield event.plain_result(
                 f"游戏 ID {game_id} 已被其他 QQ 绑定，请检查输入是否正确"
             )
+            return
+        except AlreadyBoundError:
+            if user.game_id == game_id:
+                yield event.plain_result(
+                    f"QQ {qq.value} 已绑定游戏 ID：{game_id}"
+                )
+            else:
+                yield event.plain_result(
+                    f"QQ {qq.value} 已绑定游戏 ID：{user.game_id}。"
+                    f"更换绑定暂不支持，请联系管理员。"
+                )
             return
         yield event.plain_result(f"已绑定：QQ {qq.value} → 游戏 ID {game_id}")
 
@@ -412,10 +404,10 @@ class PjskPlugin(Star):  # type: ignore
 
         Processing order (group chat uses a deterministic state machine):
         1.  QQ Official early bypass
-        2.  Candidate selection (non-image text)
-        3.  Private chat: single-image OCR / multi-image reject
-        4.  Group: @Bot+Image same message → OCR
-        5.  Group: @Bot only → consume buffer or arm wait
+        2.  Group chat: @Bot without image → consume buffer or arm wait
+        3.  Non-image messages: candidate selection → passthrough
+        4.  Private chat: single-image OCR / multi-image reject
+        5.  Group: @Bot+Image same message → OCR
         6.  Group: image only → consume arm or cache
         7.  Everything else → passthrough to AstrBot personality
         """
@@ -436,8 +428,34 @@ class PjskPlugin(Star):  # type: ignore
 
         # ── 1. /pjsk commands routed by framework — skip ──────────────
 
-        # ── 2. Candidate selection (non-image messages) ───────────────
+        # ── Collect event context ─────────────────────────────────────
         img_count = _image_count(event)
+        group_chat = _is_group_chat(event)
+        bot_id = _get_self_id(event) if group_chat else ""
+        has_at = _is_at_bot(event, bot_id) if group_chat else False
+        platform_id = event.get_platform_id()
+        group_id = event.get_group_id() or "" if group_chat else ""
+        sender_qq = mapper.extract_qq(event) if group_chat else None
+
+        # ── 2. Group chat: @Bot without image → consume buffer / arm ─
+        if group_chat and has_at and img_count == 0:
+            buffered = rt.image_buffer.consume(
+                platform_id, group_id, sender_qq, within_seconds=15.0,
+            )
+            if buffered is not None:
+                code = await _handle_buffered_image(event, rt, buffered)
+                if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
+                    reply_text = await _get_image_result_text(
+                        event, code, rt, mapper,
+                    )
+                    yield event.plain_result(reply_text)
+                    event.stop_event()
+                return
+            # No buffered image — arm and passthrough
+            rt.image_buffer.arm(platform_id, group_id, sender_qq)
+            return  # Passthrough to AstrBot personality
+
+        # ── 3. Candidate selection (non-image messages) ───────────────
         if img_count == 0:
             try:
                 text = event.message_str or ""
@@ -447,7 +465,6 @@ class PjskPlugin(Star):  # type: ignore
                 qq = mapper.extract_qq(event)
                 user = await rt.user_repo.get_by_qq(qq)
                 if user is not None:
-                    platform_id = event.get_platform_id()
                     conv_id = mapper.extract_conversation_id(event)
                     cid = rt.get_pending_candidate_set_id(
                         user.id.value, platform_id, conv_id,
@@ -463,14 +480,9 @@ class PjskPlugin(Star):  # type: ignore
                                 yield event.plain_result("已确认成绩")
                             event.stop_event()
                             return
-                    # Not a selection, but had candidates → clear stale pointer
-                    # (expired/not-found/consumed candidates shouldn't block chat)
-                    # Only reached if _handle_selection didn't match
             return  # Passthrough to AstrBot personality
 
-        # ── 3. Private chat image handling ────────────────────────────
-        group_chat = _is_group_chat(event)
-
+        # ── 4. Private chat image handling ────────────────────────────
         if not group_chat:
             if img_count > 1:
                 yield event.plain_result("目前一次只能识别一张")
@@ -484,14 +496,9 @@ class PjskPlugin(Star):  # type: ignore
             event.stop_event()
             return
 
-        # ── 4. Group chat state machine ───────────────────────────────
-        bot_id = _get_self_id(event)
-        has_at = _is_at_bot(event, bot_id)
-        platform_id = event.get_platform_id()
-        group_id = event.get_group_id() or ""
-        sender_qq = mapper.extract_qq(event)
+        # ── 5. Group chat image state machine ─────────────────────────
 
-        # 4a. @Bot + Image same message → OCR immediately
+        # 5a. @Bot + Image same message → OCR immediately
         if has_at and img_count == 1:
             code = await _handle_image(event, rt)
             if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
@@ -500,32 +507,14 @@ class PjskPlugin(Star):  # type: ignore
                 event.stop_event()
             return
 
-        # 4b. @Bot + multiple images → reject
+        # 5b. @Bot + multiple images → reject
         if has_at and img_count > 1:
             yield event.plain_result("目前一次只能识别一张")
             event.stop_event()
             return
 
-        # 4c. @Bot without image → consume buffer or arm
-        if has_at and img_count == 0:
-            buffered = rt.image_buffer.consume(
-                platform_id, group_id, sender_qq, within_seconds=15.0,
-            )
-            if buffered is not None:
-                code = await _handle_buffered_image(event, rt, buffered)
-                if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
-                    reply_text = await _get_image_result_text(
-                        event, code, rt, mapper,
-                    )
-                    yield event.plain_result(reply_text)
-                    event.stop_event()
-                return
-            # No buffered image — arm and passthrough
-            rt.image_buffer.arm(platform_id, group_id, sender_qq)
-            return
-
-        # 4d. No @Bot — check arm or cache
-        if not has_at:
+        # 5c. No @Bot — check arm or cache
+        if not has_at and img_count >= 1:
             if img_count == 1:
                 armed = rt.image_buffer.consume_arm(
                     platform_id, group_id, sender_qq, within_seconds=15.0,
@@ -553,7 +542,7 @@ class PjskPlugin(Star):  # type: ignore
             # Multi-image without @Bot → silently ignore
             return
 
-        # ── 5. Passthrough ───────────────────────────────────────────
+        # ── 6. Passthrough ───────────────────────────────────────────
         return
 
     async def terminate(self) -> None:

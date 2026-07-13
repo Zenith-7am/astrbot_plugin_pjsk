@@ -10,6 +10,7 @@ from adapters.database.migrator import run_migrations
 from adapters.database.repository import SqliteUserRepository
 from pjsk_core.domain.users import QqNumber, UserId
 from pjsk_core.ports.repositories import (
+    AlreadyBoundError,
     DuplicateGameIdError,
     UserRepository,
 )
@@ -126,8 +127,17 @@ class TestBindGameId:
         updated = await repo.bind_game_id(user.id, "5555555555555555")
         assert updated.game_id == "5555555555555555"
 
-    async def test_rebind_different_game_id(self, repo: SqliteUserRepository) -> None:
-        """Changing game_id is allowed at database level (handler gates this)."""
+    async def test_rebind_different_game_id_raises(self, repo: SqliteUserRepository) -> None:
+        """Changing a bound game_id should raise AlreadyBoundError."""
         user = await repo.create(QqNumber("666666"), game_id="6666666666666666")
-        updated = await repo.bind_game_id(user.id, "7777777777777777")
-        assert updated.game_id == "7777777777777777"
+        with pytest.raises(AlreadyBoundError):
+            await repo.bind_game_id(user.id, "7777777777777777")
+
+    async def test_bind_idempotent_same_value(self, repo: SqliteUserRepository) -> None:
+        """Calling bind_game_id with the same game_id is idempotent."""
+        user = await repo.create(QqNumber("777777"), game_id=None)
+        updated1 = await repo.bind_game_id(user.id, "8888888888888888")
+        assert updated1.game_id == "8888888888888888"
+        # Same value again — should succeed
+        updated2 = await repo.bind_game_id(user.id, "8888888888888888")
+        assert updated2.game_id == "8888888888888888"

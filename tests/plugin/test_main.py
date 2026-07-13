@@ -9,7 +9,9 @@ from typing import Any
 
 import pytest
 
+from plugin.ephemeral import EphemeralImageBuffer
 from plugin.main import (
+    PjskPlugin,
     _get_self_id,
     _handle_image,
     _handle_selection,
@@ -68,17 +70,34 @@ class FakeEvent:
     def get_self_id(self) -> str | None:
         return self.message_obj.self_id
 
+    def get_message_obj(self) -> Any:
+        return self.message_obj
+
+    def plain_result(self, text: str) -> str:
+        """Simulate AstrBot's event.plain_result() — returns text for yield."""
+        return text
+
+    def stop_event(self) -> None:
+        """Simulate AstrBot's event.stop_event()."""
+        pass
+
 
 # ── Fake Runtime dependencies ──────────────────────────────────────────────
 
 class _FakeUserRepo:
     """Simulates a UserRepository that returns a pre-built user."""
 
+    async def get_by_id(self, user_id: UserId) -> User | None:
+        return User(id=user_id, qq_number=QqNumber("123456789"), game_id=None)
+
     async def get_by_qq(self, qq: QqNumber) -> User | None:
         return User(id=UserId(1), qq_number=qq, game_id=None)
 
     async def create(self, qq: QqNumber, game_id: str | None) -> User:
         return User(id=UserId(1), qq_number=qq, game_id=game_id)
+
+    async def bind_game_id(self, user_id: UserId, game_id: str) -> User:
+        return User(id=user_id, qq_number=QqNumber("123456789"), game_id=game_id)
 
 
 class _FakeRecognizeScore:
@@ -373,7 +392,7 @@ class TestQQOfficialBypass:
 
     def test_qq_official_context_has_null_qq(self) -> None:
         """QQ Official ImageContext must have qq_number=None, not QqNumber('0')."""
-        import asyncio
+        import asyncio as _asyncio
         from plugin.event_mapper import EventMapper
         mapper = EventMapper()
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
@@ -386,9 +405,251 @@ class TestQQOfficialBypass:
                 sender_id="openid-abc123",
                 message_obj=FakeMessageObj(message=[img]),
             )
-            ctx = asyncio.run(mapper.extract_async(event))
+            ctx = _asyncio.run(mapper.extract_async(event))
             assert ctx is not None
             assert ctx.qq_number is None
             assert ctx.openid == "openid-abc123"
         finally:
             os.unlink(tmp_path)
+
+
+# ── on_message integration tests (R5 — verify state machine routing) ────────
+
+
+class _FakeOcrRunRepo:
+    """Minimal fake that satisfies OcrRunRepository protocol."""
+    async def save(self, *a: Any, **kw: Any) -> Any:
+        return None
+    async def get_by_id(self, *a: Any, **kw: Any) -> Any:
+        return None
+
+
+class _IntegrationFakeRuntime:
+    """Runtime with real EphemeralImageBuffer for on_message integration tests."""
+
+    def __init__(self) -> None:
+        self.user_repo = _FakeUserRepo()
+        self.chart_repo = None
+        self.score_repo = None
+        self.ocr_run_repo = _FakeOcrRunRepo()
+        self.recognize_score = _FakeRecognizeScore()
+        self.confirm_candidate = _FakeConfirmCandidate()
+        self.candidate_store = _FakeCandidateStore()
+        self.image_buffer = EphemeralImageBuffer()
+        self.rate_limiter = UserRateLimiter()
+        self.http_client = None
+        self._pending_sets: dict[tuple[int, str, str], str] = {}
+        self._pending_display: dict[tuple[int, str, str], str] = {}
+        self.db_conn = None
+        self.chart_db_conn = None
+        self.score_db_conn = None
+
+    def set_pending(self, uid: int, pid: str, cid: str, csid: str, display: str) -> None:
+        self._pending_sets[(uid, pid, cid)] = csid
+        self._pending_display[(uid, pid, cid)] = display
+
+    def get_pending_candidate_set_id(self, uid: int, pid: str, cid: str) -> str | None:
+        return self._pending_sets.get((uid, pid, cid))
+
+    def get_pending_display_text(self, uid: int, pid: str, cid: str) -> str | None:
+        return self._pending_display.get((uid, pid, cid))
+
+    def clear_pending(self, uid: int, pid: str, cid: str) -> None:
+        self._pending_sets.pop((uid, pid, cid), None)
+        self._pending_display.pop((uid, pid, cid), None)
+
+    async def close(self) -> None:
+        await self.image_buffer.close()
+
+
+class TestOnMessageStateMachine:
+    """Integration tests for on_message routing (R5 — P0 fix verification)."""
+
+    @pytest.fixture
+    def image_file(self) -> Generator[str, None, None]:
+        path = tempfile.mktemp(suffix=".png")
+        Path(path).write_bytes(b"fake-image-data")
+        yield path
+        if os.path.isfile(path):
+            os.unlink(path)
+
+    def _make_plugin(self) -> PjskPlugin:
+        """Create a PjskPlugin with a fake runtime wired in."""
+        plugin: PjskPlugin = PjskPlugin.__new__(PjskPlugin)
+        object.__setattr__(plugin, '_runtime', _IntegrationFakeRuntime())
+        return plugin
+
+    async def _collect_replies(self, gen: Any) -> list[str]:
+        """Collect all yielded plain_result texts from an async generator."""
+        replies: list[str] = []
+        async for item in gen:
+            if isinstance(item, str):
+                replies.append(item)
+        return replies
+
+    # ── Scenario 1: @Bot + Image same message → OCR ───────────────────
+
+    async def test_at_bot_plus_image_same_message_triggers_ocr(
+        self, image_file: str,
+    ) -> None:
+        """@Bot + Image in the same group message → immediate OCR."""
+        plugin = self._make_plugin()
+        img = Image(file=image_file)
+        at = At(target="bot123")
+        event = FakeEvent(
+            platform_id="onebot_v11",
+            sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(
+                message=[at, img],
+                self_id="bot123",
+            ),
+        )
+        replies = await self._collect_replies(plugin.on_message(event))
+        # Should produce a reply (success or candidates, not passthrough)
+        assert len(replies) >= 1
+        # At least one reply — not silent passthrough
+        assert any(r for r in replies)
+
+    # ── Scenario 2: Image → @Bot (buffer consume) ─────────────────────
+
+    async def test_image_then_at_bot_consumes_buffer(
+        self, image_file: str,
+    ) -> None:
+        """Image posted, then @Bot within 15s → OCR on buffered image."""
+        plugin = self._make_plugin()
+        bot_id = "bot123"
+
+        # Step 1: post image without @Bot (should be cached silently)
+        img = Image(file=image_file)
+        event_img = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[img], self_id=bot_id),
+        )
+        replies1 = await self._collect_replies(plugin.on_message(event_img))
+        # No reply — image cached silently
+        assert replies1 == []
+
+        # Step 2: @Bot without image (should consume buffered image → OCR)
+        at = At(target=bot_id)
+        event_at = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[at], self_id=bot_id),
+        )
+        replies2 = await self._collect_replies(plugin.on_message(event_at))
+        assert len(replies2) >= 1  # OCR triggered
+
+    # ── Scenario 3: @Bot → Image (arm → consume_arm) ─────────────────
+
+    async def test_at_bot_then_image_consumes_arm(
+        self, image_file: str,
+    ) -> None:
+        """@Bot first (arms), then image within 15s → OCR triggered."""
+        plugin = self._make_plugin()
+        bot_id = "bot123"
+
+        # Step 1: @Bot without image (arms wait)
+        at = At(target=bot_id)
+        event_at = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[at], self_id=bot_id),
+        )
+        replies1 = await self._collect_replies(plugin.on_message(event_at))
+        # No prior buffer → arms and passthrough silently
+        assert replies1 == []
+
+        # Step 2: image without @Bot (should consume arm → OCR)
+        img = Image(file=image_file)
+        event_img = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[img], self_id=bot_id),
+        )
+        replies2 = await self._collect_replies(plugin.on_message(event_img))
+        assert len(replies2) >= 1  # Arm consumed → OCR triggered
+
+    # ── Scenario 4: @Bot only, no prior image → passthrough ──────────
+
+    async def test_at_bot_only_no_image_passthrough(self) -> None:
+        """@Bot without prior image → arms, no reply."""
+        plugin = self._make_plugin()
+        bot_id = "bot123"
+        at = At(target=bot_id)
+        event = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[at], self_id=bot_id),
+        )
+        replies = await self._collect_replies(plugin.on_message(event))
+        assert replies == []  # Passthrough — no reply
+
+    # ── Scenario 5: Different user cannot consume ────────────────────
+
+    async def test_different_user_cannot_consume_buffer(
+        self, image_file: str,
+    ) -> None:
+        """Image from user A, @Bot from user B → no OCR."""
+        plugin = self._make_plugin()
+        bot_id = "bot123"
+
+        # User A posts image
+        img = Image(file=image_file)
+        event_img = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[img], self_id=bot_id),
+        )
+        await self._collect_replies(plugin.on_message(event_img))
+
+        # User B @Bot (different sender) → should NOT consume user A's image
+        at = At(target=bot_id)
+        event_at = FakeEvent(
+            platform_id="onebot_v11", sender_id="222222",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[at], self_id=bot_id),
+        )
+        replies2 = await self._collect_replies(plugin.on_message(event_at))
+        # Arms for user B (no buffered image from user B)
+        assert replies2 == []
+
+    # ── Scenario 6: Multi-image rejected ─────────────────────────────
+
+    async def test_multi_image_with_at_bot_rejected(
+        self, image_file: str,
+    ) -> None:
+        """@Bot + multiple images → rejection message."""
+        plugin = self._make_plugin()
+        bot_id = "bot123"
+        img1 = Image(file=image_file)
+        img2 = Image(file=image_file)
+        at = At(target=bot_id)
+        event = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(
+                message=[at, img1, img2], self_id=bot_id,
+            ),
+        )
+        replies = await self._collect_replies(plugin.on_message(event))
+        assert any("一次只能识别一张" in r for r in replies)
+
+    # ── Scenario 7: @Other user + Image → no OCR ─────────────────────
+
+    async def test_at_other_user_plus_image_no_ocr(
+        self, image_file: str,
+    ) -> None:
+        """@OtherUser + Image → not an @Bot, image cached silently."""
+        plugin = self._make_plugin()
+        bot_id = "bot123"
+        at = At(target="other_user")  # NOT the bot
+        img = Image(file=image_file)
+        event = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[at, img], self_id=bot_id),
+        )
+        replies = await self._collect_replies(plugin.on_message(event))
+        assert replies == []  # Not OCR, cached silently

@@ -57,13 +57,22 @@ class FakeUserRepository:
         return user
 
     async def bind_game_id(self, user_id: UserId, game_id: str) -> User:
-        from pjsk_core.ports.repositories import DuplicateGameIdError
+        from pjsk_core.ports.repositories import (
+            AlreadyBoundError,
+            DuplicateGameIdError,
+        )
+        old = self._users[user_id.value]
+        if old.game_id is not None and old.game_id != game_id:
+            raise AlreadyBoundError(
+                f"User {user_id.value} already bound to '{old.game_id}'"
+            )
+        if old.game_id == game_id:
+            return old  # idempotent
         for u in self._users.values():
             if u.game_id == game_id and u.id != user_id:
                 raise DuplicateGameIdError(
                     f"game_id '{game_id}' is already bound to another user"
                 )
-        old = self._users[user_id.value]
         updated = User(
             id=old.id, qq_number=old.qq_number, game_id=game_id,
         )

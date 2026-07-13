@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from pjsk_core.domain.users import UserId
@@ -30,12 +31,21 @@ class MemoryCandidateStore:
     Expired entries are swept on ``put()``. When the entry count
     reaches ``max_entries``, the entry with the earliest expiry is
     evicted before inserting the new one.
+
+    ``clock`` is injectable (default ``time.monotonic``) so tests
+    can use a deterministic fake.
     """
 
-    def __init__(self, max_entries: int = 1000) -> None:
+    def __init__(
+        self,
+        max_entries: int = 1000,
+        *,
+        clock: Callable[[], float] | None = None,
+    ) -> None:
         self._entries: dict[str, _Entry] = {}
         self._lock = asyncio.Lock()
         self._max_entries = max_entries
+        self._clock = clock if clock is not None else time.monotonic
 
     async def put(
         self,
@@ -44,12 +54,12 @@ class MemoryCandidateStore:
         ttl_seconds: int,
     ) -> str:
         cid = uuid.uuid4().hex[:12]
-        now = time.monotonic()
+        now = self._clock()
         async with self._lock:
             # Sweep expired entries
             expired = [
                 k for k, v in self._entries.items()
-                if now > v.expires_at
+                if now >= v.expires_at
             ]
             for k in expired:
                 del self._entries[k]
@@ -88,7 +98,7 @@ class MemoryCandidateStore:
                     candidate=None, candidate_set=None,
                 )
             # 3. Check expiry
-            if time.monotonic() > entry.expires_at:
+            if self._clock() >= entry.expires_at:
                 del self._entries[candidate_set_id]
                 return CandidateConsumeResult(
                     status=CandidateConsumeStatus.EXPIRED,

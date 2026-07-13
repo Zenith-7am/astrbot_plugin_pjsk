@@ -11,6 +11,7 @@ from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
 from pjsk_core.domain.song_matcher import SongCandidate
 from pjsk_core.domain.users import QqNumber, User, UserId
 from pjsk_core.ports.repositories import (
+    AlreadyBoundError,
     DuplicateGameIdError,
     SongCatalog,
 )
@@ -235,24 +236,60 @@ class SqliteUserRepository:
     async def bind_game_id(self, user_id: UserId, game_id: str) -> User:
         """Atomically bind a game_id to an existing user.
 
-        Uses the UNIQUE partial index on ``users(game_id) WHERE game_id IS
-        NOT NULL`` (migration 005) to enforce the "one game_id per QQ"
-        invariant at the database level.
+        Uses a conditional UPDATE (``WHERE game_id IS NULL``) so the
+        check-and-set is a single SQL statement — no SELECT-then-write
+        race.  The UNIQUE partial index from migration 005 catches the
+        case where *another* user already owns this game_id.
 
-        Raises ``DuplicateGameIdError`` when the game_id is already bound
-        to a different user (sqlite3.IntegrityError from the UNIQUE index).
+        Returns
+        -------
+        User
+            The updated user row.
+
+        Raises
+        ------
+        AlreadyBoundError
+            This user already has a (different) game_id bound.
+        DuplicateGameIdError
+            *Another* user already owns this game_id.
         """
         now = datetime.now(timezone.utc).isoformat()
+        await self._conn.execute("BEGIN")
         try:
-            await self._conn.execute(
-                "UPDATE users SET game_id = ?, updated_at = ? WHERE id = ?",
+            cursor = await self._conn.execute(
+                "UPDATE users SET game_id = ?, updated_at = ? "
+                "WHERE id = ? AND game_id IS NULL",
                 (game_id, now, user_id.value),
             )
+            if cursor.rowcount == 0:
+                # User already has a game_id — check what it is
+                row = await self._conn.execute_fetchall(
+                    "SELECT game_id FROM users WHERE id = ?",
+                    (user_id.value,),
+                )
+                rows = list(row)
+                existing = rows[0]["game_id"] if rows else None
+                if existing == game_id:
+                    # Idempotent — same value, nothing to change
+                    await self._conn.commit()
+                    result = await self.get_by_id(user_id)
+                    if result is None:
+                        raise RuntimeError(f"User {user_id} disappeared")
+                    return result
+                # Different game_id → reject rebind
+                await self._conn.rollback()
+                raise AlreadyBoundError(
+                    f"User {user_id.value} already bound to '{existing}'"
+                )
             await self._conn.commit()
         except sqlite3.IntegrityError:
+            await self._conn.rollback()
             raise DuplicateGameIdError(
                 f"game_id '{game_id}' is already bound to another user"
             )
+        except Exception:
+            await self._conn.rollback()
+            raise
         result = await self.get_by_id(user_id)
         if result is None:
             raise RuntimeError(

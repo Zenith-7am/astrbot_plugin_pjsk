@@ -12,6 +12,18 @@ from pjsk_core.ports.cache import (
 from adapters.cache.memory_candidate_store import MemoryCandidateStore
 
 
+class FakeClock:
+    """Deterministic clock for TTL tests — same pattern as EphemeralImageBuffer tests."""
+    def __init__(self, start: float = 0.0) -> None:
+        self._now = start
+
+    def __call__(self) -> float:
+        return self._now
+
+    def advance(self, seconds: float) -> None:
+        self._now += seconds
+
+
 def _candidate(title: str = "Test Song", chart_id: int = 1) -> Candidate:
     return Candidate(
         observation=OcrObservation(
@@ -73,10 +85,11 @@ class TestMemoryCandidateStore:
         assert result2.status == CandidateConsumeStatus.OK
 
     async def test_expired_returns_expired_and_deletes(self) -> None:
-        store = MemoryCandidateStore()
-        cid = await store.put(UserId(1), _candidate_set(), ttl_seconds=0)
-        # Force expiry by waiting slightly — TTL 0 means already expired
-        await asyncio.sleep(0.01)
+        clock = FakeClock(0.0)
+        store = MemoryCandidateStore(clock=clock)
+        cid = await store.put(UserId(1), _candidate_set(), ttl_seconds=300)
+        # Advance past TTL — entry is now expired
+        clock.advance(301.0)
         result = await store.consume_selection(cid, UserId(1), 1)
         assert result.status == CandidateConsumeStatus.EXPIRED
         # Second call returns NOT_FOUND (deleted on expiry check)
@@ -84,10 +97,11 @@ class TestMemoryCandidateStore:
         assert result2.status == CandidateConsumeStatus.NOT_FOUND
 
     async def test_put_sweeps_expired_entries(self) -> None:
-        store = MemoryCandidateStore()
-        # Put with 0 TTL — expires immediately
-        cid = await store.put(UserId(1), _candidate_set(), ttl_seconds=0)
-        await asyncio.sleep(0.01)
+        clock = FakeClock(0.0)
+        store = MemoryCandidateStore(clock=clock)
+        cid = await store.put(UserId(1), _candidate_set(), ttl_seconds=300)
+        # Advance past TTL
+        clock.advance(301.0)
         # Put another — should sweep the expired one
         cid2 = await store.put(UserId(2), _candidate_set(), 300)
         # Expired entry should be gone
@@ -98,20 +112,21 @@ class TestMemoryCandidateStore:
         assert result2.status == CandidateConsumeStatus.OK
 
     async def test_evicts_oldest_when_full(self) -> None:
-        store = MemoryCandidateStore(max_entries=2)
+        clock = FakeClock(0.0)
+        store = MemoryCandidateStore(max_entries=2, clock=clock)
         cid1 = await store.put(UserId(1), _candidate_set(), 300)
-        await asyncio.sleep(0.01)  # ensure different expiry times
+        clock.advance(1.0)  # ensure different expiry times
         cid2 = await store.put(UserId(1), _candidate_set(), 300)
-        # Third put should evict cid1 (oldest)
+        # Third put should evict cid1 (oldest expiry)
         cid3 = await store.put(UserId(1), _candidate_set(), 300)
         # cid1 should be NOT_FOUND since it was evicted
         result = await store.consume_selection(cid1, UserId(1), 1)
         assert result.status == CandidateConsumeStatus.NOT_FOUND
-        # cid2 and cid3 should still be accessible
-        r2 = await store.consume_selection(cid2, UserId(1), 1)
-        assert r2.status == CandidateConsumeStatus.OK
+        # cid2 and cid3 should still exist (consume is one-shot; check each once)
         r3 = await store.consume_selection(cid3, UserId(1), 1)
         assert r3.status == CandidateConsumeStatus.OK
+        r2 = await store.consume_selection(cid2, UserId(1), 1)
+        assert r2.status == CandidateConsumeStatus.OK
 
     async def test_nonexistent_id_returns_not_found(self) -> None:
         store = MemoryCandidateStore()
