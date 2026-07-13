@@ -22,6 +22,7 @@ class TestBenchmarkImport:
         assert "gemini" in bm._ENGINE_BUILDERS
         assert "zhipu" in bm._ENGINE_BUILDERS
         assert "stepfun" in bm._ENGINE_BUILDERS
+        assert "qwen" in bm._ENGINE_BUILDERS
 
     def test_help_returns_zero(self) -> None:
         """python tools/benchmark_vision_engines.py --help → exit 0."""

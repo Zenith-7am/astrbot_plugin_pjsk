@@ -29,6 +29,7 @@ from adapters.database.repository import (
 )
 from adapters.resilience.memory_circuit_breaker import MemoryCircuitBreaker
 from adapters.vision.gemini import GeminiVisionEngine
+from adapters.vision.dashscope import DashScopeVisionEngine
 from adapters.vision.stepfun import StepFunVisionEngine
 from adapters.vision.zhipu import ZhipuVisionEngine
 from pjsk_core.application.confirm_candidate import ConfirmCandidate
@@ -221,6 +222,24 @@ async def assemble_plugin_runtime(
                 semaphore=asyncio.Semaphore(ocr_concurrency),
             ))
             enabled_names.append("stepfun-" + stepfun_model)
+
+        dashscope_key = cfg.get("dashscope_api_key", "")
+        dashscope_model = cfg.get("dashscope_model", "qwen3-vl-flash")
+        if dashscope_key:
+            ds_eng = DashScopeVisionEngine(
+                api_key=dashscope_key, model=dashscope_model,
+                client=http_client,
+                thinking_enabled=bool(cfg.get("dashscope_thinking", False)),
+            )
+            # Priority 4 (lowest), matches StepFun concurrency
+            engines.append(EngineRuntime(
+                engine=ds_eng,
+                policy=EnginePolicy(
+                    "dashscope-" + dashscope_model, 4, True, ocr_timeout, 3,
+                ),
+                semaphore=asyncio.Semaphore(ocr_concurrency),
+            ))
+            enabled_names.append("dashscope-" + dashscope_model)
 
         validator = ValidationPipeline(charts=chart_repo)
         race: VisionRace | None = None

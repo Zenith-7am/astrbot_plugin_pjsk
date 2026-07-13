@@ -48,10 +48,13 @@ git pull
 | `gemini_api_key` | Google Gemini API Key | （空=禁用） |
 | `zhipu_api_key` | 智谱 API Key | （空=禁用） |
 | `stepfun_api_key` | StepFun API Key | （空=禁用） |
+| `dashscope_api_key` | DashScope API Key | （空=禁用） |
 | `gemini_model` | Gemini 模型名 | `2.5-flash` |
 | `zhipu_model` | 智谱模型名 | `glm-4.6v-flash`（免费） |
 | `zhipu_thinking` | 智谱思考模式 | `false` |
 | `stepfun_model` | StepFun 模型名 | `step-1v-32k` |
+| `dashscope_model` | DashScope 模型 | `qwen3-vl-flash` |
+| `dashscope_thinking` | 千问思考模式 | `false` |
 | `ocr_timeout_seconds` | 单引擎超时（秒） | `15` |
 | `ocr_concurrency` | 每引擎最大并发 | `3` |
 | `image_window_seconds` | 群聊图片等待窗口（秒） | `15` |
@@ -65,6 +68,7 @@ git pull
 - **Gemini**：[Google AI Studio](https://aistudio.google.com/) → Get API Key → 免费额度
 - **智谱**：[智谱开放平台](https://open.bigmodel.cn/) → API Keys → 新用户有赠送
 - **StepFun**：[StepFun 平台](https://platform.stepfun.com/) → API Keys
+- **DashScope**：[阿里云百炼](https://dashscope.console.aliyun.com/apiKey) → API Key → 千问视觉模型按量计费
 
 ## 命令
 

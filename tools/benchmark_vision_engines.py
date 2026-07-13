@@ -91,9 +91,21 @@ def _build_zhipu(client: httpx.AsyncClient) -> VisionEngine:
 @_register("stepfun")
 def _build_stepfun(client: httpx.AsyncClient) -> VisionEngine:
     from adapters.vision.stepfun import StepFunVisionEngine
-    return StepFunVisionEngine(        api_key=os.environ["STEPFUN_API_KEY"],
+    return StepFunVisionEngine(
+        api_key=os.environ["STEPFUN_API_KEY"],
         model=os.environ.get("STEPFUN_MODEL", "step-1v-32k"),
         client=client,
+    )
+
+
+@_register("qwen")
+def _build_qwen(client: httpx.AsyncClient) -> VisionEngine:
+    from adapters.vision.dashscope import DashScopeVisionEngine
+    return DashScopeVisionEngine(
+        api_key=os.environ["DASHSCOPE_API_KEY"],
+        model=os.environ.get("DASHSCOPE_MODEL", "qwen3-vl-flash"),
+        client=client,
+        thinking_enabled=os.environ.get("DASHSCOPE_THINKING", "") == "1",
     )
 
 

@@ -76,6 +76,25 @@
     "max": 600,
     "hint": "OCR 分歧时候选列表的有效时间，超时需重新发图。"
   },
+  "dashscope_api_key": {
+    "description": "DashScope API Key",
+    "type": "string",
+    "Sensitive": true,
+    "default": "",
+    "hint": "从 https://dashscope.console.aliyun.com/apiKey 获取。留空则禁用千问引擎。"
+  },
+  "dashscope_model": {
+    "description": "DashScope 模型",
+    "type": "string",
+    "default": "qwen3-vl-flash",
+    "hint": "DashScope 千问视觉模型。默认 qwen3-vl-flash（高性价比）。也可用 qwen-vl-plus、qwen-vl-max 等。"
+  },
+  "dashscope_thinking": {
+    "description": "千问思考模式",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后模型会输出思考过程（增加延迟和 token 消耗）。"
+  },
   "user_cooldown_seconds": {
     "description": "用户识别冷却（秒）",
     "type": "int",
