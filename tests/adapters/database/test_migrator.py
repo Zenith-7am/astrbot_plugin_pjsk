@@ -28,13 +28,14 @@ class TestRunMigrations:
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()}
         expected = {"schema_version", "users", "external_identities",
-                    "songs", "charts", "score_attempts", "personal_bests"}
+                    "songs", "charts", "score_attempts", "personal_bests",
+                    "ocr_runs", "ocr_observations"}
         assert expected <= tables
         conn.close()
 
     async def test_records_migration_version(self, temp_db: Path) -> None:
         version = await run_migrations(temp_db)
-        assert version == 3
+        assert version == 4
         conn = sqlite3.connect(str(temp_db))
         row = conn.execute("SELECT version FROM schema_version").fetchone()
         conn.close()
@@ -43,13 +44,13 @@ class TestRunMigrations:
     async def test_idempotent_second_run(self, temp_db: Path) -> None:
         await run_migrations(temp_db)
         version = await run_migrations(temp_db)
-        assert version == 3  # already applied, no change
+        assert version == 4  # already applied, no change
 
     async def test_empty_db_returns_zero(self, tmp_path: Path) -> None:
         db = tmp_path / "empty.db"
         db.touch()
         version = await run_migrations(db)
-        assert version == 3  # migrations applied on empty db
+        assert version == 4  # migrations applied on empty db
 
     async def test_rollback_on_failed_migration(self, tmp_path: Path) -> None:
         """Mid-migration failure must roll back completely — no partial DDL,
@@ -100,7 +101,7 @@ class TestRunMigrations:
 
         # First run: apply 001
         v1 = await run_migrations(db, migrations_dir=test_dir)
-        assert v1 == 3
+        assert v1 == 4
 
         # Tamper with the already-applied migration file
         mig_file = test_dir / "001_initial_schema.sql"
@@ -130,7 +131,7 @@ class TestRunMigrations:
 
         # Apply 001
         v1 = await run_migrations(db, migrations_dir=test_dir)
-        assert v1 == 3
+        assert v1 == 4
 
         # Delete the file
         mig_file = test_dir / "001_initial_schema.sql"
