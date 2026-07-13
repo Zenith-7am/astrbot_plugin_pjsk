@@ -1,0 +1,4 @@
+# chart_data JSON files must use LF line endings regardless of platform.
+# SHA-256 hashes in manifest.json are computed against LF-normalised content;
+# CRLF would cause hash mismatches on Linux (AstrBot target platform).
+chart_data/*.json text eol=lf

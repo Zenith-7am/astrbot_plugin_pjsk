@@ -270,3 +270,51 @@ class TestConnectionHygiene:
 
         with pytest.raises(FileNotFoundError):
             await import_chart_data(_db, data_dir)
+
+
+class TestRealManifestIntegrity:
+    """Verify the *production* manifest.json hashes against actual chart_data files.
+
+    This catches the CRLF/LF hash drift that caused first-install failures
+    when the plugin was deployed to a Linux VPS from a GitHub clone.
+    """
+
+    def test_all_manifest_hashes_match_real_files(self) -> None:
+        """Every file listed in chart_data/manifest.json must hash-correctly."""
+        import json
+        from pathlib import Path as P
+
+        data_dir = P(__file__).parent.parent.parent / "chart_data"
+        manifest_path = data_dir / "manifest.json"
+        assert manifest_path.exists(), f"manifest.json not found at {manifest_path}"
+
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        for filename, expected_hash in manifest["files"].items():
+            file_path = data_dir / filename
+            assert file_path.exists(), f"Manifest lists {filename} but file is missing"
+            actual = f"sha256:{hashlib.sha256(file_path.read_bytes()).hexdigest()}"
+            assert actual == expected_hash, (
+                f"SHA-256 mismatch for {filename}:\n"
+                f"  manifest says: {expected_hash}\n"
+                f"  actual file:  {actual}\n"
+                f"  (CRLF/LF line-ending drift? Run: dos2unix chart_data/*.json)"
+            )
+
+    def test_all_data_files_are_listed_in_manifest(self) -> None:
+        """Every .json file in chart_data/ must appear in manifest.json."""
+        import json
+        from pathlib import Path as P
+
+        data_dir = P(__file__).parent.parent.parent / "chart_data"
+        manifest = json.loads(
+            (data_dir / "manifest.json").read_text(encoding="utf-8"),
+        )
+        listed = set(manifest["files"].keys())
+        on_disk = {
+            f.name for f in data_dir.glob("*.json")
+            if f.name != "manifest.json"
+        }
+        unlisted = on_disk - listed
+        assert not unlisted, (
+            f"Data files exist on disk but are NOT in manifest.json: {unlisted}"
+        )
