@@ -80,6 +80,15 @@ class _FakeOcrRunRecorder:
         return record
 
 
+class _FailingOcrRunRecorder:
+    """Fake OcrRunRecorder that always raises."""
+
+    async def record(  # type: ignore[no-untyped-def]
+        self, user_id, image_sha256, source_gateway, outcome,
+    ) -> object:
+        raise RuntimeError("DB connection lost")
+
+
 class _FakeCandidateStore:
     def __init__(self) -> None:
         self.put_calls: list[object] = []
@@ -529,3 +538,17 @@ class TestRecognizeScore:
         assert len(result.candidates_for_user) > 0
         assert result.score_attempt is None
         assert len(store.put_calls) == 1
+
+    async def test_recorder_failure_does_not_block_consensus(self) -> None:
+        """When recorder fails, consensus score is still recorded with ocr_run_id=None."""
+        validated = _make_validated_strong()
+        outcome = _make_outcome(VisionRaceDecision.CONSENSUS, selected=validated)
+        repo = _FakeScoreRepo()
+        race = _FakeVisionRace(outcome)
+        recorder = _FailingOcrRunRecorder()
+        store = _FakeCandidateStore()
+        charts = _FakeChartRepo()
+        recognize = RecognizeScore(race, repo, recorder, store, charts)  # type: ignore[arg-type]
+        result = await recognize.recognize(UserId(1), b"img", source_gateway="astrbot")
+        assert result.score_attempt is not None
+        assert result.score_attempt.ocr_run_id is None

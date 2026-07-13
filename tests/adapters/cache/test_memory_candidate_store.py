@@ -104,8 +104,7 @@ class TestMemoryCandidateStore:
         cid2 = await store.put(UserId(1), _candidate_set(), 300)
         # Third put should evict cid1 (oldest)
         cid3 = await store.put(UserId(1), _candidate_set(), 300)
-        assert await store.consume_selection(cid1, UserId(1), 1) is not None
-        # Actually cid1 should be NOT_FOUND since it was evicted
+        # cid1 should be NOT_FOUND since it was evicted
         result = await store.consume_selection(cid1, UserId(1), 1)
         assert result.status == CandidateConsumeStatus.NOT_FOUND
         # cid2 and cid3 should still be accessible

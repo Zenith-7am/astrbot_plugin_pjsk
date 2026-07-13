@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 from dataclasses import dataclass
@@ -82,6 +83,8 @@ class RecognizeScore:
         self._charts = charts
         self._candidate_ttl_seconds = candidate_ttl_seconds
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._last_audit_warn = 0.0
+        self._AUDIT_WARN_INTERVAL = 60.0  # seconds
 
     async def recognize(
         self,
@@ -102,10 +105,13 @@ class RecognizeScore:
             )
             ocr_run_id = ocr_run.id
         except Exception:
-            _logger.warning(
-                "Failed to persist OCR run for user=%s sha256=%s",
-                user_id, image_sha256[:16],
-            )
+            now = time.monotonic()
+            if now - self._last_audit_warn >= self._AUDIT_WARN_INTERVAL:
+                _logger.warning(
+                    "Failed to persist OCR run for user=%s sha256=%s",
+                    user_id, image_sha256[:16],
+                )
+                self._last_audit_warn = now
 
         if outcome.decision in (
             VisionRaceDecision.CONSENSUS,

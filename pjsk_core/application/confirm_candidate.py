@@ -1,6 +1,7 @@
 """ConfirmCandidate — resolve a disagreeing OCR run by user selection."""
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -15,6 +16,8 @@ from pjsk_core.domain.rating import calculate_rating
 from pjsk_core.domain.users import UserId
 from pjsk_core.ports.cache import CandidateConsumeStatus, CandidateStore
 from pjsk_core.ports.repositories import ChartRepository, ScoreRepository
+
+_logger = logging.getLogger(__name__)
 
 
 class ConfirmError(Enum):
@@ -90,6 +93,13 @@ class ConfirmCandidate:
         chart = await self._charts.get_by_id(candidate.matched_chart_id)
         if chart is None:
             return ConfirmResult(None, ConfirmError.NOT_CONFIRMABLE)
+
+        # 3b. Warn if chart_data_version differs (but still allow confirmation)
+        if cs.chart_data_version != chart.data_version:
+            _logger.warning(
+                "chart_data_version mismatch on confirm: candidate_set=%s chart=%s for chart_id=%d",
+                cs.chart_data_version, chart.data_version, chart.id,
+            )
 
         # 4. Difficulty must match
         if candidate.observation.difficulty != chart.difficulty:

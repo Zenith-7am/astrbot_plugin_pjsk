@@ -169,8 +169,8 @@ class TestConfirmCandidate:
         result = await cc.confirm(UserId(1), cid, 1)
         assert result.error == ConfirmError.NOT_CONFIRMABLE
 
-    async def test_fails_not_confirmable_note_mismatch(self) -> None:
-        """Candidate with |notes - expected| > 1 is not confirmable."""
+    async def test_fails_not_confirmable_note_not_validated(self) -> None:
+        """Candidate with note_validated=False is not confirmable."""
         store = _FakeCandidateStore()
         scores = _FakeScoreRepo()
         charts = _FakeChartRepo()  # chart has note_count=1100

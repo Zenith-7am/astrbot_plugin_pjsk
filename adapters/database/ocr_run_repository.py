@@ -1,6 +1,7 @@
 """SQLite-backed OcrRunRepository -- independent connections per operation."""
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from adapters.database.connection import get_connection
@@ -117,7 +118,6 @@ class SqliteOcrRunRepository:
                 for r in obs_rows
             )
 
-            from datetime import datetime
             return OcrRunRecord(
                 id=run_row["id"], user_id=UserId(run_row["user_id"]),
                 image_sha256=run_row["image_sha256"],
