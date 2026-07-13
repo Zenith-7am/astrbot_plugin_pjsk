@@ -4,4 +4,4 @@ version: 0.1.0-alpha.1
 author: leoviria
 astrbot_version: ">=4.16,<5"
 support_platforms: [aiocqhttp]
-repo: https://github.com/leoviria/astrbot_plugin_pjsk
+repo: https://github.com/Zenith-7am/astrbot_plugin_pjsk
