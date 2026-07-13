@@ -224,10 +224,11 @@ async def assemble_plugin_runtime(
         validator = ValidationPipeline(charts=chart_repo)
         race: VisionRace | None = None
         if engines:
+            threshold = 2 if len(engines) >= 2 else 1
             policy = VisionRacePolicy(
                 engines=tuple(e.policy for e in engines),
                 global_timeout_seconds=30.0,
-                consensus_threshold=2,
+                consensus_threshold=threshold,
             )
             race = VisionRace(
                 runtimes=engines, breaker=breaker, validator=validator,
