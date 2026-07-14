@@ -296,20 +296,8 @@ _DIFFICULTY_ABBR: dict[str, str] = {
 }
 
 
-async def _pjsk_b20(
-    rt: PluginRuntime, mapper: EventMapper, event: Any,
-) -> str:
-    """Handle /pjsk b20 — return text-formatted B20 result."""
-    if rt.query_b20 is None:
-        return "B20 查询暂不可用"
-
-    qq = mapper.extract_qq(event)
-    user = await rt.user_repo.get_by_qq(qq)
-    if user is None:
-        return "请先发送成绩截图完成自动注册"
-
-    result = await rt.query_b20.query(user.id)
-
+def _b20_text(result: Any) -> str:
+    """Format B20Result as plain text (fallback when renderer unavailable)."""
     if not result.entries:
         return "暂无 B20 数据（需要 FC 或 AP 成绩）"
 
@@ -325,6 +313,68 @@ async def _pjsk_b20(
             f"{entry.accuracy:.2f}% · {entry.rating:.1f}"
         )
     return "\n".join(lines)
+
+
+def _b20_render_payload(result: Any) -> dict[str, object]:
+    """Build render-service payload for a B20Result."""
+    entries: list[dict[str, object]] = []
+    for entry in result.entries:
+        entries.append({
+            "title": entry.song_title,
+            "difficulty": entry.difficulty.value,
+            "displayLevel": entry.community_constant,
+            "level": entry.official_level,
+            "status": 2 if entry.status.value == "ap" else 1,
+            "achievementRate": entry.accuracy,
+            "power": entry.rating,
+            "jacket": None,
+            "judges": {
+                "great": entry.judgements.great,
+                "good": entry.judgements.good,
+                "bad": entry.judgements.bad,
+                "miss": entry.judgements.miss,
+            },
+        })
+    return {
+        "b20": entries,
+        "sp": result.sp,
+        "playerClass": {
+            "name": result.player_class.name,
+            "icon": result.player_class.icon,
+            "stars": result.player_class.stars,
+            "fallbackColor": result.player_class.fallback_color,
+        },
+        "b20Avg": result.b20_avg,
+        "fcBonus": result.fc_bonus,
+        "masterBonus": result.ap_bonus,
+        "isAppendExcluded": result.append_excluded,
+    }
+
+
+async def _pjsk_b20(
+    rt: PluginRuntime, mapper: EventMapper, event: Any,
+) -> tuple[str, bytes | None]:
+    """Handle /pjsk b20 — render image, fall back to text."""
+    if rt.query_b20 is None:
+        return "B20 查询暂不可用", None
+
+    qq = mapper.extract_qq(event)
+    user = await rt.user_repo.get_by_qq(qq)
+    if user is None:
+        return "请先发送成绩截图完成自动注册", None
+
+    result = await rt.query_b20.query(user.id)
+    text = _b20_text(result)
+
+    if rt.renderer is not None and result.entries:
+        from pjsk_core.ports.renderer import RenderPayload
+        payload = RenderPayload(
+            template_name="b20", data=_b20_render_payload(result),
+        )
+        image_bytes = await rt.renderer.render(payload)
+        return text, image_bytes
+
+    return text, None
 
 
 async def _pjsk_append(
@@ -352,40 +402,18 @@ async def _pjsk_append(
         return "用法: /pjsk append on|off|status"
 
 
-async def _pjsk_difficulty(
-    rt: PluginRuntime, mapper: EventMapper, event: Any,
-    abbr: str, level: int, global_mode: bool,
+def _difficulty_text(
+    ranking: Any, difficulty: Any, level: int, global_mode: bool,
 ) -> str:
-    """Handle /pjsk <diff><level> [global] — difficulty ranking."""
-    if rt.query_difficulty_ranking is None:
-        return "难度排行暂不可用"
-
-    from pjsk_core.domain.charts import Difficulty
-
-    diff_key = _DIFFICULTY_ABBR.get(abbr)
-    if diff_key is None:
-        return f"未知难度缩写: {abbr}"
-
-    difficulty = Difficulty(diff_key)
-
+    """Format DifficultyRanking as plain text."""
+    header: str
     if global_mode:
-        ranking = await rt.query_difficulty_ranking.query_global(difficulty, level)
         header = f"全局排行 · {difficulty.value.upper()} {level}"
     else:
-        qq = mapper.extract_qq(event)
-        user = await rt.user_repo.get_by_qq(qq)
-        if user is None:
-            return "请先发送成绩截图完成自动注册"
-        ranking = await rt.query_difficulty_ranking.query_personal(
-            user.id, difficulty, level,
-        )
         header = (
             f"个人排行 · {difficulty.value.upper()} {level} · "
             f"{ranking.played_count}/{ranking.total_count}"
         )
-
-    if not ranking.entries:
-        return "该难度等级无谱面数据"
 
     lines: list[str] = [header, ""]
     for entry in ranking.entries:
@@ -400,3 +428,91 @@ async def _pjsk_difficulty(
                 f"{entry.song_title} [{entry.community_constant}] · 未游玩"
             )
     return "\n".join(lines)
+
+
+def _difficulty_render_payload(
+    ranking: Any, difficulty: Any, level: int, global_mode: bool,
+) -> dict[str, object]:
+    """Build render-service payload for a DifficultyRanking."""
+    mode = "global" if global_mode else "personal"
+    header = f"{difficulty.value.upper()} {level}"
+    if not global_mode:
+        header += f" · {ranking.played_count}/{ranking.total_count}"
+
+    # Group songs into tiers by community_constant (first decimal)
+    tiers_map: dict[str, list[dict[str, object]]] = {}
+    for entry in ranking.entries:
+        const = entry.community_constant
+        tiers_map.setdefault(const, []).append({
+            "song_id": entry.song_id,
+            "song_title": entry.song_title,
+            "community_constant": entry.community_constant,
+            "note_count": entry.note_count,
+            "jacket": None,
+            "is_played": entry.is_played,
+            "status": (
+                (2 if entry.status.value == "ap" else 1 if entry.status.value == "fc" else 0)
+                if entry.status else 0
+            ),
+            "accuracy": entry.accuracy if entry.is_played else 0.0,
+            "power": entry.rating if entry.is_played else 0.0,
+            "judges": {},
+        })
+
+    # Sort tiers by constant descending
+    from pjsk_core.domain.difficulty_ranking import _const_sort_key
+    sorted_consts = sorted(tiers_map.keys(), key=_const_sort_key, reverse=True)
+
+    tiers: list[dict[str, object]] = []
+    for const in sorted_consts:
+        tiers.append({"constant": float(const.rstrip("+-")), "songs": tiers_map[const]})
+
+    return {
+        "mode": mode,
+        "title": header,
+        "tiers": tiers,
+    }
+
+
+async def _pjsk_difficulty(
+    rt: PluginRuntime, mapper: EventMapper, event: Any,
+    abbr: str, level: int, global_mode: bool,
+) -> tuple[str, bytes | None]:
+    """Handle /pjsk <diff><level> [global] — difficulty ranking."""
+    if rt.query_difficulty_ranking is None:
+        return "难度排行暂不可用", None
+
+    from pjsk_core.domain.charts import Difficulty
+
+    diff_key = _DIFFICULTY_ABBR.get(abbr)
+    if diff_key is None:
+        return f"未知难度缩写: {abbr}", None
+
+    difficulty = Difficulty(diff_key)
+
+    if global_mode:
+        ranking = await rt.query_difficulty_ranking.query_global(difficulty, level)
+    else:
+        qq = mapper.extract_qq(event)
+        user = await rt.user_repo.get_by_qq(qq)
+        if user is None:
+            return "请先发送成绩截图完成自动注册", None
+        ranking = await rt.query_difficulty_ranking.query_personal(
+            user.id, difficulty, level,
+        )
+
+    if not ranking.entries:
+        return "该难度等级无谱面数据", None
+
+    text = _difficulty_text(ranking, difficulty, level, global_mode)
+
+    if rt.renderer is not None:
+        from pjsk_core.ports.renderer import RenderPayload
+        payload = RenderPayload(
+            template_name="difficulty",
+            data=_difficulty_render_payload(ranking, difficulty, level, global_mode),
+        )
+        image_bytes = await rt.renderer.render(payload)
+        return text, image_bytes
+
+    return text, None

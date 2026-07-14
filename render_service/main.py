@@ -1,15 +1,15 @@
 """PJSK Render Service — FastAPI + Playwright + Chrome headless.
 
-Canvas-page architecture: JS render functions are loaded once at startup
-into a shared page. Each request calls the registered function, which
-draws on ``#render-canvas``, and the service screenshots the result.
+**Architecture:** shared Browser (expensive), per-request Context + Page
+(isolated, ``finally`` closed).  A semaphore caps concurrent renders.
 
-Listens on ``127.0.0.1``, systemd-managed. All rating/level values are
+Listens on ``127.0.0.1``, systemd-managed.  All rating/level values are
 pre-computed by Python — JS only draws.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -33,6 +33,7 @@ from playwright.async_api import (
 
 HOST = os.getenv("RENDER_HOST", "127.0.0.1")
 PORT = int(os.getenv("RENDER_PORT", "3000"))
+_MAX_CONCURRENT = int(os.getenv("RENDER_MAX_CONCURRENT", "4"))
 FUNCTIONS_DIR = Path(__file__).parent / "functions"
 CANVAS_HTML = """<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -51,14 +52,13 @@ logger = logging.getLogger("render-service")
 _start_time: float = 0.0
 _pw: Optional[Playwright] = None
 _browser: Optional[Browser] = None
-_context: Optional[BrowserContext] = None
-_canvas_page: Optional[Page] = None
 _function_names: list[str] = []
 _browser_restart_attempted: bool = False
+_render_sem: asyncio.Semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
 
 
 async def _load_functions(page: Page, functions_dir: Path) -> list[str]:
-    """Load _loader.js + all *.js files into *page*. Returns function names."""
+    """Load ``_loader.js`` + all ``*.js`` files into *page*."""
     names: list[str] = []
     loader = functions_dir / "_loader.js"
     if loader.exists():
@@ -74,7 +74,7 @@ async def _load_functions(page: Page, functions_dir: Path) -> list[str]:
 
 
 async def _check_browser() -> bool:
-    """Return True if the browser is connected."""
+    """Return True if the shared browser is connected."""
     if _browser is None:
         return False
     try:
@@ -84,11 +84,8 @@ async def _check_browser() -> bool:
 
 
 async def _ensure_browser() -> bool:
-    """Ensure browser is alive; restart once if crashed.
-
-    Returns True when the browser is ready to serve requests.
-    """
-    global _browser, _context, _canvas_page, _function_names, _browser_restart_attempted
+    """Ensure the shared browser is alive; restart once if crashed."""
+    global _browser, _function_names, _browser_restart_attempted
 
     if await _check_browser():
         _browser_restart_attempted = False
@@ -102,19 +99,6 @@ async def _ensure_browser() -> bool:
     logger.warning("Browser disconnected — attempting restart...")
 
     try:
-        # Clean up stale references
-        if _canvas_page:
-            try:
-                await _canvas_page.close()
-            except Exception:
-                pass
-            _canvas_page = None
-        if _context:
-            try:
-                await _context.close()
-            except Exception:
-                pass
-            _context = None
         if _browser:
             try:
                 await _browser.close()
@@ -131,14 +115,18 @@ async def _ensure_browser() -> bool:
                 "--disable-sync", "--no-first-run",
             ],
         )
-        _context = await _browser.new_context(
+
+        # Warm-up: create a throwaway page to load and verify functions
+        warmup_context = await _browser.new_context(
             viewport={"width": 1280, "height": 1600},
         )
-        _canvas_page = await _context.new_page()
-
-        # Reload canvas page + functions
-        await _canvas_page.set_content(CANVAS_HTML, wait_until="load")
-        _function_names = await _load_functions(_canvas_page, FUNCTIONS_DIR)
+        try:
+            warmup_page = await warmup_context.new_page()
+            await warmup_page.set_content(CANVAS_HTML, wait_until="load")
+            _function_names = await _load_functions(warmup_page, FUNCTIONS_DIR)
+            await warmup_page.close()
+        finally:
+            await warmup_context.close()
 
         logger.info("Browser restarted. Functions: %s", _function_names)
         return True
@@ -152,7 +140,7 @@ async def _ensure_browser() -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    global _start_time, _pw, _browser, _context, _canvas_page, _function_names
+    global _start_time, _pw, _browser, _function_names
 
     logger.info("Starting Playwright + Chrome headless...")
     _pw = await async_playwright().start()
@@ -166,16 +154,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ],
     )
 
-    _context = await _browser.new_context(
+    # Warm-up: load functions into a throwaway page to verify they work
+    warmup_context = await _browser.new_context(
         viewport={"width": 1280, "height": 1600},
     )
-    _canvas_page = await _context.new_page()
+    try:
+        warmup_page = await warmup_context.new_page()
+        await warmup_page.set_content(CANVAS_HTML, wait_until="load")
+        _function_names = await _load_functions(warmup_page, FUNCTIONS_DIR)
+        await warmup_page.close()
+    finally:
+        await warmup_context.close()
 
-    # Pre-load render functions into canvas page
-    await _canvas_page.set_content(CANVAS_HTML, wait_until="load")
-    _function_names = await _load_functions(_canvas_page, FUNCTIONS_DIR)
     logger.info("Loaded render functions: %s", _function_names)
-
     _start_time = time.time()
     logger.info("Render service ready on %s:%d", HOST, PORT)
 
@@ -183,8 +174,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Shutdown
     logger.info("Shutting down...")
-    if _context:
-        await _context.close()
     if _browser:
         await _browser.close()
     if _pw:
@@ -214,9 +203,8 @@ async def health() -> dict[str, object]:
 async def render_fn(name: str, request: Request) -> Response:
     """Execute a registered JS render function and screenshot the canvas.
 
-    Path: ``/render/b20`` → calls ``window.__renderFunctions['b20'](data)``.
-    Request body: JSON data passed directly to the render function.
-    Response: ``image/png`` (canvas region only).
+    Each request gets a **fresh** Page + Context (isolated from other
+    in-flight renders).  A semaphore caps concurrent rendering.
     """
     if _function_names and name not in _function_names:
         raise HTTPException(
@@ -232,41 +220,56 @@ async def render_fn(name: str, request: Request) -> Response:
     if not await _ensure_browser():
         raise HTTPException(status_code=503, detail="browser unavailable")
 
-    assert _canvas_page is not None, "Canvas page not initialised"
+    assert _browser is not None
 
-    # Execute the render function — it draws on #render-canvas
-    data_json = json.dumps(data, ensure_ascii=False)
-    script = f"window.__renderFunctions['{name}']({data_json})"
-    try:
-        await _canvas_page.evaluate(script)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"render function error: {str(e)[:300]}",
-        ) from e
+    # ── Acquire concurrency slot ──────────────────────────────────────
+    async with _render_sem:
+        context: Optional[BrowserContext] = None
+        page: Optional[Page] = None
+        try:
+            context = await _browser.new_context(
+                viewport={"width": 1280, "height": 1600},
+            )
+            page = await context.new_page()
+            await page.set_content(CANVAS_HTML, wait_until="load")
+            await _load_functions(page, FUNCTIONS_DIR)
 
-    # Read canvas dimensions (support dynamic sizing)
-    canvas_dims: dict[str, Any] = await _canvas_page.evaluate("""() => {
-        const c = document.getElementById('render-canvas');
-        return { width: c.width, height: c.height };
-    }""")
-    cw = max(1, canvas_dims.get("width", 800))
-    ch = max(1, canvas_dims.get("height", 600))
+            # Execute the render function — it draws on #render-canvas
+            data_json = json.dumps(data, ensure_ascii=False)
+            script = f"window.__renderFunctions['{name}']({data_json})"
+            await page.evaluate(script)
 
-    # Resize viewport to fit canvas before screenshot
-    await _canvas_page.set_viewport_size({"width": cw, "height": ch})
+            # Read canvas dimensions (support dynamic sizing)
+            canvas_dims: dict[str, Any] = await page.evaluate("""() => {
+                const c = document.getElementById('render-canvas');
+                return { width: c.width, height: c.height };
+            }""")
+            cw = max(1, canvas_dims.get("width", 800))
+            ch = max(1, canvas_dims.get("height", 600))
 
-    # Screenshot only the canvas area
-    try:
-        png = await _canvas_page.screenshot(
-            clip={"x": 0, "y": 0, "width": cw, "height": ch},
-            type="png",
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"screenshot failed: {str(e)[:200]}",
-        ) from e
+            # Resize viewport to fit canvas before screenshot
+            await page.set_viewport_size({"width": cw, "height": ch})
+
+            png = await page.screenshot(
+                clip={"x": 0, "y": 0, "width": cw, "height": ch},
+                type="png",
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"render failed: {str(e)[:300]}",
+            ) from e
+        finally:
+            if page:
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+            if context:
+                try:
+                    await context.close()
+                except Exception:
+                    pass
 
     return Response(content=png, media_type="image/png")
 

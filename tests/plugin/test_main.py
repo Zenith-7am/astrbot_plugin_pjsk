@@ -87,6 +87,10 @@ class FakeEvent:
         """Simulate AstrBot's event.plain_result() — returns text for yield."""
         return text
 
+    def image_result(self, image_bytes: bytes) -> bytes:
+        """Simulate AstrBot's event.image_result() — returns bytes for yield."""
+        return image_bytes
+
     def stop_event(self) -> None:
         """Simulate AstrBot's event.stop_event() — tracked for tests."""
         self._stopped = True

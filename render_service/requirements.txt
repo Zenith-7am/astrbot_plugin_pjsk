@@ -1,0 +1,6 @@
+# Render service dependencies.
+# Install: pip install -r requirements-render.txt
+# Browser: playwright install chromium
+fastapi>=0.115
+uvicorn>=0.30
+playwright>=1.45

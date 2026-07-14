@@ -291,6 +291,33 @@ async def assemble_plugin_runtime(
         from pjsk_core.ports.renderer import Renderer
         renderer: Renderer | None = None
 
+        render_service_url = cfg.get("render_service_url", "").strip()
+        if render_service_url:
+            try:
+                from adapters.rendering.renderer_adapter import HttpRenderer
+                renderer = HttpRenderer(
+                    base_url=render_service_url,
+                    timeout=float(cfg.get("render_timeout_seconds", 30)),
+                    client=http_client,
+                )
+                _logger.info("HttpRenderer wired to %s", render_service_url)
+            except Exception:
+                _logger.exception("Failed to create HttpRenderer, falling back to text")
+
+        # JacketCache — optional shared cache for CDN jacket images
+        jacket_cache = None
+        jacket_cache_dir = cfg.get("jacket_cache_dir", "").strip()
+        if jacket_cache_dir:
+            try:
+                from adapters.rendering.jacket_cache import JacketCache
+                jacket_cache = JacketCache(
+                    cache_dir=jacket_cache_dir,
+                    client=http_client,
+                )
+                _logger.info("JacketCache wired: %s", jacket_cache_dir)
+            except Exception:
+                _logger.exception("Failed to create JacketCache")
+
         # ── Plugin Infrastructure ─────────────────────────────────────
         cooldown = float(cfg.get("user_cooldown_seconds", 5))
         image_buffer = EphemeralImageBuffer()
@@ -307,6 +334,7 @@ async def assemble_plugin_runtime(
             query_difficulty_ranking=query_difficulty_ranking,
             toggle_append=toggle_append,
             renderer=renderer,
+            jacket_cache=jacket_cache,
             candidate_store=candidate_store,
             image_buffer=image_buffer,
             rate_limiter=UserRateLimiter(cooldown_seconds=cooldown),

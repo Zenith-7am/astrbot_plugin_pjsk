@@ -2,6 +2,7 @@
 
 CDN base URL: https://api.pjsk-rate-api.com/music/jacket/
 Max 5 concurrent CDN fetches. Cache files named ``{song_id}.webp``.
+Cache writes are atomic (temp file + atomic replace).
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import base64
 import logging
 import os
 import tempfile
+from typing import Optional
 
 import httpx
 
@@ -36,12 +38,20 @@ class JacketCache:
     """Local disk cache for PJSK song jacket images.
 
     Cache misses are fetched from the CDN (up to 5 concurrent) and
-    written to disk. All public methods return ``data:image/webp;base64,…``
-    data URLs or ``None`` when the image is unavailable.
+    written to disk atomically. All public methods return
+    ``data:image/webp;base64,…`` data URLs or ``None``.
+
+    Pass *client* to reuse a shared ``httpx.AsyncClient`` (managed
+    externally — JacketCache never closes it).
     """
 
-    def __init__(self, cache_dir: str | None = None) -> None:
+    def __init__(
+        self,
+        cache_dir: str | None = None,
+        client: Optional[httpx.AsyncClient] = None,
+    ) -> None:
         self.cache_dir = cache_dir or os.path.join(tempfile.gettempdir(), "pjsk_jackets")
+        self._client = client
         os.makedirs(self.cache_dir, exist_ok=True)
 
     # -- public API ----------------------------------------------------------
@@ -58,8 +68,8 @@ class JacketCache:
     async def prefetch_jackets(self, song_ids: list[int]) -> dict[int, str]:
         """Download multiple jackets concurrently.
 
-        Returns a dict mapping each *song_id* to its data URL (or
-        ``None`` for songs whose jacket could not be fetched).
+        Returns a dict mapping each *song_id* to its data URL.
+        Songs whose jacket could not be fetched are omitted.
         """
 
         async def _resolve(sid: int) -> tuple[int, str | None]:
@@ -93,22 +103,32 @@ class JacketCache:
     async def _fetch_from_cdn(self, song_id: int) -> str | None:
         url = _build_cdn_url(song_id)
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(url)
+            if self._client is not None:
+                resp = await self._client.get(url, timeout=15.0)
                 if resp.status_code != 200:
                     return None
                 content = resp.content
+            else:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.get(url)
+                    if resp.status_code != 200:
+                        return None
+                    content = resp.content
         except Exception:
             logger.debug("Jacket CDN fetch failed: %d", song_id, exc_info=True)
             return None
 
         data_url = f"data:image/webp;base64,{base64.b64encode(content).decode()}"
 
-        # Write-through cache
+        # Atomic write-through: temp file → os.replace
         path = self._cache_path(song_id)
         try:
-            with open(path, "wb") as f:
-                f.write(content)
+            fd, tmp = tempfile.mkstemp(dir=self.cache_dir, suffix=".webp")
+            try:
+                os.write(fd, content)
+            finally:
+                os.close(fd)
+            os.replace(tmp, path)
             logger.debug("Jacket cached: %d (%d bytes)", song_id, len(content))
         except OSError:
             logger.debug("Jacket cache write failed: %d", song_id)

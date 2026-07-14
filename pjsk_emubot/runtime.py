@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
 import aiosqlite
 import httpx
@@ -51,6 +51,7 @@ class PluginRuntime:
     toggle_append: ToggleAppend
     recognize_score: RecognizeScore | None = None
     renderer: Renderer | None = None
+    jacket_cache: Any | None = None
     http_client: httpx.AsyncClient | None = None
     db_conn: aiosqlite.Connection | None = None
     chart_db_conn: aiosqlite.Connection | None = None

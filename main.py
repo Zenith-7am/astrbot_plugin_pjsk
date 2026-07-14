@@ -53,6 +53,19 @@ except ImportError:
     filter = _FakeFilter()
     AstrMessageEvent = object
 
+    class _FakeEvent:
+        @staticmethod
+        def plain_result(text: str) -> str:
+            return text
+
+        @staticmethod
+        def image_result(image_bytes: bytes) -> bytes:
+            return image_bytes
+
+        @staticmethod
+        def stop_event() -> None:
+            pass
+
     class _FakeStar:
         def __init__(self, context: Any, config: Any = None) -> None:
             self.context = context
@@ -276,7 +289,11 @@ class PjskPlugin(Star):  # type: ignore[misc]
         rest = parts[1] if len(parts) > 1 else ""
 
         if subcommand == "b20":
-            yield event.plain_result(await _pjsk_b20(rt, mapper, event))
+            text, image_bytes = await _pjsk_b20(rt, mapper, event)
+            if image_bytes is not None:
+                yield event.image_result(image_bytes)
+            else:
+                yield event.plain_result(text)
             event.stop_event()
             return
 
@@ -291,9 +308,13 @@ class PjskPlugin(Star):  # type: ignore[misc]
         m = re.match(r"^(ma|ex|apd|exp|hd|nm|ez)(\d{1,2})$", subcommand)
         if m:
             global_mode = rest.strip().lower() == "global"
-            yield event.plain_result(
-                await _pjsk_difficulty(rt, mapper, event, m.group(1), int(m.group(2)), global_mode),
+            text, image_bytes = await _pjsk_difficulty(
+                rt, mapper, event, m.group(1), int(m.group(2)), global_mode,
             )
+            if image_bytes is not None:
+                yield event.image_result(image_bytes)
+            else:
+                yield event.plain_result(text)
             event.stop_event()
             return
 
