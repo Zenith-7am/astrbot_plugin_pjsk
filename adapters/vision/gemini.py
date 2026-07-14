@@ -79,18 +79,7 @@ class GeminiVisionEngine:
             VisionServerError: API returned HTTP 5xx.
             VisionResponseError: Unexpected response format or content.
         """
-        prompt = PJSK_OCR_PROMPT
-        body = {
-            "contents": [{
-                "parts": [
-                    {"text": prompt},
-                    {"inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": _encode_base64(image),
-                    }},
-                ]
-            }],
-        }
+        body = _build_request_body(image, PJSK_OCR_PROMPT)
         headers = {"x-goog-api-key": self._api_key.reveal()}
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/"
@@ -163,6 +152,48 @@ class GeminiVisionEngine:
             raise VisionResponseError(
                 f"Cannot parse Gemini response: {e}"
             ) from e
+
+
+def _build_request_body(image: bytes, prompt: str) -> dict[str, Any]:
+    """Build the Gemini API request body with JSON response mode.
+
+    Extracted as a package-private function for testability.  The
+    ``responseMimeType`` and ``responseSchema`` force the model to
+    output valid JSON matching the schema — no markdown wrapping,
+    no extra commentary.  This is the same pattern validated in
+    the old emu-bot codebase.
+    """
+    return {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {"inline_data": {
+                    "mime_type": "image/jpeg",
+                    "data": _encode_base64(image),
+                }},
+            ]
+        }],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "OBJECT",
+                "properties": {
+                    "song_title": {"type": "STRING"},
+                    "difficulty": {"type": "STRING"},
+                    "level": {"type": "INTEGER"},
+                    "perfect": {"type": "INTEGER"},
+                    "great": {"type": "INTEGER"},
+                    "good": {"type": "INTEGER"},
+                    "bad": {"type": "INTEGER"},
+                    "miss": {"type": "INTEGER"},
+                },
+                "required": [
+                    "song_title", "difficulty", "level",
+                    "perfect", "great", "good", "bad", "miss",
+                ],
+            },
+        },
+    }
 
 
 def _encode_base64(data: bytes) -> str:
