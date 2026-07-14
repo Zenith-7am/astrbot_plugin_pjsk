@@ -9,9 +9,15 @@ from typing import Any
 
 import pytest
 
-from pjsk_emubot.ephemeral import EphemeralImageBuffer
-from pjsk_emubot.main import (
-    PjskPlugin,
+import sys
+
+# Root main.py defines PjskPlugin in the repo root, not under pjsk_emubot/.
+_repo_root = str(Path(__file__).resolve().parent.parent.parent)
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+import main as _plugin_main  # noqa: E402
+
+from pjsk_emubot._handlers import (  # noqa: E402
     _get_self_id,
     _handle_image,
     _handle_selection,
@@ -20,10 +26,11 @@ from pjsk_emubot.main import (
     _is_group_chat,
     _text_beyond_components,
 )
-from pjsk_emubot.rate_limiter import UserRateLimiter
-from pjsk_emubot.reply_builder import PluginErrorCode
-from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
-from pjsk_core.domain.users import QqNumber, User, UserId
+from pjsk_emubot.ephemeral import EphemeralImageBuffer  # noqa: E402
+from pjsk_emubot.rate_limiter import UserRateLimiter  # noqa: E402
+from pjsk_emubot.reply_builder import PluginErrorCode  # noqa: E402
+from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus  # noqa: E402
+from pjsk_core.domain.users import QqNumber, User, UserId  # noqa: E402
 
 
 # ── Fake AstrBot types ─────────────────────────────────────────────────────
@@ -477,9 +484,9 @@ class TestOnMessageStateMachine:
         if os.path.isfile(path):
             os.unlink(path)
 
-    def _make_plugin(self) -> PjskPlugin:
+    def _make_plugin(self) -> _plugin_main.PjskPlugin:
         """Create a PjskPlugin with a fake runtime wired in."""
-        plugin: PjskPlugin = PjskPlugin.__new__(PjskPlugin)
+        plugin: _plugin_main.PjskPlugin = _plugin_main.PjskPlugin.__new__(_plugin_main.PjskPlugin)
         object.__setattr__(plugin, '_runtime', _IntegrationFakeRuntime())
         return plugin
 
@@ -704,3 +711,44 @@ class TestTextBeyondComponents:
             message_obj=FakeMessageObj(message=[Image()]),
         )
         assert _text_beyond_components(event) == ""
+
+
+# ── Structural tests (Phase 4a root-main migration) ────────────────────────
+
+
+class TestConstructorReceivesConfig:
+    """Constructor must accept and store ``config`` from AstrBot."""
+
+    def test_config_stored_on_instance(self) -> None:
+        cfg = {"zhipu_api_key": "sk-test", "dashscope_api_key": "dq-test"}
+        plugin = _plugin_main.PjskPlugin.__new__(_plugin_main.PjskPlugin)
+        # Simulate what AstrBot does: set config then call __init__-like setup.
+        # We call __init__ directly since __new__ bypasses it.
+        _plugin_main.PjskPlugin.__init__(plugin, context=None, config=cfg)
+        assert plugin.config is cfg
+        assert plugin.config["zhipu_api_key"] == "sk-test"
+        assert plugin.config["dashscope_api_key"] == "dq-test"
+
+    def test_config_defaults_to_empty_dict(self) -> None:
+        plugin = _plugin_main.PjskPlugin.__new__(_plugin_main.PjskPlugin)
+        _plugin_main.PjskPlugin.__init__(plugin, context=None)
+        assert plugin.config == {}
+
+
+class TestPluginClassLocation:
+    """PjskPlugin MUST be defined in root main.py, not re-exported."""
+
+    def test_class_module_is_root_main(self) -> None:
+        """The class's __module__ must resolve to the root main module."""
+        # When AstrBot imports "data.plugins.astrbot_plugin_pjsk.main",
+        # PjskPlugin.__module__ must be that root main.  Since our tests
+        # import via "import main as _plugin_main", the module is "main".
+        assert _plugin_main.PjskPlugin.__module__ == "main"
+
+    def test_pjsk_emubot_main_is_stub(self) -> None:
+        """pjsk_emubot.main must NOT contain PjskPlugin anymore."""
+        import pjsk_emubot.main as old_module
+        assert not hasattr(old_module, "PjskPlugin"), (
+            "pjsk_emubot.main must not contain PjskPlugin — "
+            "it moved to root main.py"
+        )
