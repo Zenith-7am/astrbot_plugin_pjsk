@@ -27,6 +27,7 @@ from adapters.database.repository import (
     SqliteScoreRepository,
     SqliteUserRepository,
 )
+from adapters.database.song_repository import SqliteSongRepository
 from adapters.resilience.memory_circuit_breaker import MemoryCircuitBreaker
 from adapters.vision.gemini import GeminiVisionEngine
 from adapters.vision.dashscope import DashScopeVisionEngine
@@ -34,7 +35,10 @@ from adapters.vision.stepfun import StepFunVisionEngine
 from adapters.vision.zhipu import ZhipuVisionEngine
 from pjsk_core.application.confirm_candidate import ConfirmCandidate
 from pjsk_core.application.ocr_run_recorder import OcrRunRecorder
+from pjsk_core.application.query_b20 import QueryB20
+from pjsk_core.application.query_difficulty_ranking import QueryDifficultyRanking
 from pjsk_core.application.recognize_score import RecognizeScore
+from pjsk_core.application.toggle_append import ToggleAppend
 from pjsk_core.application.validate_ocr import ValidationPipeline
 from pjsk_core.application.vision_policy import EnginePolicy, VisionRacePolicy
 from pjsk_core.application.vision_race import EngineRuntime, VisionRace
@@ -270,6 +274,23 @@ async def assemble_plugin_runtime(
             store=candidate_store, scores=score_repo, charts=chart_repo,
         )
 
+        # ── Phase 4b: Query use cases ─────────────────────────────────
+        # SongRepository uses the same chart_conn (read-only access to songs)
+        song_repo = SqliteSongRepository(chart_conn)
+
+        query_b20 = QueryB20(
+            scores=score_repo, songs=song_repo,
+            charts=chart_repo, users=user_repo,
+        )
+        query_difficulty_ranking = QueryDifficultyRanking(
+            charts=chart_repo, scores=score_repo, songs=song_repo,
+        )
+        toggle_append = ToggleAppend(users=user_repo)
+
+        # Renderer is optional — set to None until render service is deployed
+        from pjsk_core.ports.renderer import Renderer
+        renderer: Renderer | None = None
+
         # ── Plugin Infrastructure ─────────────────────────────────────
         cooldown = float(cfg.get("user_cooldown_seconds", 5))
         image_buffer = EphemeralImageBuffer()
@@ -278,9 +299,14 @@ async def assemble_plugin_runtime(
             user_repo=user_repo,
             chart_repo=chart_repo,
             score_repo=score_repo,
+            song_repo=song_repo,
             ocr_run_repo=ocr_run_repo,
             recognize_score=recognize_score,
             confirm_candidate=confirm_candidate,
+            query_b20=query_b20,
+            query_difficulty_ranking=query_difficulty_ranking,
+            toggle_append=toggle_append,
+            renderer=renderer,
             candidate_store=candidate_store,
             image_buffer=image_buffer,
             rate_limiter=UserRateLimiter(cooldown_seconds=cooldown),

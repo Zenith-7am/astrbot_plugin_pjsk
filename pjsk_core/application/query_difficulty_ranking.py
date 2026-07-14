@@ -1,11 +1,12 @@
 """QueryDifficultyRanking use case — global and personal difficulty rankings."""
 
-from pjsk_core.domain.charts import Difficulty
+from pjsk_core.domain.charts import Chart, Difficulty
 from pjsk_core.domain.difficulty_ranking import (
     DifficultyRankEntry,
     DifficultyRanking,
     sort_charts_by_constant,
 )
+from pjsk_core.domain.scores import ScoreAttempt
 from pjsk_core.domain.users import UserId
 from pjsk_core.ports.repositories import (
     ChartRepository,
@@ -54,7 +55,7 @@ class QueryDifficultyRanking:
         difficulty: Difficulty,
         official_level: int,
         mode: str,
-        charts: list,
+        charts: list[Chart],
         user_id: UserId | None,
     ) -> DifficultyRanking:
         if not charts:
@@ -64,7 +65,7 @@ class QueryDifficultyRanking:
             )
 
         # Resolve personal bests for personal mode
-        personal_bests: dict[int, object] = {}
+        personal_bests: dict[int, ScoreAttempt] = {}
         if user_id is not None:
             chart_ids = [c.id for c in charts]
             personal_bests = await self._scores.list_personal_bests_for_difficulty(

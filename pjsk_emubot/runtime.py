@@ -9,12 +9,17 @@ import httpx
 
 from pjsk_emubot.rate_limiter import UserRateLimiter
 from pjsk_core.application.confirm_candidate import ConfirmCandidate
+from pjsk_core.application.query_b20 import QueryB20
+from pjsk_core.application.query_difficulty_ranking import QueryDifficultyRanking
 from pjsk_core.application.recognize_score import RecognizeScore
+from pjsk_core.application.toggle_append import ToggleAppend
 from pjsk_core.ports.cache import CandidateStore
 from pjsk_core.ports.ocr_runs import OcrRunRepository
+from pjsk_core.ports.renderer import Renderer
 from pjsk_core.ports.repositories import (
     ChartRepository,
     ScoreRepository,
+    SongRepository,
     UserRepository,
 )
 
@@ -35,12 +40,17 @@ class PluginRuntime:
     user_repo: UserRepository
     chart_repo: ChartRepository
     score_repo: ScoreRepository
+    song_repo: SongRepository
     ocr_run_repo: OcrRunRepository
-    recognize_score: RecognizeScore | None
     confirm_candidate: ConfirmCandidate
     candidate_store: CandidateStore
     image_buffer: EphemeralImageBuffer
     rate_limiter: UserRateLimiter
+    query_b20: QueryB20
+    query_difficulty_ranking: QueryDifficultyRanking
+    toggle_append: ToggleAppend
+    recognize_score: RecognizeScore | None = None
+    renderer: Renderer | None = None
     http_client: httpx.AsyncClient | None = None
     db_conn: aiosqlite.Connection | None = None
     chart_db_conn: aiosqlite.Connection | None = None
