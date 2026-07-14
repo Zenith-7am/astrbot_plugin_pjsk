@@ -39,6 +39,7 @@ class FakeUserRepository:
     def __init__(self) -> None:
         self._users: dict[int, User] = {}
         self._next_id = 1
+        self._append_excluded: dict[int, bool] = {}
 
     async def get_by_id(self, user_id: UserId) -> User | None:
         return self._users.get(user_id.value)
@@ -84,6 +85,12 @@ class FakeUserRepository:
         )
         self._users[user_id.value] = updated
         return updated
+
+    async def get_append_excluded(self, user_id: UserId) -> bool:
+        return self._append_excluded.get(user_id.value, True)
+
+    async def set_append_excluded(self, user_id: UserId, excluded: bool) -> None:
+        self._append_excluded[user_id.value] = excluded
 
 
 class FakeChartRepository:
@@ -164,6 +171,24 @@ class FakeScoreRepository:
         if status_filter is not None:
             results = [r for r in results if r.status in status_filter]
         return results
+
+    async def get_b20(
+        self, user_id: UserId, include_append: bool,
+    ) -> list[ScoreAttempt]:
+        results = [
+            v for k, v in self._bests.items()
+            if k[0] == user_id.value and v.status in (ScoreStatus.FC, ScoreStatus.AP)
+        ]
+        results.sort(key=lambda s: (-s.rating, s.chart_id))
+        return results[:20]
+
+    async def list_personal_bests_for_difficulty(
+        self, user_id: UserId, chart_ids: list[int],
+    ) -> dict[int, ScoreAttempt]:
+        return {
+            k[1]: v for k, v in self._bests.items()
+            if k[0] == user_id.value and k[1] in chart_ids
+        }
 
 
 class FakeVisionEngine:
