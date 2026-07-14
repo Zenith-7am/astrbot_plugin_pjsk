@@ -71,6 +71,9 @@ from pjsk_emubot._handlers import (  # noqa: E402
     _image_count,
     _is_at_bot,
     _is_group_chat,
+    _pjsk_append,
+    _pjsk_b20,
+    _pjsk_difficulty,
     _read_single_image_bytes_async,
     _text_beyond_components,
 )
@@ -245,6 +248,56 @@ class PjskPlugin(Star):  # type: ignore[misc]
                     pass
             return
 
+        return
+
+    # ── /pjsk commands ─────────────────────────────────────────────────
+
+    @filter.command("pjsk")  # type: ignore[misc]
+    async def pjsk_command(self, event: AstrMessageEvent) -> None:  # type: ignore[misc]
+        """Handle /pjsk subcommands: b20, difficulty, append."""
+        if self._runtime is None:
+            return
+
+        rt = self._runtime
+        mapper = EventMapper()
+
+        try:
+            raw = event.message_str or ""
+        except (AttributeError, TypeError):
+            return
+
+        text = raw.strip()
+        if not text.startswith("/pjsk"):
+            return
+
+        # Extract the subcommand part: "/pjsk b20" → "b20"
+        parts = text[len("/pjsk"):].strip().split(maxsplit=1)
+        subcommand = parts[0].lower() if parts else ""
+        rest = parts[1] if len(parts) > 1 else ""
+
+        if subcommand == "b20":
+            yield event.plain_result(await _pjsk_b20(rt, mapper, event))
+            event.stop_event()
+            return
+
+        if subcommand == "append":
+            sub = rest.strip().lower()
+            yield event.plain_result(await _pjsk_append(rt, mapper, event, sub))
+            event.stop_event()
+            return
+
+        # Difficulty ranking: e.g. /pjsk ma31, /pjsk exp28 global
+        import re
+        m = re.match(r"^(ma|ex|apd|exp|hd|nm|ez)(\d{1,2})$", subcommand)
+        if m:
+            global_mode = rest.strip().lower() == "global"
+            yield event.plain_result(
+                await _pjsk_difficulty(rt, mapper, event, m.group(1), int(m.group(2)), global_mode),
+            )
+            event.stop_event()
+            return
+
+        # Unknown subcommand — passthrough to LLM
         return
 
     async def terminate(self) -> None:

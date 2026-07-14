@@ -286,3 +286,117 @@ async def _get_image_result_text(
             if display is not None:
                 return display
     return ReplyBuilder.error_text(code)
+
+
+# ── /pjsk command helpers ────────────────────────────────────────────────────
+
+_DIFFICULTY_ABBR: dict[str, str] = {
+    "ma": "master", "ex": "expert", "apd": "append",
+    "exp": "expert", "hd": "hard", "nm": "normal", "ez": "easy",
+}
+
+
+async def _pjsk_b20(
+    rt: PluginRuntime, mapper: EventMapper, event: Any,
+) -> str:
+    """Handle /pjsk b20 — return text-formatted B20 result."""
+    if rt.query_b20 is None:
+        return "B20 查询暂不可用"
+
+    qq = mapper.extract_qq(event)
+    user = await rt.user_repo.get_by_qq(qq)
+    if user is None:
+        return "请先发送成绩截图完成自动注册"
+
+    result = await rt.query_b20.query(user.id)
+
+    if not result.entries:
+        return "暂无 B20 数据（需要 FC 或 AP 成绩）"
+
+    lines: list[str] = [
+        f"B20 · SP {result.sp:.0f} · {result.player_class.name} {result.player_class.icon}",
+        f"APPEND {'已排除' if result.append_excluded else '已包含'}",
+        "",
+    ]
+    for entry in result.entries:
+        lines.append(
+            f"#{entry.rank} {entry.song_title} · {entry.difficulty.value.upper()} "
+            f"{entry.official_level} · {entry.status.value.upper()} · "
+            f"{entry.accuracy:.2f}% · {entry.rating:.1f}"
+        )
+    return "\n".join(lines)
+
+
+async def _pjsk_append(
+    rt: PluginRuntime, mapper: EventMapper, event: Any, sub: str,
+) -> str:
+    """Handle /pjsk append [on|off|status]."""
+    if rt.toggle_append is None:
+        return "设置暂不可用"
+
+    qq = mapper.extract_qq(event)
+    user = await rt.user_repo.get_by_qq(qq)
+    if user is None:
+        return "请先发送成绩截图完成自动注册"
+
+    if sub == "on":
+        await rt.toggle_append.set(user.id, True)
+        return "APPEND 已排除（默认）"
+    elif sub == "off":
+        await rt.toggle_append.set(user.id, False)
+        return "APPEND 已包含"
+    elif sub == "status":
+        excluded = await rt.toggle_append.get(user.id)
+        return f"APPEND {'已排除' if excluded else '已包含'}"
+    else:
+        return "用法: /pjsk append on|off|status"
+
+
+async def _pjsk_difficulty(
+    rt: PluginRuntime, mapper: EventMapper, event: Any,
+    abbr: str, level: int, global_mode: bool,
+) -> str:
+    """Handle /pjsk <diff><level> [global] — difficulty ranking."""
+    if rt.query_difficulty_ranking is None:
+        return "难度排行暂不可用"
+
+    from pjsk_core.domain.charts import Difficulty
+
+    diff_key = _DIFFICULTY_ABBR.get(abbr)
+    if diff_key is None:
+        return f"未知难度缩写: {abbr}"
+
+    difficulty = Difficulty(diff_key)
+
+    if global_mode:
+        ranking = await rt.query_difficulty_ranking.query_global(difficulty, level)
+        header = f"全局排行 · {difficulty.value.upper()} {level}"
+    else:
+        qq = mapper.extract_qq(event)
+        user = await rt.user_repo.get_by_qq(qq)
+        if user is None:
+            return "请先发送成绩截图完成自动注册"
+        ranking = await rt.query_difficulty_ranking.query_personal(
+            user.id, difficulty, level,
+        )
+        header = (
+            f"个人排行 · {difficulty.value.upper()} {level} · "
+            f"{ranking.played_count}/{ranking.total_count}"
+        )
+
+    if not ranking.entries:
+        return "该难度等级无谱面数据"
+
+    lines: list[str] = [header, ""]
+    for entry in ranking.entries:
+        if entry.is_played and entry.personal_best is not None:
+            lines.append(
+                f"{entry.song_title} [{entry.community_constant}] · "
+                f"{entry.status.value.upper() if entry.status else '?'} · "
+                f"{entry.accuracy:.2f}% · {entry.rating:.1f}"
+            )
+        else:
+            lines.append(
+                f"{entry.song_title} [{entry.community_constant}] · 未游玩"
+            )
+    return "\n".join(lines)
