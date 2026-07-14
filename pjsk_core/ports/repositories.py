@@ -8,6 +8,7 @@ from typing import Protocol
 
 from pjsk_core.domain.charts import Chart, Difficulty
 from pjsk_core.domain.scores import ScoreAttempt, ScoreStatus
+from pjsk_core.domain.song import Song
 from pjsk_core.domain.song_matcher import SongCandidate
 from pjsk_core.domain.users import QqNumber, User, UserId
 
@@ -85,3 +86,10 @@ class ScoreRepository(Protocol):
     async def list_personal_bests(
         self, user_id: UserId, status_filter: set[ScoreStatus] | None = None,
     ) -> list[ScoreAttempt]: ...
+
+
+class SongRepository(Protocol):
+    """Song metadata persistence."""
+
+    async def get_by_id(self, song_id: int) -> Song | None: ...
+    async def get_all(self) -> list[Song]: ...
