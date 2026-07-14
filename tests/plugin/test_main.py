@@ -29,6 +29,7 @@ from pjsk_emubot._handlers import (  # noqa: E402
 from pjsk_emubot.ephemeral import EphemeralImageBuffer  # noqa: E402
 from pjsk_emubot.rate_limiter import UserRateLimiter  # noqa: E402
 from pjsk_emubot.reply_builder import PluginErrorCode  # noqa: E402
+from pjsk_core.domain.charts import Difficulty  # noqa: E402
 from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus  # noqa: E402
 from pjsk_core.domain.users import QqNumber, User, UserId  # noqa: E402
 
@@ -267,7 +268,7 @@ class TestHandleImage:
         rt = _FakeRuntime()
         img = Image(file=image_file)
         event = FakeEvent(message_obj=FakeMessageObj(message=[img]))
-        code = await _handle_image(event, rt)  # type: ignore[arg-type]
+        code, _result = await _handle_image(event, rt)  # type: ignore[arg-type]
         assert code == PluginErrorCode.SUCCESS
 
     async def test_multiple_images_rejected(self) -> None:
@@ -278,7 +279,7 @@ class TestHandleImage:
                 message=[Image(), Image()],
             ),
         )
-        code = await _handle_image(event, rt)  # type: ignore[arg-type]
+        code, _result = await _handle_image(event, rt)  # type: ignore[arg-type]
         assert code == PluginErrorCode.MULTIPLE_IMAGES
 
 
@@ -711,6 +712,102 @@ class TestTextBeyondComponents:
             message_obj=FakeMessageObj(message=[Image()]),
         )
         assert _text_beyond_components(event) == ""
+
+
+# ── Rich echo tests (Phase 4a.1) ─────────────────────────────────────────────
+
+
+class _FakeRecognizeScoreWithEcho:
+    """Fake RecognizeScore that returns a result with validated+score_attempt."""
+
+    async def recognize(
+        self, user_id: UserId, image: bytes, *, source_gateway: str,
+    ) -> Any:
+        from datetime import datetime, timezone
+
+        from pjsk_core.application.recognize_score import RecognizeResult
+        from pjsk_core.application.vision_race import (
+            VisionRaceDecision,
+            VisionRaceOutcome,
+        )
+        from pjsk_core.application.validate_ocr import ValidatedObservation
+        from pjsk_core.domain.ocr import OcrObservation
+        from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
+
+        obs = OcrObservation(
+            song_title="幾望の月", difficulty=Difficulty.MASTER,
+            displayed_level=31,
+            judgements=Judgements(perfect=917, great=50, good=3, bad=0, miss=0),
+            engine="gemini-test", elapsed_ms=1200,
+        )
+        validated = ValidatedObservation(
+            observation=obs, primary=None, candidates=(),
+            status="STRONG",  # type: ignore[arg-type]
+        )
+        attempt = ScoreAttempt(
+            id=1, user_id=user_id, chart_id=42,
+            judgements=obs.judgements, accuracy=99.83, rating=33.12,
+            status=ScoreStatus.FC, image_sha256="fake",
+            source_gateway=source_gateway, ocr_run_id=1,
+            created_at=datetime.now(timezone.utc),
+        )
+        outcome = VisionRaceOutcome(
+            decision=VisionRaceDecision.CONSENSUS,
+            selected=validated, consensus=None,
+            results=(), circuit_rejects=(),
+        )
+        return RecognizeResult(
+            outcome=outcome, validated=validated,
+            candidates_for_user=(), candidate_set_id=None,
+            score_attempt=attempt,
+        )
+
+
+class TestRichEcho:
+    """_get_image_result_text must produce rich echo on SUCCESS."""
+
+    async def test_success_produces_rich_echo(self, image_file: str) -> None:
+        """SUCCESS with valid RecognizeResult → rich echo with song/difficulty/rating."""
+        from pjsk_emubot._handlers import _get_image_result_text, _handle_image
+        from pjsk_emubot.event_mapper import EventMapper
+
+        rt = _FakeRuntime()
+        rt.rate_limiter = UserRateLimiter()  # Fresh — avoid shared class-level state
+        rt.recognize_score = _FakeRecognizeScoreWithEcho()
+        mapper = EventMapper()
+
+        # Simulate: user sends image → handle_image returns (SUCCESS, result)
+        img = Image(file=image_file)
+        event = FakeEvent(message_obj=FakeMessageObj(message=[img]))
+        code, result = await _handle_image(event, rt)  # type: ignore[arg-type]
+        assert code == PluginErrorCode.SUCCESS
+        assert result is not None
+
+        text = await _get_image_result_text(event, code, rt, mapper, result)
+        assert "幾望の月" in text
+        assert "MASTER 31" in text
+        assert "FC" in text
+        assert "99.83%" in text
+        assert "33.12" in text
+        assert "多模型共识" in text
+
+    async def test_fallback_when_echo_build_fails(self, image_file: str) -> None:
+        """When build_score_echo returns None, fall back to '已记录'."""
+        from pjsk_emubot._handlers import _get_image_result_text, _handle_image
+        from pjsk_emubot.event_mapper import EventMapper
+
+        rt = _FakeRuntime()  # Default FakeRecognizeScore has validated=None
+        rt.rate_limiter = UserRateLimiter()  # Fresh — avoid shared class-level state
+        mapper = EventMapper()
+
+        img = Image(file=image_file)
+        event = FakeEvent(message_obj=FakeMessageObj(message=[img]))
+        code, result = await _handle_image(event, rt)  # type: ignore[arg-type]
+        assert code == PluginErrorCode.SUCCESS
+
+        text = await _get_image_result_text(event, code, rt, mapper, result)
+        # Falls back because validated is None in FakeRecognizeScore
+        assert text == "已记录"
 
 
 # ── Structural tests (Phase 4a root-main migration) ────────────────────────

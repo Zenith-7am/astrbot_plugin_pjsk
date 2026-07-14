@@ -198,10 +198,10 @@ class PjskPlugin(Star):  # type: ignore[misc]
                 platform_id, group_id, sender_qq, within_seconds=15.0,
             )
             if buffered is not None:
-                code = await _handle_buffered_image(event, rt, buffered)
+                code, result = await _handle_buffered_image(event, rt, buffered)
                 if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
                     reply_text = await _get_image_result_text(
-                        event, code, rt, mapper,
+                        event, code, rt, mapper, result,
                     )
                     yield event.plain_result(reply_text)
                     event.stop_event()
@@ -245,10 +245,10 @@ class PjskPlugin(Star):  # type: ignore[misc]
                 yield event.plain_result("目前一次只能识别一张")
                 event.stop_event()
                 return
-            code = await _handle_image(event, rt)
+            code, result = await _handle_image(event, rt)
             if code == PluginErrorCode.NOT_PJSK_SCREENSHOT:
                 return
-            reply_text = await _get_image_result_text(event, code, rt, mapper)
+            reply_text = await _get_image_result_text(event, code, rt, mapper, result)
             yield event.plain_result(reply_text)
             event.stop_event()
             return
@@ -257,9 +257,9 @@ class PjskPlugin(Star):  # type: ignore[misc]
 
         # 5a. @Bot + Image same message → OCR immediately
         if has_at and img_count == 1:
-            code = await _handle_image(event, rt)
+            code, result = await _handle_image(event, rt)
             if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
-                reply_text = await _get_image_result_text(event, code, rt, mapper)
+                reply_text = await _get_image_result_text(event, code, rt, mapper, result)
                 yield event.plain_result(reply_text)
                 event.stop_event()
             return
@@ -277,10 +277,10 @@ class PjskPlugin(Star):  # type: ignore[misc]
                     platform_id, group_id, sender_qq, within_seconds=15.0,
                 )
                 if armed:
-                    code = await _handle_image(event, rt)
+                    code, result = await _handle_image(event, rt)
                     if code != PluginErrorCode.NOT_PJSK_SCREENSHOT:
                         reply_text = await _get_image_result_text(
-                            event, code, rt, mapper,
+                            event, code, rt, mapper, result,
                         )
                         yield event.plain_result(reply_text)
                         event.stop_event()

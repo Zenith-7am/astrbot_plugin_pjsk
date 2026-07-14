@@ -96,37 +96,45 @@ def _get_self_id(event: Any) -> str:
     return ""
 
 
-async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
-    """Process incoming image for OCR score recognition."""
+async def _handle_image(
+    event: Any, rt: PluginRuntime,
+) -> tuple[PluginErrorCode, Any | None]:
+    """Process incoming image for OCR score recognition.
+
+    Returns ``(code, recognize_result)``.  *recognize_result* is the
+    full :class:`~pjsk_core.application.recognize_score.RecognizeResult`
+    on SUCCESS, ``None`` otherwise.  Callers use the result to build a
+    rich echo via :func:`~pjsk_emubot.result_dto.build_score_echo`.
+    """
     count = _image_count(event)
     if count == 0:
-        return PluginErrorCode.NOT_PJSK_SCREENSHOT
+        return PluginErrorCode.NOT_PJSK_SCREENSHOT, None
     if count > 1:
-        return PluginErrorCode.MULTIPLE_IMAGES
+        return PluginErrorCode.MULTIPLE_IMAGES, None
 
     mapper = EventMapper()
     ctx = await mapper.extract_async(event, rt.http_client)
     if ctx is None:
-        return PluginErrorCode.NOT_PJSK_SCREENSHOT
+        return PluginErrorCode.NOT_PJSK_SCREENSHOT, None
 
     if ctx.qq_number is None:
-        return PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND
+        return PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND, None
 
     user = await rt.user_repo.get_or_create(ctx.qq_number)
 
     if not rt.rate_limiter.check(user.id):
-        return PluginErrorCode.USER_RATE_LIMITED
+        return PluginErrorCode.USER_RATE_LIMITED, None
     rt.rate_limiter.mark(user.id)
 
     if rt.recognize_score is None:
-        return PluginErrorCode.ALL_ENGINES_DOWN
+        return PluginErrorCode.ALL_ENGINES_DOWN, None
 
     result = await rt.recognize_score.recognize(
         user.id, ctx.image_bytes, source_gateway=ctx.source_gateway,
     )
 
     if result.score_attempt is not None:
-        return PluginErrorCode.SUCCESS
+        return PluginErrorCode.SUCCESS, result
 
     if result.candidates_for_user:
         cid = result.candidate_set_id
@@ -141,9 +149,9 @@ async def _handle_image(event: Any, rt: PluginRuntime) -> PluginErrorCode:
             rt.set_pending(
                 user.id.value, ctx.platform_id, conv_id, cid, display_text,
             )
-        return PluginErrorCode.CANDIDATES_AVAILABLE
+        return PluginErrorCode.CANDIDATES_AVAILABLE, result
 
-    return PluginErrorCode.NOT_PJSK_SCREENSHOT
+    return PluginErrorCode.NOT_PJSK_SCREENSHOT, None
 
 
 async def _handle_selection(
@@ -209,24 +217,24 @@ async def _read_single_image_bytes_async(
 
 async def _handle_buffered_image(
     event: Any, rt: PluginRuntime, image_bytes: bytes,
-) -> PluginErrorCode:
+) -> tuple[PluginErrorCode, Any | None]:
     """Run OCR on buffered image bytes (from EphemeralImageBuffer)."""
     mapper = EventMapper()
     if mapper.is_qq_official(event):
-        return PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND
+        return PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND, None
     qq = mapper.extract_qq(event)
     user = await rt.user_repo.get_or_create(qq)
     if not rt.rate_limiter.check(user.id):
-        return PluginErrorCode.USER_RATE_LIMITED
+        return PluginErrorCode.USER_RATE_LIMITED, None
     rt.rate_limiter.mark(user.id)
     if rt.recognize_score is None:
-        return PluginErrorCode.ALL_ENGINES_DOWN
+        return PluginErrorCode.ALL_ENGINES_DOWN, None
     gateway = EventMapper._gateway_name(event.get_platform_id())
     result = await rt.recognize_score.recognize(
         user.id, image_bytes, source_gateway=gateway,
     )
     if result.score_attempt is not None:
-        return PluginErrorCode.SUCCESS
+        return PluginErrorCode.SUCCESS, result
     if result.candidates_for_user:
         cid = result.candidate_set_id
         if cid is not None:
@@ -240,14 +248,31 @@ async def _handle_buffered_image(
             rt.set_pending(
                 user.id.value, event.get_platform_id(), conv_id, cid, display_text,
             )
-        return PluginErrorCode.CANDIDATES_AVAILABLE
-    return PluginErrorCode.NOT_PJSK_SCREENSHOT
+        return PluginErrorCode.CANDIDATES_AVAILABLE, result
+    return PluginErrorCode.NOT_PJSK_SCREENSHOT, None
 
 
 async def _get_image_result_text(
-    event: Any, code: PluginErrorCode, rt: PluginRuntime, mapper: EventMapper,
+    event: Any,
+    code: PluginErrorCode,
+    rt: PluginRuntime,
+    mapper: EventMapper,
+    result: Any | None = None,  # RecognizeResult from application layer
 ) -> str:
-    """Get the appropriate reply text for an image recognition result."""
+    """Get the appropriate reply text for an image recognition result.
+
+    On SUCCESS, builds a rich echo from *result* (song, difficulty,
+    status, accuracy, rating, decision source).  Falls back to "已记录"
+    if the result does not contain enough information.
+    """
+    if code == PluginErrorCode.SUCCESS and result is not None:
+        from pjsk_emubot.result_dto import build_score_echo, format_score_echo
+
+        echo = build_score_echo(result)
+        if echo is not None:
+            return format_score_echo(echo)
+        return ReplyBuilder.error_text(code)
+
     if code == PluginErrorCode.CANDIDATES_AVAILABLE:
         qq = mapper.extract_qq(event)
         user = await rt.user_repo.get_by_qq(qq)

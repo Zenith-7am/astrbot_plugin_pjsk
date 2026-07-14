@@ -92,3 +92,40 @@ def format_score_echo(echo: ScoreEcho) -> str:
     if echo.decision_source:
         return f"{base}（{echo.decision_source}）"
     return base
+
+
+# ── Builder from application-layer result ──────────────────────────────────
+
+
+def build_score_echo(
+    result: object,  # RecognizeResult — lazy import to avoid circular deps
+) -> ScoreEcho | None:
+    """Build a :class:`ScoreEcho` from a :class:`RecognizeResult`.
+
+    Returns ``None`` when the result does not contain enough information
+    for a safe display (e.g. no score attempt, no validated observation).
+    Callers must degrade gracefully to a brief success message.
+    """
+    # Lazy import — pjsk_emubot must not depend on pjsk_core.application at
+    # import time (avoids circular imports when pjsk_core.application modules
+    # reference ports that adapters implement).
+    from pjsk_core.application.recognize_score import RecognizeResult  # noqa: PLC0415
+
+    if not isinstance(result, RecognizeResult):
+        return None
+
+    if result.score_attempt is None or result.validated is None:
+        return None
+
+    obs = result.validated.observation
+    attempt = result.score_attempt
+
+    return ScoreEcho(
+        song_title=obs.song_title,
+        difficulty=obs.difficulty,
+        displayed_level=obs.displayed_level,
+        status=attempt.status,
+        accuracy=attempt.accuracy,
+        rating=attempt.rating,
+        decision_source=decision_source_text(result.outcome.decision),
+    )
