@@ -315,10 +315,17 @@ def _b20_text(result: Any) -> str:
     return "\n".join(lines)
 
 
-def _b20_render_payload(result: Any) -> dict[str, object]:
-    """Build render-service payload for a B20Result."""
+def _b20_render_payload(result: Any, jackets: dict[int, str] | None = None) -> dict[str, Any]:
+    """Build render-service payload for a B20Result.
+
+    *jackets* is an optional ``{song_id: data_url}`` map from
+    :meth:`JacketCache.prefetch_jackets`.  Entries whose *song_id* is not
+    in the map get ``"jacket": null`` — the JS renderer shows a gray
+    placeholder.
+    """
     entries: list[dict[str, object]] = []
     for entry in result.entries:
+        sid: int = entry.song_id
         entries.append({
             "title": entry.song_title,
             "difficulty": entry.difficulty.value,
@@ -327,7 +334,7 @@ def _b20_render_payload(result: Any) -> dict[str, object]:
             "status": 2 if entry.status.value == "ap" else 1,
             "achievementRate": entry.accuracy,
             "power": entry.rating,
-            "jacket": None,
+            "jacket": (jackets or {}).get(sid),
             "judges": {
                 "great": entry.judgements.great,
                 "good": entry.judgements.good,
@@ -351,6 +358,18 @@ def _b20_render_payload(result: Any) -> dict[str, object]:
     }
 
 
+def _unique_song_ids_from_entries(entries: list[Any]) -> list[int]:
+    """Extract unique song_ids from a list of B20Entry or DifficultyRankEntry."""
+    seen: set[int] = set()
+    result: list[int] = []
+    for e in entries:
+        sid = e.song_id
+        if sid not in seen:
+            seen.add(sid)
+            result.append(sid)
+    return result
+
+
 async def _pjsk_b20(
     rt: PluginRuntime, mapper: EventMapper, event: Any,
 ) -> tuple[str, bytes | None]:
@@ -368,8 +387,16 @@ async def _pjsk_b20(
 
     if rt.renderer is not None and result.entries:
         from pjsk_core.ports.renderer import RenderPayload
+
+        # Prefetch jacket images (no-op when jacket_cache is None)
+        jackets: dict[int, str] | None = None
+        if rt.jacket_cache is not None:
+            song_ids = _unique_song_ids_from_entries(list(result.entries))
+            jackets = await rt.jacket_cache.prefetch_jackets(song_ids)
+
         payload = RenderPayload(
-            template_name="b20", data=_b20_render_payload(result),
+            template_name="b20",
+            data=_b20_render_payload(result, jackets),
         )
         image_bytes = await rt.renderer.render(payload)
         return text, image_bytes
@@ -432,14 +459,20 @@ def _difficulty_text(
 
 def _difficulty_render_payload(
     ranking: Any, difficulty: Any, level: int, global_mode: bool,
-) -> dict[str, object]:
-    """Build render-service payload for a DifficultyRanking."""
+    jackets: dict[int, str] | None = None,
+) -> dict[str, Any]:
+    """Build render-service payload for a DifficultyRanking.
+
+    *jackets* is an optional ``{song_id: data_url}`` map from
+    :meth:`JacketCache.prefetch_jackets`.  Entries whose *song_id* is not
+    in the map get ``"jacket": null``.
+    """
     mode = "global" if global_mode else "personal"
     header = f"{difficulty.value.upper()} {level}"
     if not global_mode:
         header += f" · {ranking.played_count}/{ranking.total_count}"
 
-    # Group songs into tiers by community_constant (first decimal)
+    # Group songs into tiers by community_constant
     tiers_map: dict[str, list[dict[str, object]]] = {}
     for entry in ranking.entries:
         const = entry.community_constant
@@ -448,7 +481,7 @@ def _difficulty_render_payload(
             "song_title": entry.song_title,
             "community_constant": entry.community_constant,
             "note_count": entry.note_count,
-            "jacket": None,
+            "jacket": (jackets or {}).get(entry.song_id),
             "is_played": entry.is_played,
             "status": (
                 (2 if entry.status.value == "ap" else 1 if entry.status.value == "fc" else 0)
@@ -508,9 +541,16 @@ async def _pjsk_difficulty(
 
     if rt.renderer is not None:
         from pjsk_core.ports.renderer import RenderPayload
+
+        # Prefetch jacket images (no-op when jacket_cache is None)
+        jackets: dict[int, str] | None = None
+        if rt.jacket_cache is not None:
+            song_ids = _unique_song_ids_from_entries(list(ranking.entries))
+            jackets = await rt.jacket_cache.prefetch_jackets(song_ids)
+
         payload = RenderPayload(
             template_name="difficulty",
-            data=_difficulty_render_payload(ranking, difficulty, level, global_mode),
+            data=_difficulty_render_payload(ranking, difficulty, level, global_mode, jackets),
         )
         image_bytes = await rt.renderer.render(payload)
         return text, image_bytes
