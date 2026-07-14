@@ -63,6 +63,7 @@ class FakeEvent:
     sender_id: str = "123456789"
     _group_id: str | None = None
     message_str: str = ""
+    _stopped: bool = field(default=False, init=False)
 
     def get_platform_id(self) -> str:
         return self.platform_id
@@ -87,8 +88,12 @@ class FakeEvent:
         return text
 
     def stop_event(self) -> None:
-        """Simulate AstrBot's event.stop_event()."""
-        pass
+        """Simulate AstrBot's event.stop_event() — tracked for tests."""
+        self._stopped = True
+
+    def is_stopped(self) -> bool:
+        """Test helper: was stop_event() called?"""
+        return self._stopped
 
 
 # ── Fake Runtime dependencies ──────────────────────────────────────────────
@@ -162,6 +167,30 @@ class _FakeRecognizeScore:
             )
 
         # DISAGREEMENT — no score, no candidates
+        return RecognizeResult(
+            outcome=outcome, validated=None,
+            candidates_for_user=(), candidate_set_id=None,
+            score_attempt=None,
+        )
+
+
+class _FakeRecognizeScoreNoMatch:
+    """Simulates RecognizeScore returning NOT_PJSK_SCREENSHOT (no consensus, no candidates)."""
+
+    async def recognize(
+        self, user_id: UserId, image: bytes, *, source_gateway: str,
+    ) -> Any:
+        from pjsk_core.application.recognize_score import RecognizeResult
+        from pjsk_core.application.vision_race import (
+            VisionRaceDecision,
+            VisionRaceOutcome,
+        )
+
+        outcome = VisionRaceOutcome(
+            decision=VisionRaceDecision.ALL_FAILED,
+            selected=None, consensus=None,
+            results=(), circuit_rejects=(),
+        )
         return RecognizeResult(
             outcome=outcome, validated=None,
             candidates_for_user=(), candidate_set_id=None,
@@ -870,3 +899,156 @@ class TestPluginClassLocation:
         assert callable(getattr(_plugin_main.PjskPlugin, "on_message", None)), (
             "PjskPlugin.on_message is missing — image OCR will not work"
         )
+
+
+# ── Takeover boundary tests (Phase 4a.1 C3) ──────────────────────────────────
+
+
+class TestTakeoverBoundary:
+    """Verify stop_event() is called only when PJSK takes over the event."""
+
+    def _make_plugin_takeover(
+        self, consensus: bool = True,
+    ) -> _plugin_main.PjskPlugin:
+        """Create plugin with OCR that returns consensus or no-match."""
+        rt = _IntegrationFakeRuntime()
+        if not consensus:
+            rt.recognize_score = _FakeRecognizeScoreNoMatch()
+        rt.rate_limiter = UserRateLimiter()
+        plugin: _plugin_main.PjskPlugin = (
+            _plugin_main.PjskPlugin.__new__(_plugin_main.PjskPlugin)
+        )
+        object.__setattr__(plugin, '_runtime', rt)
+        return plugin
+
+    async def _collect(
+        self, gen: Any,
+    ) -> tuple[list[str], bool]:
+        """Collect yielded replies and check stop_event state."""
+        replies: list[str] = []
+        async for item in gen:
+            if isinstance(item, str):
+                replies.append(item)
+        return replies
+
+    # ── Private chat ────────────────────────────────────────────────────
+
+    async def test_private_image_stops_event(self, image_file: str) -> None:
+        """Private chat single image → OCR runs → stop_event called."""
+        plugin = self._make_plugin_takeover(consensus=True)
+        img = Image(file=image_file)
+        event = FakeEvent(
+            message_obj=FakeMessageObj(message=[img]),
+        )
+        async for _ in plugin.on_message(event):
+            pass
+        assert event.is_stopped(), (
+            "Private image must stop event (PJSK takeover)"
+        )
+
+    async def test_private_non_pjsk_replies_failure(
+        self, image_file: str,
+    ) -> None:
+        """Private chat non-PJSK image → clear failure message, no stop."""
+        plugin = self._make_plugin_takeover(consensus=False)
+        img = Image(file=image_file)
+        event = FakeEvent(
+            message_obj=FakeMessageObj(message=[img]),
+        )
+        replies: list[str] = []
+        async for item in plugin.on_message(event):
+            if isinstance(item, str):
+                replies.append(item)
+        # Non-PJSK → passthrough, no reply, no stop
+        assert replies == []
+        assert not event.is_stopped()
+
+    async def test_private_multi_image_stops_event(
+        self, image_file: str,
+    ) -> None:
+        """Private chat multi-image → stop_event + error message."""
+        plugin = self._make_plugin_takeover()
+        img1 = Image(file=image_file)
+        img2 = Image(file=image_file)
+        event = FakeEvent(
+            message_obj=FakeMessageObj(message=[img1, img2]),
+        )
+        replies: list[str] = []
+        async for item in plugin.on_message(event):
+            if isinstance(item, str):
+                replies.append(item)
+        assert any("一次只能识别一张" in r for r in replies)
+        assert event.is_stopped()
+
+    # ── Group chat ──────────────────────────────────────────────────────
+
+    async def test_group_at_bot_image_stops_event(
+        self, image_file: str,
+    ) -> None:
+        """Group @Bot+Image → OCR → stop_event called."""
+        plugin = self._make_plugin_takeover(consensus=True)
+        bot_id = "bot123"
+        at = At(target=bot_id)
+        img = Image(file=image_file)
+        event = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[at, img], self_id=bot_id),
+        )
+        async for _ in plugin.on_message(event):
+            pass
+        assert event.is_stopped()
+
+    async def test_group_plain_message_not_stopped(self) -> None:
+        """Group plain text (no @Bot, no image) → not stopped → passthrough."""
+        plugin = self._make_plugin_takeover()
+        event = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_str="今天天气真好",
+        )
+        async for _ in plugin.on_message(event):
+            pass
+        assert not event.is_stopped()
+
+    async def test_group_at_other_user_image_not_stopped(
+        self, image_file: str,
+    ) -> None:
+        """@OtherUser+Image → NOT stopped → passthrough to chat personality."""
+        plugin = self._make_plugin_takeover()
+        bot_id = "bot123"
+        at = At(target="other_user")
+        img = Image(file=image_file)
+        event = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(message=[at, img], self_id=bot_id),
+        )
+        async for _ in plugin.on_message(event):
+            pass
+        assert not event.is_stopped(), (
+            "@OtherUser+Image must NOT be taken over by PJSK"
+        )
+
+    async def test_group_at_bot_multi_image_stops_event(
+        self, image_file: str,
+    ) -> None:
+        """Group @Bot+multi-image → stops event with rejection message."""
+        plugin = self._make_plugin_takeover()
+        bot_id = "bot123"
+        at = At(target=bot_id)
+        img1 = Image(file=image_file)
+        img2 = Image(file=image_file)
+        event = FakeEvent(
+            platform_id="onebot_v11", sender_id="111111",
+            _group_id="group:abc",
+            message_obj=FakeMessageObj(
+                message=[at, img1, img2], self_id=bot_id,
+            ),
+        )
+        replies: list[str] = []
+        async for item in plugin.on_message(event):
+            if isinstance(item, str):
+                replies.append(item)
+        assert any("一次只能识别一张" in r for r in replies)
+        assert event.is_stopped()
