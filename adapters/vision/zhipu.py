@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from adapters.vision._http import map_request_error, map_status_error
+from adapters.vision._prompt import PJSK_OCR_PROMPT
 from adapters.vision.gemini import Secret
 from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.ocr import (
@@ -22,6 +23,8 @@ from pjsk_core.domain.ocr import (
     VisionResponseError,
 )
 from pjsk_core.domain.scores import Judgements
+
+ZHIPU_OCR_PROMPT = PJSK_OCR_PROMPT  # Re-export for test verification
 
 _DIFF_MAP: dict[str, Difficulty] = {
     "EASY": Difficulty.EASY,
@@ -124,13 +127,7 @@ class ZhipuVisionEngine:
             VisionServerError: API returned HTTP 5xx.
             VisionResponseError: Unexpected response format or content.
         """
-        prompt = (
-            "You are a PJSK score screenshot reader. "
-            "Extract: song title, difficulty (EASY/NORMAL/HARD/EXPERT/MASTER/APPEND), "
-            "level number, and counts: PERFECT GREAT GOOD BAD MISS. "
-            "Return ONLY valid JSON with keys: song_title, difficulty, level, "
-            "perfect, great, good, bad, miss."
-        )
+        prompt = PJSK_OCR_PROMPT
         body: dict[str, Any] = {
             "model": self._model,
             "messages": [{
