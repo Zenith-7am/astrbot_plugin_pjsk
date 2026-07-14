@@ -66,6 +66,16 @@ class _FakeScoreRepo:
     ) -> list[ScoreAttempt]:
         return []
 
+    async def get_b20(
+        self, user_id: UserId, include_append: bool,
+    ) -> list[ScoreAttempt]:
+        return []
+
+    async def list_personal_bests_for_difficulty(
+        self, user_id: UserId, chart_ids: list[int],
+    ) -> dict[int, ScoreAttempt]:
+        return {}
+
 
 class _FakeChartRepo:
     def __init__(self, chart: Chart | None = None) -> None:
