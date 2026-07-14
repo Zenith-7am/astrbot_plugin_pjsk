@@ -5,3 +5,5 @@ author: leoviria
 astrbot_version: ">=4.16,<5"
 support_platforms: [aiocqhttp]
 repo: https://github.com/Zenith-7am/astrbot_plugin_pjsk
+class_module: main
+class_name: PjskPlugin

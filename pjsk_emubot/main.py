@@ -1,11 +1,10 @@
-"""DEPRECATED — PjskPlugin moved to root ``main.py`` (AstrBot requirement).
+"""Compatibility re-export — PjskPlugin lives in root ``main.py``.
 
-This module is kept as a reference for git history.  All handler logic,
-the plugin class, and the ``@filter``-decorated methods have migrated:
-
-- **Plugin class** ``PjskPlugin`` → root ``main.py``
-- **Helper functions** → ``pjsk_emubot._handlers``
-
-Do NOT add new imports from this module.  See commit history for the
-original implementation.
+AstrBot v4 plugin discovery may resolve to this module.  Forward
+everything to the root plugin entry point so old references keep working.
 """
+
+from __future__ import annotations
+
+# Re-export from the canonical location at plugin root.
+from main import PjskPlugin  # noqa: F401 — compatibility shim
