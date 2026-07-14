@@ -1,4 +1,4 @@
-name: astrobot_plugin_pjsk
+name: astrbot_plugin_pjsk
 desc: PJSK 成绩截图 OCR 识别 — 多视觉模型竞速、个人最佳入库、候选确认
 version: 0.1.0-alpha.1
 author: leoviria
