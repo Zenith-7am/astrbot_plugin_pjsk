@@ -81,17 +81,36 @@ def _chart_data_dir() -> Path:
 
 
 def _read_config(config: dict[str, Any] | None) -> dict[str, Any]:
-    """Merge AstrBot WebUI config with environment-variable fallbacks.
+    """Merge AstrBot WebUI config with file + environment-variable fallbacks.
 
-    API keys are read from env vars first (dev convenience), then from
-    the config dict (WebUI settings).  Numeric values use config defaults
-    when the key is absent.
+    Resolution order (later wins):
+    1. ``config.yml`` in plugin data directory (loose-file overrides)
+    2. WebUI config dict
+    3. Environment variables (API keys only)
     """
     import os
 
-    cfg: dict[str, Any] = dict(config) if config else {}
+    cfg: dict[str, Any] = {}
 
-    # API keys — env vars take precedence (dev / CI)
+    # 1. Loose config file (lowest priority)
+    try:
+        data_dir = _resolve_db_path().parent
+        config_file = data_dir / "config.yml"
+        if config_file.exists():
+            import yaml  # type: ignore[import-untyped]
+            with open(config_file, "r", encoding="utf-8") as fh:
+                file_cfg = yaml.safe_load(fh) or {}
+            if isinstance(file_cfg, dict):
+                cfg.update({k: v for k, v in file_cfg.items() if v})
+                _logger.info("Merged config from %s: %s", config_file, list(cfg.keys()))
+    except Exception:
+        _logger.debug("No config.yml fallback loaded", exc_info=True)
+
+    # 2. WebUI config (overrides file)
+    if config:
+        cfg.update(config)
+
+    # 3. API keys — env vars take precedence (dev / CI)
     if not cfg.get("gemini_api_key"):
         cfg["gemini_api_key"] = os.environ.get("GEMINI_API_KEY", "")
     if not cfg.get("zhipu_api_key"):
