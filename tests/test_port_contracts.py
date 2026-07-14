@@ -16,7 +16,7 @@ from pjsk_core.ports.cache import (
     CandidateStore,
 )
 from pjsk_core.ports.identity import IdentityResolver
-from pjsk_core.ports.renderer import RenderRequest, RenderResult, Renderer
+from pjsk_core.ports.renderer import RenderPayload, Renderer
 from pjsk_core.ports.repositories import (
     ChartRepository,
     ScoreRepository,
@@ -181,12 +181,8 @@ class FakeVisionEngine:
 
 
 class FakeRenderer:
-    async def render(self, request: RenderRequest) -> RenderResult:
-        return RenderResult(
-            image_bytes=b"fake-png-data",
-            renderer_version="fake-1.0",
-            template_version=request.template + "-v1",
-        )
+    async def render(self, payload: RenderPayload) -> bytes | None:
+        return b"fake-png-data"
 
 
 class FakeIdentityResolver:
@@ -295,9 +291,9 @@ async def test_vision_engine_contract() -> None:
 
 async def test_renderer_contract() -> None:
     renderer: Renderer = FakeRenderer()
-    req = RenderRequest(template="b20", data={}, width=800, height=600)
-    result = await renderer.render(req)
-    assert result.image_bytes == b"fake-png-data"
+    payload = RenderPayload(template_name="b20", data={"entries": []})
+    result = await renderer.render(payload)
+    assert result == b"fake-png-data"
 
 
 async def test_identity_resolver_contract() -> None:
