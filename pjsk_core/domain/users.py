@@ -40,6 +40,7 @@ class User:
     id: UserId
     qq_number: QqNumber
     game_id: str | None
+    append_excluded: bool = True
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

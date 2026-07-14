@@ -52,6 +52,8 @@ class UserRepository(Protocol):
     Raises:
         DuplicateGameIdError: game_id already belongs to another user.
     """
+    async def get_append_excluded(self, user_id: UserId) -> bool: ...
+    async def set_append_excluded(self, user_id: UserId, excluded: bool) -> None: ...
 
 
 class ChartRepository(Protocol):

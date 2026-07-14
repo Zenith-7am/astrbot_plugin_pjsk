@@ -194,7 +194,7 @@ class SqliteUserRepository:
 
     async def get_by_id(self, user_id: UserId) -> User | None:
         cursor = await self._conn.execute(
-            "SELECT id, qq_number, game_id, created_at, updated_at "
+            "SELECT id, qq_number, game_id, append_excluded, created_at, updated_at "
             "FROM users WHERE id = ?",
             (user_id.value,),
         )
@@ -205,7 +205,7 @@ class SqliteUserRepository:
 
     async def get_by_qq(self, qq: QqNumber) -> User | None:
         cursor = await self._conn.execute(
-            "SELECT id, qq_number, game_id, created_at, updated_at "
+            "SELECT id, qq_number, game_id, append_excluded, created_at, updated_at "
             "FROM users WHERE qq_number = ?",
             (qq.value,),
         )
@@ -217,8 +217,8 @@ class SqliteUserRepository:
     async def create(self, qq: QqNumber, game_id: str | None) -> User:
         now = datetime.now(timezone.utc).isoformat()
         cursor = await self._conn.execute(
-            "INSERT INTO users (qq_number, game_id, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?)",
+            "INSERT INTO users (qq_number, game_id, append_excluded, created_at, updated_at) "
+            "VALUES (?, ?, 1, ?, ?)",
             (qq.value, game_id, now, now),
         )
         await self._conn.commit()
@@ -242,8 +242,8 @@ class SqliteUserRepository:
         """
         now = datetime.now(timezone.utc).isoformat()
         await self._conn.execute(
-            "INSERT OR IGNORE INTO users (qq_number, game_id, created_at, updated_at) "
-            "VALUES (?, NULL, ?, ?)",
+            "INSERT OR IGNORE INTO users (qq_number, game_id, append_excluded, created_at, updated_at) "
+            "VALUES (?, NULL, 1, ?, ?)",
             (qq.value, now, now),
         )
         await self._conn.commit()
@@ -319,11 +319,30 @@ class SqliteUserRepository:
             )
         return result
 
+    async def get_append_excluded(self, user_id: UserId) -> bool:
+        cursor = await self._conn.execute(
+            "SELECT append_excluded FROM users WHERE id = ?",
+            (user_id.value,),
+        )
+        rows = list(await cursor.fetchall())
+        if not rows:
+            raise RuntimeError(f"User {user_id.value} not found")
+        return bool(rows[0]["append_excluded"])
+
+    async def set_append_excluded(self, user_id: UserId, excluded: bool) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        await self._conn.execute(
+            "UPDATE users SET append_excluded = ?, updated_at = ? WHERE id = ?",
+            (int(excluded), now, user_id.value),
+        )
+        await self._conn.commit()
+
     def _row_to_user(self, row: Row) -> User:
         return User(
             id=UserId(row["id"]),
             qq_number=QqNumber(row["qq_number"]),
             game_id=row["game_id"],
+            append_excluded=bool(row["append_excluded"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )
