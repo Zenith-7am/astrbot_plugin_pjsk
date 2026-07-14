@@ -4,7 +4,6 @@ Uses an OpenAI-compatible chat completions endpoint.
 """
 from __future__ import annotations
 
-import base64 as _base64
 import json
 from typing import Any
 
@@ -12,8 +11,8 @@ import httpx
 
 from adapters.vision._http import map_request_error, map_status_error
 from adapters.vision._prompt import PJSK_OCR_PROMPT
+from adapters.vision._shared import _DIFF_MAP, _encode_base64
 from adapters.vision.gemini import Secret
-from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.ocr import (
     EngineIdentity,
     OcrObservation,
@@ -22,16 +21,6 @@ from pjsk_core.domain.ocr import (
 from pjsk_core.domain.scores import Judgements
 
 STEPFUN_OCR_PROMPT = PJSK_OCR_PROMPT  # Re-export for test verification
-
-
-_DIFF_MAP: dict[str, Difficulty] = {
-    "EASY": Difficulty.EASY,
-    "NORMAL": Difficulty.NORMAL,
-    "HARD": Difficulty.HARD,
-    "EXPERT": Difficulty.EXPERT,
-    "MASTER": Difficulty.MASTER,
-    "APPEND": Difficulty.APPEND,
-}
 
 
 class StepFunVisionEngine:
@@ -145,7 +134,3 @@ class StepFunVisionEngine:
             raise VisionResponseError(
                 f"Cannot parse StepFun response: {e}"
             ) from e
-
-
-def _encode_base64(data: bytes) -> str:
-    return _base64.b64encode(data).decode("ascii")

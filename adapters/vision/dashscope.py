@@ -7,17 +7,15 @@ Endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
 """
 from __future__ import annotations
 
-import base64 as _base64
 import json
-import re
 from typing import Any
 
 import httpx
 
 from adapters.vision._http import map_request_error, map_status_error
 from adapters.vision._prompt import PJSK_OCR_PROMPT
+from adapters.vision._shared import _DIFF_MAP, _encode_base64, _extract_json
 from adapters.vision.gemini import Secret
-from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.ocr import (
     EngineIdentity,
     OcrObservation,
@@ -26,35 +24,6 @@ from pjsk_core.domain.ocr import (
 from pjsk_core.domain.scores import Judgements
 
 DASHSCOPE_OCR_PROMPT = PJSK_OCR_PROMPT  # Re-export for test verification
-
-_DIFF_MAP: dict[str, Difficulty] = {
-    "EASY": Difficulty.EASY,
-    "NORMAL": Difficulty.NORMAL,
-    "HARD": Difficulty.HARD,
-    "EXPERT": Difficulty.EXPERT,
-    "MASTER": Difficulty.MASTER,
-    "APPEND": Difficulty.APPEND,
-}
-
-_FENCED_JSON_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
-
-
-def _extract_json(text: str) -> str:
-    """Return the JSON substring from *text*.
-
-    Handles bare JSON and fenced `` ```json {...} ``` `` blocks.
-    Raises :exc:`VisionResponseError` when no JSON-like content is found.
-    """
-    stripped = text.strip()
-    if stripped.startswith("{"):
-        return stripped
-    m = _FENCED_JSON_RE.search(stripped)
-    if m is not None:
-        return m.group(1)
-    raise VisionResponseError(
-        f"Response is not bare JSON or fenced JSON. "
-        f"First 200 chars: {stripped[:200]!r}"
-    )
 
 
 class DashScopeVisionEngine:
@@ -193,6 +162,3 @@ class DashScopeVisionEngine:
                 f"Cannot parse DashScope response: {e}"
             ) from e
 
-
-def _encode_base64(data: bytes) -> str:
-    return _base64.b64encode(data).decode("ascii")

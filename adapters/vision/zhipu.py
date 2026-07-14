@@ -6,17 +6,15 @@ does NOT drop support for them.
 """
 from __future__ import annotations
 
-import base64 as _base64
 import json
-import re
 from typing import Any
 
 import httpx
 
 from adapters.vision._http import map_request_error, map_status_error
 from adapters.vision._prompt import PJSK_OCR_PROMPT
+from adapters.vision._shared import _DIFF_MAP, _encode_base64, _extract_json
 from adapters.vision.gemini import Secret
-from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.ocr import (
     EngineIdentity,
     OcrObservation,
@@ -25,43 +23,6 @@ from pjsk_core.domain.ocr import (
 from pjsk_core.domain.scores import Judgements
 
 ZHIPU_OCR_PROMPT = PJSK_OCR_PROMPT  # Re-export for test verification
-
-_DIFF_MAP: dict[str, Difficulty] = {
-    "EASY": Difficulty.EASY,
-    "NORMAL": Difficulty.NORMAL,
-    "HARD": Difficulty.HARD,
-    "EXPERT": Difficulty.EXPERT,
-    "MASTER": Difficulty.MASTER,
-    "APPEND": Difficulty.APPEND,
-}
-
-# Regex to extract a fenced ```json ... ``` block.  Intentionally
-# non-greedy — it stops at the first closing ```, so it cannot
-# accidentally span multiple code blocks or capture trailing text.
-_FENCED_JSON_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
-
-
-def _extract_json(text: str) -> str:
-    """Return the JSON substring from *text*.
-
-    Handles three forms produced by Zhipu models:
-    1. Bare JSON: ``"text"`` starts with ``{`` after optional whitespace.
-    2. Fenced JSON: `` ```json {...} ``` `` block — the fenced content
-       is returned verbatim (the fences are stripped).
-    3. Whitespace-only padding: leading / trailing whitespace is ignored.
-
-    Raises :exc:`VisionResponseError` when no JSON-like content is found.
-    """
-    stripped = text.strip()
-    if stripped.startswith("{"):
-        return stripped
-    m = _FENCED_JSON_RE.search(stripped)
-    if m is not None:
-        return m.group(1)
-    raise VisionResponseError(
-        f"Response is not bare JSON or fenced JSON. "
-        f"First 200 chars: {stripped[:200]!r}"
-    )
 
 
 class ZhipuVisionEngine:
@@ -203,6 +164,3 @@ class ZhipuVisionEngine:
                 f"Cannot parse Zhipu response: {e}"
             ) from e
 
-
-def _encode_base64(data: bytes) -> str:
-    return _base64.b64encode(data).decode("ascii")

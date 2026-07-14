@@ -1,12 +1,10 @@
 """Gemini vision engine adapter."""
 from __future__ import annotations
 
-import base64 as _base64
 import json
 from typing import Any
 
 import httpx
-from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.ocr import (
     EngineIdentity,
     OcrObservation,
@@ -16,6 +14,7 @@ from pjsk_core.domain.scores import Judgements
 
 from adapters.vision._http import map_request_error, map_status_error
 from adapters.vision._prompt import PJSK_OCR_PROMPT
+from adapters.vision._shared import _DIFF_MAP, _encode_base64
 
 GEMINI_OCR_PROMPT = PJSK_OCR_PROMPT  # Re-export for test verification
 
@@ -119,15 +118,7 @@ class GeminiVisionEngine:
             text = data["candidates"][0]["content"]["parts"][0]["text"]
             parsed = json.loads(text)
 
-            diff_map: dict[str, Difficulty] = {
-                "EASY": Difficulty.EASY,
-                "NORMAL": Difficulty.NORMAL,
-                "HARD": Difficulty.HARD,
-                "EXPERT": Difficulty.EXPERT,
-                "MASTER": Difficulty.MASTER,
-                "APPEND": Difficulty.APPEND,
-            }
-            difficulty = diff_map.get(parsed.get("difficulty", "").upper())
+            difficulty = _DIFF_MAP.get(parsed.get("difficulty", "").upper())
             if difficulty is None:
                 raise VisionResponseError(
                     f"Unknown difficulty: {parsed.get('difficulty')}"
@@ -194,7 +185,3 @@ def _build_request_body(image: bytes, prompt: str) -> dict[str, Any]:
             },
         },
     }
-
-
-def _encode_base64(data: bytes) -> str:
-    return _base64.b64encode(data).decode("ascii")

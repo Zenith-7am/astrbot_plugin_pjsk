@@ -80,3 +80,41 @@ class TestAdapterParseRegression:
     def test_stepfun_imports_cleanly(self) -> None:
         from adapters.vision.stepfun import StepFunVisionEngine
         assert StepFunVisionEngine is not None
+
+
+class TestSharedUtilities:
+    """Common adapter utilities must come from a single source, not be duplicated."""
+
+    def test_diff_map_is_shared(self) -> None:
+        """_DIFF_MAP must be the same object across all adapters."""
+        # Import from the shared module
+        from adapters.vision._shared import _DIFF_MAP as shared_map
+        from adapters.vision.zhipu import _DIFF_MAP as zhipu_map
+        from adapters.vision.dashscope import _DIFF_MAP as dashscope_map
+        from adapters.vision.stepfun import _DIFF_MAP as stepfun_map
+
+        assert zhipu_map is shared_map
+        assert dashscope_map is shared_map
+        assert stepfun_map is shared_map
+
+    def test_encode_base64_is_shared(self) -> None:
+        """_encode_base64 must be the same function across all adapters."""
+        from adapters.vision._shared import _encode_base64 as shared_fn
+        from adapters.vision.gemini import _encode_base64 as gemini_fn
+        from adapters.vision.zhipu import _encode_base64 as zhipu_fn
+        from adapters.vision.dashscope import _encode_base64 as dashscope_fn
+        from adapters.vision.stepfun import _encode_base64 as stepfun_fn
+
+        assert gemini_fn is shared_fn
+        assert zhipu_fn is shared_fn
+        assert dashscope_fn is shared_fn
+        assert stepfun_fn is shared_fn
+
+    def test_extract_json_is_shared(self) -> None:
+        """_extract_json must be the same function in zhipu and dashscope."""
+        from adapters.vision._shared import _extract_json as shared_fn
+        from adapters.vision.zhipu import _extract_json as zhipu_fn
+        from adapters.vision.dashscope import _extract_json as dashscope_fn
+
+        assert zhipu_fn is shared_fn
+        assert dashscope_fn is shared_fn
