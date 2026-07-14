@@ -349,7 +349,7 @@ async def _get_image_result_text(
     "pjsk-astrbot",
     "leoviria",
     "PJSK score tracking, B20, and chart rankings via multi-model vision OCR",
-    "0.1.0-alpha.1",
+    "0.0.0",
 )
 class PjskPlugin(Star):  # type: ignore
     """PJSK score recognition plugin for AstrBot."""
@@ -364,16 +364,11 @@ class PjskPlugin(Star):  # type: ignore
         """Called by AstrBot after plugin instantiation."""
         from pjsk_emubot.bootstrap import assemble_plugin_runtime
 
-        _logger.info("[PJSK] initialize() called, config=%s", bool(getattr(self, "config", None)))
-        try:
-            conf = getattr(self, "config", None)
-            if not isinstance(conf, dict):
-                conf = None
-            self._runtime = await assemble_plugin_runtime(conf)
-            _logger.info("[PJSK] runtime ready, recognize_score=%s", self._runtime.recognize_score is not None)
-        except Exception:
-            _logger.exception("[PJSK] initialize() failed")
-            raise
+        conf = getattr(self, "config", None)
+        if not isinstance(conf, dict):
+            conf = None
+        self._runtime = await assemble_plugin_runtime(conf)
+        _logger.info("PJSK plugin runtime initialized")
 
     # ── Commands ─────────────────────────────────────────────────────────
 
@@ -449,7 +444,6 @@ class PjskPlugin(Star):  # type: ignore
         7.  Everything else → passthrough to AstrBot personality
         """
         if self._runtime is None:
-            _logger.warning("[PJSK] on_message: _runtime is None — skipping")
             return
 
         rt = self._runtime
@@ -469,13 +463,11 @@ class PjskPlugin(Star):  # type: ignore
         # ── Collect event context ─────────────────────────────────────
         img_count = _image_count(event)
         group_chat = _is_group_chat(event)
-
         bot_id = _get_self_id(event) if group_chat else ""
         has_at = _is_at_bot(event, bot_id) if group_chat else False
         platform_id = event.get_platform_id()
         group_id = event.get_group_id() or "" if group_chat else ""
         sender_qq = mapper.extract_qq(event) if group_chat else None
-        _logger.info("[PJSK] on_message: img=%d group=%s has_at=%s", img_count, group_chat, has_at)
 
         # ── 2. Group chat: @Bot without image → consume buffer / arm ─
         if group_chat and has_at and img_count == 0:
