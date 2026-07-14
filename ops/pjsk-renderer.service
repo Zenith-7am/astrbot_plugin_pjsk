@@ -1,0 +1,21 @@
+[Unit]
+Description=PJSK Render Service (FastAPI + Playwright)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/pjsk-astrbot/current
+Environment=RENDER_HOST=127.0.0.1
+Environment=RENDER_PORT=3000
+Environment=RENDER_MAX_CONCURRENT=4
+ExecStart=/opt/pjsk-astrbot/current/.venv/bin/python render_service/main.py
+Restart=on-failure
+RestartSec=5
+
+# Security
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
