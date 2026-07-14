@@ -88,6 +88,12 @@ class ScoreRepository(Protocol):
     async def list_personal_bests(
         self, user_id: UserId, status_filter: set[ScoreStatus] | None = None,
     ) -> list[ScoreAttempt]: ...
+    async def get_b20(
+        self, user_id: UserId, include_append: bool,
+    ) -> list[ScoreAttempt]: ...
+    async def list_personal_bests_for_difficulty(
+        self, user_id: UserId, chart_ids: list[int],
+    ) -> dict[int, ScoreAttempt]: ...
 
 
 class SongRepository(Protocol):

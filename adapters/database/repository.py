@@ -463,6 +463,59 @@ class SqliteScoreRepository:
         rows = await self._conn.execute_fetchall(query, params)
         return [self._row_to_attempt(r) for r in rows]
 
+    async def get_b20(
+        self, user_id: UserId, include_append: bool,
+    ) -> list[ScoreAttempt]:
+        """Return top-20 FC/AP personal bests sorted by rating DESC.
+
+        When *include_append* is False, APPEND charts are excluded via
+        a JOIN filter.  Ties on rating are broken by chart_id ASC for
+        deterministic ordering.
+        """
+        if include_append:
+            query = """
+                SELECT sa.* FROM score_attempts sa
+                JOIN personal_bests pb ON pb.best_attempt_id = sa.id
+                WHERE pb.user_id = ?
+                  AND sa.status IN ('ap', 'fc')
+                ORDER BY sa.rating DESC, sa.chart_id ASC
+                LIMIT 20
+            """
+            params: list[object] = [user_id.value]
+        else:
+            query = """
+                SELECT sa.* FROM score_attempts sa
+                JOIN personal_bests pb ON pb.best_attempt_id = sa.id
+                JOIN charts c ON c.id = pb.chart_id
+                WHERE pb.user_id = ?
+                  AND sa.status IN ('ap', 'fc')
+                  AND c.difficulty != 'append'
+                ORDER BY sa.rating DESC, sa.chart_id ASC
+                LIMIT 20
+            """
+            params = [user_id.value]
+        rows = await self._conn.execute_fetchall(query, params)
+        return [self._row_to_attempt(r) for r in rows]
+
+    async def list_personal_bests_for_difficulty(
+        self, user_id: UserId, chart_ids: list[int],
+    ) -> dict[int, ScoreAttempt]:
+        """Return personal bests for a specific set of chart_ids.
+
+        Charts with no personal best are absent from the returned dict.
+        """
+        if not chart_ids:
+            return {}
+        placeholders = ",".join("?" * len(chart_ids))
+        query = f"""
+            SELECT sa.* FROM score_attempts sa
+            JOIN personal_bests pb ON pb.best_attempt_id = sa.id
+            WHERE pb.user_id = ? AND pb.chart_id IN ({placeholders})
+        """
+        params = [user_id.value] + chart_ids
+        rows = await self._conn.execute_fetchall(query, params)
+        return {r["chart_id"]: self._row_to_attempt(r) for r in rows}
+
     def _row_to_attempt(self, row: Row) -> ScoreAttempt:
         return ScoreAttempt(
             id=row["id"],
