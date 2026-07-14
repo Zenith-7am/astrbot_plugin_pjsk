@@ -349,7 +349,7 @@ async def _get_image_result_text(
     "pjsk-astrbot",
     "leoviria",
     "PJSK score tracking, B20, and chart rankings via multi-model vision OCR",
-    "0.0.0",
+    "0.1.0-alpha.1",
 )
 class PjskPlugin(Star):  # type: ignore
     """PJSK score recognition plugin for AstrBot."""
