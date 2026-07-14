@@ -887,15 +887,12 @@ class TestPluginClassLocation:
             "it moved to root main.py"
         )
 
-    def test_bind_and_on_message_are_registered(self) -> None:
-        """pjsk_bind and on_message must be callable methods on PjskPlugin.
+    def test_on_message_is_registered(self) -> None:
+        """on_message must be callable on PjskPlugin.
 
-        This is the canonical handler-registry contract: these two names
-        are what AstrBot's star_map looks up after loading the plugin.
+        This is the canonical handler-registry contract: AstrBot's star_map
+        looks up handler methods on the Star subclass after loading.
         """
-        assert callable(getattr(_plugin_main.PjskPlugin, "pjsk_bind", None)), (
-            "PjskPlugin.pjsk_bind is missing — /pjsk bind will not work"
-        )
         assert callable(getattr(_plugin_main.PjskPlugin, "on_message", None)), (
             "PjskPlugin.on_message is missing — image OCR will not work"
         )

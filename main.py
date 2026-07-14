@@ -108,61 +108,6 @@ class PjskPlugin(Star):  # type: ignore[misc]
             logger.exception("[PJSK] initialize failed")
             raise
 
-    # ── Commands ─────────────────────────────────────────────────────────
-
-    @filter.command_group("pjsk")  # type: ignore[misc]
-    def pjsk_command_group(self) -> None:
-        """``/pjsk`` command group."""
-        pass
-
-    @pjsk_command_group.command("bind")  # type: ignore[misc]
-    async def pjsk_bind(self, event: AstrMessageEvent, game_id: str = "") -> None:  # type: ignore[misc]
-        """``/pjsk bind <game_id>`` — bind PJSK game ID to your QQ."""
-        mapper = EventMapper()
-        if mapper.is_qq_official(event):
-            yield event.plain_result("QQ 官方入口暂未开放，请暂时使用 OneBot/NapCat")
-            return
-
-        game_id = (game_id or "").strip()
-        if not game_id or not game_id.isdigit() or not (6 <= len(game_id) <= 16):
-            yield event.plain_result("游戏 ID 应为 6-16 位数字，例如：/pjsk bind 1234567890123456")
-            return
-
-        if self._runtime is None:
-            yield event.plain_result("插件尚未初始化")
-            return
-
-        qq = mapper.extract_qq(event)
-        rt = self._runtime
-        user = await rt.user_repo.get_by_qq(qq)
-
-        if user is None:
-            user = await rt.user_repo.create(qq, game_id=None)
-
-        from pjsk_core.ports.repositories import (
-            AlreadyBoundError,
-            DuplicateGameIdError,
-        )
-        try:
-            user = await rt.user_repo.bind_game_id(user.id, game_id)
-        except DuplicateGameIdError:
-            yield event.plain_result(
-                f"游戏 ID {game_id} 已被其他 QQ 绑定，请检查输入是否正确"
-            )
-            return
-        except AlreadyBoundError:
-            if user.game_id == game_id:
-                yield event.plain_result(
-                    f"QQ {qq.value} 已绑定游戏 ID：{game_id}"
-                )
-            else:
-                yield event.plain_result(
-                    f"QQ {qq.value} 已绑定游戏 ID：{user.game_id}。"
-                    f"更换绑定暂不支持，请联系管理员。"
-                )
-            return
-        yield event.plain_result(f"已绑定：QQ {qq.value} → 游戏 ID {game_id}")
-
     # ── Main message handler ──────────────────────────────────────────────
 
     @filter.event_message_type(filter.EventMessageType.ALL)  # type: ignore[misc]
