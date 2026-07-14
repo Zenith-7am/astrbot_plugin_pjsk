@@ -803,7 +803,7 @@ class TestRichEcho:
 
         rt = _FakeRuntime()
         rt.rate_limiter = UserRateLimiter()  # Fresh — avoid shared class-level state
-        rt.recognize_score = _FakeRecognizeScoreWithEcho()
+        rt.recognize_score = _FakeRecognizeScoreWithEcho()  # type: ignore[assignment]
         mapper = EventMapper()
 
         # Simulate: user sends image → handle_image returns (SUCCESS, result)
@@ -813,7 +813,7 @@ class TestRichEcho:
         assert code == PluginErrorCode.SUCCESS
         assert result is not None
 
-        text = await _get_image_result_text(event, code, rt, mapper, result)
+        text = await _get_image_result_text(event, code, rt, mapper, result)  # type: ignore[arg-type]
         assert "幾望の月" in text
         assert "MASTER 31" in text
         assert "FC" in text
@@ -835,7 +835,7 @@ class TestRichEcho:
         code, result = await _handle_image(event, rt)  # type: ignore[arg-type]
         assert code == PluginErrorCode.SUCCESS
 
-        text = await _get_image_result_text(event, code, rt, mapper, result)
+        text = await _get_image_result_text(event, code, rt, mapper, result)  # type: ignore[arg-type]
         # Falls back because validated is None in FakeRecognizeScore
         assert text == "已记录"
 
@@ -913,23 +913,13 @@ class TestTakeoverBoundary:
         """Create plugin with OCR that returns consensus or no-match."""
         rt = _IntegrationFakeRuntime()
         if not consensus:
-            rt.recognize_score = _FakeRecognizeScoreNoMatch()
+            rt.recognize_score = _FakeRecognizeScoreNoMatch()  # type: ignore[assignment]
         rt.rate_limiter = UserRateLimiter()
         plugin: _plugin_main.PjskPlugin = (
             _plugin_main.PjskPlugin.__new__(_plugin_main.PjskPlugin)
         )
         object.__setattr__(plugin, '_runtime', rt)
         return plugin
-
-    async def _collect(
-        self, gen: Any,
-    ) -> tuple[list[str], bool]:
-        """Collect yielded replies and check stop_event state."""
-        replies: list[str] = []
-        async for item in gen:
-            if isinstance(item, str):
-                replies.append(item)
-        return replies
 
     # ── Private chat ────────────────────────────────────────────────────
 

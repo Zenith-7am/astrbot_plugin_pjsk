@@ -87,34 +87,34 @@ class TestSharedUtilities:
 
     def test_diff_map_is_shared(self) -> None:
         """_DIFF_MAP must be the same object across all adapters."""
-        # Import from the shared module
         from adapters.vision._shared import _DIFF_MAP as shared_map
-        from adapters.vision.zhipu import _DIFF_MAP as zhipu_map
-        from adapters.vision.dashscope import _DIFF_MAP as dashscope_map
-        from adapters.vision.stepfun import _DIFF_MAP as stepfun_map
+        # Verify adapters re-export the same object via import
+        import adapters.vision.zhipu as z
+        import adapters.vision.dashscope as d
+        import adapters.vision.stepfun as s
 
-        assert zhipu_map is shared_map
-        assert dashscope_map is shared_map
-        assert stepfun_map is shared_map
+        assert z._DIFF_MAP is shared_map  # type: ignore[attr-defined]
+        assert d._DIFF_MAP is shared_map  # type: ignore[attr-defined]
+        assert s._DIFF_MAP is shared_map  # type: ignore[attr-defined]
 
     def test_encode_base64_is_shared(self) -> None:
         """_encode_base64 must be the same function across all adapters."""
         from adapters.vision._shared import _encode_base64 as shared_fn
-        from adapters.vision.gemini import _encode_base64 as gemini_fn
-        from adapters.vision.zhipu import _encode_base64 as zhipu_fn
-        from adapters.vision.dashscope import _encode_base64 as dashscope_fn
-        from adapters.vision.stepfun import _encode_base64 as stepfun_fn
+        import adapters.vision.gemini as g
+        import adapters.vision.zhipu as z
+        import adapters.vision.dashscope as d
+        import adapters.vision.stepfun as s
 
-        assert gemini_fn is shared_fn
-        assert zhipu_fn is shared_fn
-        assert dashscope_fn is shared_fn
-        assert stepfun_fn is shared_fn
+        assert g._encode_base64 is shared_fn  # type: ignore[attr-defined]
+        assert z._encode_base64 is shared_fn  # type: ignore[attr-defined]
+        assert d._encode_base64 is shared_fn  # type: ignore[attr-defined]
+        assert s._encode_base64 is shared_fn  # type: ignore[attr-defined]
 
     def test_extract_json_is_shared(self) -> None:
         """_extract_json must be the same function in zhipu and dashscope."""
         from adapters.vision._shared import _extract_json as shared_fn
-        from adapters.vision.zhipu import _extract_json as zhipu_fn
-        from adapters.vision.dashscope import _extract_json as dashscope_fn
+        import adapters.vision.zhipu as z
+        import adapters.vision.dashscope as d
 
-        assert zhipu_fn is shared_fn
-        assert dashscope_fn is shared_fn
+        assert z._extract_json is shared_fn  # type: ignore[attr-defined]
+        assert d._extract_json is shared_fn  # type: ignore[attr-defined]

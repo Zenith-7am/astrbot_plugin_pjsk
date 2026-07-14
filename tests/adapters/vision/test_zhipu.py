@@ -6,7 +6,7 @@ import json
 import pytest
 
 from adapters.vision.gemini import Secret
-from adapters.vision.zhipu import ZhipuVisionEngine, _extract_json
+from adapters.vision.zhipu import ZhipuVisionEngine, _extract_json  # type: ignore[attr-defined]
 from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.ocr import EngineIdentity, VisionResponseError
 
