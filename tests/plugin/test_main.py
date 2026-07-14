@@ -739,11 +739,18 @@ class TestPluginClassLocation:
     """PjskPlugin MUST be defined in root main.py, not re-exported."""
 
     def test_class_module_is_root_main(self) -> None:
-        """The class's __module__ must resolve to the root main module."""
-        # When AstrBot imports "data.plugins.astrbot_plugin_pjsk.main",
-        # PjskPlugin.__module__ must be that root main.  Since our tests
-        # import via "import main as _plugin_main", the module is "main".
-        assert _plugin_main.PjskPlugin.__module__ == "main"
+        """The class's __module__ must resolve to a root ``main`` module.
+
+        AstrBot v4 imports ``data.plugins.astrbot_plugin_pjsk.main`` and
+        discovers handlers on the Star subclass found there.  If
+        ``__module__`` points to ``pjsk_emubot.main`` (old re-export),
+        handlers are silently ignored.
+        """
+        mod = _plugin_main.PjskPlugin.__module__
+        assert mod == "main", (
+            f"PjskPlugin.__module__ must be 'main', got {mod!r}. "
+            f"AstrBot handler discovery depends on this."
+        )
 
     def test_pjsk_emubot_main_is_stub(self) -> None:
         """pjsk_emubot.main must NOT contain PjskPlugin anymore."""
@@ -751,4 +758,17 @@ class TestPluginClassLocation:
         assert not hasattr(old_module, "PjskPlugin"), (
             "pjsk_emubot.main must not contain PjskPlugin — "
             "it moved to root main.py"
+        )
+
+    def test_bind_and_on_message_are_registered(self) -> None:
+        """pjsk_bind and on_message must be callable methods on PjskPlugin.
+
+        This is the canonical handler-registry contract: these two names
+        are what AstrBot's star_map looks up after loading the plugin.
+        """
+        assert callable(getattr(_plugin_main.PjskPlugin, "pjsk_bind", None)), (
+            "PjskPlugin.pjsk_bind is missing — /pjsk bind will not work"
+        )
+        assert callable(getattr(_plugin_main.PjskPlugin, "on_message", None)), (
+            "PjskPlugin.on_message is missing — image OCR will not work"
         )
