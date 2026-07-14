@@ -94,6 +94,32 @@ def format_score_echo(echo: ScoreEcho) -> str:
     return base
 
 
+def format_confirm_echo(attempt: object) -> str:
+    """Format a candidate-confirmation result as a compact one-liner.
+
+    Unlike :func:`format_score_echo`, this does NOT include a song title
+    (not available from :class:`~pjsk_core.domain.scores.ScoreAttempt`
+    alone).  Output::
+
+        已确认成绩 · FC · 99.83% · Rating 33.12
+    """
+    from pjsk_core.domain.scores import ScoreAttempt  # noqa: PLC0415
+
+    if not isinstance(attempt, ScoreAttempt):
+        return "已确认成绩"
+
+    status_label = _STATUS_LABEL.get(attempt.status, str(attempt.status.value))
+    accuracy_str = f"{attempt.accuracy:.2f}%"
+    rating_str = f"{attempt.rating:.2f}"
+
+    return (
+        f"已确认成绩 · "
+        f"{status_label} · "
+        f"{accuracy_str} · "
+        f"Rating {rating_str}"
+    )
+
+
 # ── Builder from application-layer result ──────────────────────────────────
 
 

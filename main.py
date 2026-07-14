@@ -227,14 +227,17 @@ class PjskPlugin(Star):  # type: ignore[misc]
                         user.id.value, platform_id, conv_id,
                     )
                     if cid is not None:
-                        is_selection, err_msg = await _handle_selection(
+                        is_selection, err_msg, attempt = await _handle_selection(
                             text, user.id, platform_id, conv_id, rt,
                         )
                         if is_selection:
                             if err_msg is not None:
                                 yield event.plain_result(err_msg)
                             else:
-                                yield event.plain_result("已确认成绩")
+                                from pjsk_emubot.result_dto import format_confirm_echo
+                                yield event.plain_result(
+                                    format_confirm_echo(attempt)
+                                )
                             event.stop_event()
                             return
             return

@@ -160,13 +160,14 @@ async def _handle_selection(
     platform_id: str,
     conversation_id: str,
     rt: PluginRuntime,
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, Any | None]:
     """Try to consume user input as a candidate selection.
 
-    Returns ``(is_selection, error_message)``:
-    - ``(False, None)`` — not a selection; passthrough to chat personality
-    - ``(True, None)`` — confirmed successfully
-    - ``(True, "...")`` — selection detected but failed
+    Returns ``(is_selection, error_message, score_attempt)``:
+    - ``(False, None, None)`` — not a selection; passthrough to chat personality
+    - ``(True, None, attempt)`` — confirmed successfully (attempt is the
+      recorded :class:`~pjsk_core.domain.scores.ScoreAttempt`)
+    - ``(True, "...", None)`` — selection detected but failed
     """
     text = text.strip()
 
@@ -174,7 +175,7 @@ async def _handle_selection(
         user_id.value, platform_id, conversation_id,
     )
     if cid is None:
-        return False, None
+        return False, None, None
 
     selection: int | None = None
 
@@ -188,7 +189,7 @@ async def _handle_selection(
         try:
             selection = int(text)
         except ValueError:
-            return False, None
+            return False, None, None
 
     result = await rt.confirm_candidate.confirm(
         user_id, cid, selection,
@@ -197,12 +198,12 @@ async def _handle_selection(
     from pjsk_core.application.confirm_candidate import ConfirmError
     if result.error in (ConfirmError.EXPIRED, ConfirmError.NOT_FOUND):
         rt.clear_pending(user_id.value, platform_id, conversation_id)
-        return True, f"确认失败：{result.error.value}"
+        return True, f"确认失败：{result.error.value}", None
     if result.error is not None:
-        return True, f"确认失败：{result.error.value}"
+        return True, f"确认失败：{result.error.value}", None
 
     rt.clear_pending(user_id.value, platform_id, conversation_id)
-    return True, None
+    return True, None, result.score_attempt
 
 
 async def _read_single_image_bytes_async(

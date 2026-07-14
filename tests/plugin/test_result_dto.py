@@ -270,3 +270,52 @@ class TestBuildScoreEcho:
             score_attempt=attempt,
         )
         assert build_score_echo(result) is None
+
+
+class TestFormatConfirmEcho:
+    """format_confirm_echo must produce compact confirm echo from ScoreAttempt."""
+
+    def test_fc_confirm_echo(self) -> None:
+        from datetime import datetime, timezone
+
+        from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
+        from pjsk_core.domain.users import UserId
+        from pjsk_emubot.result_dto import format_confirm_echo
+
+        attempt = ScoreAttempt(
+            id=1, user_id=UserId(1), chart_id=42,
+            judgements=Judgements(perfect=917, great=50, good=0, bad=0, miss=0),
+            accuracy=99.83, rating=33.12, status=ScoreStatus.FC,
+            image_sha256="x", source_gateway="x", ocr_run_id=1,
+            created_at=datetime.now(timezone.utc),
+        )
+        result = format_confirm_echo(attempt)
+        assert "已确认成绩" in result
+        assert "FC" in result
+        assert "99.83%" in result
+        assert "33.12" in result
+        assert "·" in result
+
+    def test_ap_confirm_echo(self) -> None:
+        from datetime import datetime, timezone
+
+        from pjsk_core.domain.scores import Judgements, ScoreAttempt, ScoreStatus
+        from pjsk_core.domain.users import UserId
+        from pjsk_emubot.result_dto import format_confirm_echo
+
+        attempt = ScoreAttempt(
+            id=2, user_id=UserId(1), chart_id=10,
+            judgements=Judgements(perfect=1200, great=0, good=0, bad=0, miss=0),
+            accuracy=101.0, rating=35.0, status=ScoreStatus.AP,
+            image_sha256="y", source_gateway="y", ocr_run_id=2,
+            created_at=datetime.now(timezone.utc),
+        )
+        result = format_confirm_echo(attempt)
+        assert "已确认成绩" in result
+        assert "AP" in result
+        assert "101.00%" in result
+
+    def test_none_returns_generic(self) -> None:
+        from pjsk_emubot.result_dto import format_confirm_echo
+
+        assert format_confirm_echo(None) == "已确认成绩"

@@ -285,13 +285,14 @@ class TestHandleImage:
 
 class TestHandleSelection:
     async def test_no_candidates_returns_none(self) -> None:
-        """When no candidates exist, returns (False, None) — not a selection."""
+        """When no candidates exist, returns (False, None, None) — not a selection."""
         rt = _FakeRuntime()
-        is_sel, err = await _handle_selection(
+        is_sel, err, attempt = await _handle_selection(
             "2", UserId(1), "onebot", "cs-1", rt,  # type: ignore[arg-type]
         )
         assert is_sel is False
         assert err is None
+        assert attempt is None
 
 
 # ── @Bot detection tests (R4) ────────────────────────────────────────────────
