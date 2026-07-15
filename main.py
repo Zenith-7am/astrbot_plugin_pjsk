@@ -126,7 +126,7 @@ class PjskPlugin(Star):  # type: ignore[misc]
 
     # ── Main message handler ──────────────────────────────────────────────
 
-    @filter.event_message_type(filter.EventMessageType.ALL)  # type: ignore[misc]
+    @filter.event_message_type(filter.EventMessageType.ALL)  # type: ignore[untyped-decorator]
     async def on_message(self, event: AstrMessageEvent) -> None:  # type: ignore[misc]
         """Handle incoming messages — candidate selection, image recognition."""
         if self._runtime is None:
@@ -265,7 +265,7 @@ class PjskPlugin(Star):  # type: ignore[misc]
 
     # ── /pjsk commands ─────────────────────────────────────────────────
 
-    @filter.command("pjsk")  # type: ignore[misc]
+    @filter.command("pjsk")  # type: ignore[untyped-decorator]
     async def pjsk_command(self, event: AstrMessageEvent) -> None:  # type: ignore[misc]
         """Handle /pjsk subcommands: b20, difficulty, append."""
         if self._runtime is None:

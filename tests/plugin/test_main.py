@@ -884,11 +884,17 @@ class TestPluginClassLocation:
         )
 
     def test_pjsk_emubot_main_is_stub(self) -> None:
-        """pjsk_emubot.main must NOT contain PjskPlugin anymore."""
-        import pjsk_emubot.main as old_module
-        assert not hasattr(old_module, "PjskPlugin"), (
-            "pjsk_emubot.main must not contain PjskPlugin — "
-            "it moved to root main.py"
+        """pjsk_emubot.main re-exports from root main.py as a compat shim."""
+        import pjsk_emubot.main as shim_module
+
+        assert hasattr(shim_module, "PjskPlugin"), (
+            "pjsk_emubot.main must re-export PjskPlugin for compatibility"
+        )
+        assert shim_module.PjskPlugin is _plugin_main.PjskPlugin, (
+            "pjsk_emubot.main.PjskPlugin must be the same class as root main.PjskPlugin"
+        )
+        assert shim_module.PjskPlugin.__module__ == "main", (
+            f"PjskPlugin.__module__ must be 'main', got {shim_module.PjskPlugin.__module__!r}"
         )
 
     def test_on_message_is_registered(self) -> None:
