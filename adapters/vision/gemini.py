@@ -125,7 +125,7 @@ class GeminiVisionEngine:
                 )
 
             return OcrObservation(
-                song_title=str(parsed.get("song_title", "")),
+                song_title=str(parsed.get("title", "")),
                 difficulty=difficulty,
                 displayed_level=int(parsed.get("level", 0)),
                 judgements=Judgements(
@@ -158,8 +158,8 @@ def _build_request_body(image: bytes, prompt: str) -> dict[str, Any]:
         "contents": [{
             "parts": [
                 {"text": prompt},
-                {"inline_data": {
-                    "mime_type": "image/jpeg",
+                {"inlineData": {
+                    "mimeType": "image/jpeg",
                     "data": _encode_base64(image),
                 }},
             ]
@@ -169,7 +169,7 @@ def _build_request_body(image: bytes, prompt: str) -> dict[str, Any]:
             "responseSchema": {
                 "type": "OBJECT",
                 "properties": {
-                    "song_title": {"type": "STRING"},
+                    "title": {"type": "STRING"},
                     "difficulty": {"type": "STRING"},
                     "level": {"type": "INTEGER"},
                     "perfect": {"type": "INTEGER"},
@@ -179,7 +179,7 @@ def _build_request_body(image: bytes, prompt: str) -> dict[str, Any]:
                     "miss": {"type": "INTEGER"},
                 },
                 "required": [
-                    "song_title", "difficulty", "level",
+                    "title", "difficulty", "level",
                     "perfect", "great", "good", "bad", "miss",
                 ],
             },

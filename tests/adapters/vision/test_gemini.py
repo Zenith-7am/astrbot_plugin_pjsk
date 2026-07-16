@@ -24,7 +24,7 @@ class TestGeminiResponseParsing:
             "candidates": [{
                 "content": {"parts": [{
                     "text": json.dumps({
-                        "song_title": "Test Song",
+                        "title": "Test Song",
                         "difficulty": "MASTER",
                         "level": 30,
                         "perfect": 1000,
