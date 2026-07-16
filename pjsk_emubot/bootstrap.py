@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -327,9 +328,14 @@ async def assemble_plugin_runtime(
             except Exception:
                 _logger.exception("Failed to create HttpRenderer, falling back to text")
 
-        # JacketCache — optional shared cache for CDN jacket images
+        # JacketCache — optional shared cache for CDN jacket images.
+        # PJSK_JACKET_CACHE_DIR env var takes priority over config dict;
+        # if neither is set or the directory is unwritable, jacket_cache
+        # stays None and render payloads will pass jacket=null (gray placeholder).
         jacket_cache = None
-        jacket_cache_dir = cfg.get("jacket_cache_dir", "").strip()
+        jacket_cache_dir = os.environ.get("PJSK_JACKET_CACHE_DIR", "").strip()
+        if not jacket_cache_dir:
+            jacket_cache_dir = cfg.get("jacket_cache_dir", "").strip()
         if jacket_cache_dir:
             try:
                 from adapters.rendering.jacket_cache import JacketCache
@@ -337,7 +343,14 @@ async def assemble_plugin_runtime(
                     cache_dir=jacket_cache_dir,
                     client=http_client,
                 )
-                _logger.info("JacketCache wired: %s", jacket_cache_dir)
+                if jacket_cache.cache_disabled:
+                    _logger.warning(
+                        "JacketCache dir unwritable, cache disabled: %s",
+                        jacket_cache_dir,
+                    )
+                    jacket_cache = None
+                else:
+                    _logger.info("JacketCache wired: %s", jacket_cache_dir)
             except Exception:
                 _logger.exception("Failed to create JacketCache")
 
