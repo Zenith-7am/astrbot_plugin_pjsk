@@ -11,7 +11,7 @@ from nonebot.rule import Rule
 
 from pjsk_core.application.recognize_score import RecognizeResult
 from pjsk_core.application.replies import TextReply
-from pjsk_core.application.vision_race import VisionRaceDecision
+from pjsk_core.application.vision_race import EngineResultStatus, VisionRaceDecision
 from pjsk_core.domain.users import QqNumber, User
 from gateway.commands import qq_allowed
 from gateway.adapters.event_mapper import IncomingMessage, map_event
@@ -225,7 +225,46 @@ def _format_candidates_text(result: RecognizeResult) -> str:
     return "\n".join(lines)
 
 
+# ── Engine diagnostics ───────────────────────────────────────────────────────
+
+
+def _log_engine_results(result: RecognizeResult) -> None:
+    """Log per-engine status so operators can distinguish consensus vs degraded."""
+    outcome = result.outcome
+    total = len(outcome.results)
+    succeeded = [r for r in outcome.results if r.status == EngineResultStatus.SUCCESS]
+    failed = [r for r in outcome.results if r.status != EngineResultStatus.SUCCESS]
+
+    parts = [f"decision={outcome.decision.value}", f"engines={total}"]
+    if succeeded:
+        parts.append(
+            "ok=" + ",".join(
+                f"{r.identity.engine_id}({r.elapsed_ms}ms)"
+                for r in succeeded
+            )
+        )
+    if failed:
+        parts.append(
+            "fail=" + ",".join(
+                f"{r.identity.engine_id}({r.status.value})"
+                for r in failed
+            )
+        )
+    if outcome.circuit_rejects:
+        parts.append(f"circuit_rejects={len(outcome.circuit_rejects)}")
+
+    _logger.info("OCR done: %s", " | ".join(parts))
+
+
 # ── Handler ──────────────────────────────────────────────────────────────────
+
+
+# ── PJSK_OCR_READONLY ────────────────────────────────────────────────────────
+# Environment variable controlling persistence:
+#   "1" (or any truthy value) — identify only, NEVER write to database.
+#   unset / "0"                — production mode: consensus → auto-save,
+#                                disagreement → store candidates for user pick.
+# Shadow verification uses "1"; normal operation leaves it unset.
 
 
 @image_matcher.handle()
@@ -233,7 +272,6 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
     """Handle image OCR.
 
     Consensus → auto-save score.  Disagreement → store candidates for user pick.
-    Set ``PJSK_OCR_READONLY=1`` in environment to skip persistence (shadow mode).
     """
     import os
 
@@ -294,10 +332,11 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
         result = await runtime.recognize_score.recognize(
             user.id, image_data, source_gateway="onebot", readonly=readonly,
         )
-        # Capture old PB *after* recognize in case of race (rare, cosmetic impact)
+        # Log engine-level diagnostics
+        _log_engine_results(result)
+        # Capture old PB after recognize (cosmetic — for "刷新个人最佳" status)
         if result.score_attempt is not None and not readonly:
             pb = await runtime.score_repo.get_personal_best(user.id, result.score_attempt.chart_id)
-            # If the current PB is ours (same attempt id), check if there was a previous one
             old_pb_rating = pb.rating if pb is not None and pb.id != result.score_attempt.id else None
     except Exception:
         _logger.exception("OCR failed")
@@ -305,7 +344,7 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
         return
 
     # Format and reply
-    decision = result.outcome.decision
+    decision = result.outcome.decision.decision
     if decision in (VisionRaceDecision.CONSENSUS, VisionRaceDecision.DEGRADED_SINGLE):
         if readonly:
             text = _format_readonly_result(result) if result.validated is not None else "识别完成但无法解析结果"
