@@ -44,7 +44,7 @@ from pjsk_core.application.vision_policy import EnginePolicy, VisionRacePolicy
 from pjsk_core.application.vision_race import EngineRuntime, VisionRace
 from pjsk_emubot.ephemeral import EphemeralImageBuffer
 from pjsk_emubot.rate_limiter import UserRateLimiter
-from pjsk_emubot.runtime import PluginRuntime
+from pjsk_runtime.runtime import Runtime
 
 _logger = logging.getLogger(__name__)
 
@@ -126,8 +126,8 @@ def _read_config(config: dict[str, Any] | None) -> dict[str, Any]:
 
 async def assemble_plugin_runtime(
     config: dict[str, Any] | None = None,
-) -> PluginRuntime:
-    """Build all dependencies and return a PluginRuntime.
+) -> Runtime:
+    """Build all dependencies and return a Runtime.
 
     Called once at plugin startup.  Handles first-install initialisation
     (migrations + chart-data import) and emits a startup log line.
@@ -341,7 +341,7 @@ async def assemble_plugin_runtime(
         cooldown = float(cfg.get("user_cooldown_seconds", 5))
         image_buffer = EphemeralImageBuffer()
 
-        runtime = PluginRuntime(
+        runtime = Runtime(
             user_repo=user_repo,
             chart_repo=chart_repo,
             score_repo=score_repo,
@@ -371,6 +371,7 @@ async def assemble_plugin_runtime(
         )
         _logger.info("[PJSK] engines: %s", engine_list)
 
+        runtime.mark_ready()
         return runtime
 
     except Exception:
