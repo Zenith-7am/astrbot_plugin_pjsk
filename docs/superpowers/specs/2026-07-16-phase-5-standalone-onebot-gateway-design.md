@@ -294,18 +294,41 @@ class AdapterBundle:
     candidate_store: CandidateStore
 ```
 
-### 7.2 三种预定义 Bundle
+### 7.2 事务边界与连接工厂
+
+一次成绩确认 (`RecognizeScore` + `ConfirmCandidate`) 要求在**同一 SQLite 事务**中完成 `score_attempts` INSERT 和 `personal_bests` UPSERT。
+
+`AdapterBundle` 使用共享 `ConnectionFactory`，不各自独立开连接：
+
+```python
+class ConnectionFactory:
+    """Creates aiosqlite connections sharing a single WAL-mode database."""
+
+    def __init__(self, db_path: str, *, readonly: bool = False):
+        self._db_path = db_path
+        self._readonly = readonly
+
+    async def connect(self) -> aiosqlite.Connection:
+        if self._readonly:
+            return await open_readonly_sqlite(self._db_path)
+        return await get_connection(self._db_path)  # existing factory, WAL mode
+```
+
+Repository 构造时接收 `ConnectionFactory`，每次用例执行时调用 `factory.connect()` 获取连接——同一用例内的 `ScoreRepository` 和 `OcrRunRepository` 通过**同一个事务上下文**共享连接。
+
+### 7.3 三种预定义 Bundle
 
 ```python
 # ── Production bundle ──────────────────────────────────────────
 def production_adapters(db_path: str) -> AdapterBundle:
-    """Real SQLite repositories, read-write connections."""
+    """Real SQLite repositories sharing a read-write ConnectionFactory."""
+    cf = ConnectionFactory(db_path, readonly=False)
     return AdapterBundle(
-        user_repo=SqliteUserRepository(get_connection(db_path)),
-        chart_repo=SqliteChartRepository(get_connection(db_path)),
-        score_repo=SqliteScoreRepository(get_connection(db_path)),
-        song_repo=SqliteSongRepository(get_connection(db_path)),
-        ocr_run_repo=SqliteOcrRunRepository(db_path),
+        user_repo=SqliteUserRepository(cf),
+        chart_repo=SqliteChartRepository(cf),
+        score_repo=SqliteScoreRepository(cf),
+        song_repo=SqliteSongRepository(cf),
+        ocr_run_repo=SqliteOcrRunRepository(cf),
         candidate_store=MemoryCandidateStore(),
     )
 
@@ -314,28 +337,31 @@ def production_adapters(db_path: str) -> AdapterBundle:
 def test_account_adapters(db_path: str) -> AdapterBundle:
     """Real SQLite repositories pointing to a test-only database.
 
-    The test database MUST NOT contain production user data.  Use an
-    empty database initialised by migrations, or one populated solely
-    from synthesised fixtures / irreversibly anonymised data.
+    The test database MUST NOT contain production user data.
+    Allowed sources: empty database initialised by migrations, or one
+    populated solely from synthesised fixtures.  Anonymised copies of
+    production data are NOT permitted — QQ numbers and game IDs are
+    low-entropy and cannot be rendered irreversibly anonymous by hashing.
     """
-    return production_adapters(db_path)  # same wiring, different path
+    return production_adapters(db_path)
 
 
 # ── Shadow (read-only) bundle ──────────────────────────────────
 def shadow_adapters(db_path: str) -> AdapterBundle:
-    """Physically read-only repositories.  Every write method raises
-    ShadowWriteViolation — callers cannot accidentally persist data.
+    """Physically read-only repositories via ConnectionFactory(readonly=True).
 
-    Real write-capable repository objects are NEVER instantiated.
-    Read methods delegate to SQLite connections opened with mode=ro.
+    Every ConnectionFactory.connect() opens a read-only connection
+    (file:…?mode=ro + PRAGMA query_only).  All write methods on
+    FailClosed* wrappers raise ShadowWriteViolation.
     """
-    ro_user = ReadOnlyUserRepository(db_path, mode="ro")
-    ro_score = ReadOnlyScoreRepository(db_path, mode="ro")
+    cf = ConnectionFactory(db_path, readonly=True)
+    ro_user = ReadOnlyUserRepository(db_path)
+    ro_score = ReadOnlyScoreRepository(db_path)
     return AdapterBundle(
         user_repo=FailClosedUserRepository(ro_user),
-        chart_repo=SqliteChartRepository(get_connection(db_path, mode="ro")),
+        chart_repo=ReadOnlyChartRepository(db_path),
         score_repo=FailClosedScoreRepository(ro_score),
-        song_repo=SqliteSongRepository(get_connection(db_path, mode="ro")),
+        song_repo=ReadOnlySongRepository(db_path),
         ocr_run_repo=FailClosedOcrRunRepository(),
         candidate_store=NoopCandidateStore(),
     )
@@ -885,23 +911,72 @@ class ShadowWriteViolation(Exception):
     """Raised when shadow-mode code attempts a write operation."""
 
 
+# ── Read-only SQLite factory ─────────────────────────────────────────
+
+from pathlib import Path
+from urllib.parse import quote
+
+
+def _quoted_uri(path: str | Path, mode: str = "ro") -> str:
+    """Build a file: URI with a query-string mode.
+
+    ``aiosqlite.connect()`` has no ``mode`` parameter; the connection
+    mode is set through the URI query string: ``file:<path>?mode=ro``.
+    """
+    return f"file:{quote(str(path))}?mode={mode}"
+
+
+async def open_readonly_sqlite(path: str | Path) -> aiosqlite.Connection:
+    """Open a read-only SQLite connection.
+
+    Read-only is enforced at the database engine level (``mode=ro`` in
+    the URI), not just by application discipline.  Callers can verify
+    this by running ``PRAGMA query_only;`` — it MUST return 1.
+
+    Any INSERT / UPDATE / DELETE on this connection will fail with
+    ``SQLITE_READONLY``.
+    """
+    conn = await aiosqlite.connect(_quoted_uri(path), uri=True)
+    # Belt-and-suspenders: enable query_only at the session level too
+    await conn.execute("PRAGMA query_only = ON")
+    return conn
+
+
+# ── Read-only repositories ───────────────────────────────────────────
+
 class ReadOnlyScoreRepository:
-    """Opens SQLite with mode=ro. Exposes ONLY read methods."""
+    """Opens SQLite with file:…?mode=ro. Exposes ONLY read methods."""
     def __init__(self, db_path: str):
-        self._conn = aiosqlite.connect(db_path, uri=True, mode="ro")
+        self._db_path = db_path
+        self._conn: aiosqlite.Connection | None = None
+
+    async def _ensure_conn(self) -> aiosqlite.Connection:
+        if self._conn is None:
+            self._conn = await open_readonly_sqlite(self._db_path)
+        return self._conn
+
     async def get_best(self, user_id, chart_id) -> ScoreAttempt | None: ...
     async def get_b20(self, user_id) -> list[ScoreAttempt]: ...
     # No save(), no update_personal_best() — type system enforces read-only
 
 
 class ReadOnlyUserRepository:
-    """Opens SQLite with mode=ro. Exposes ONLY read methods."""
+    """Opens SQLite with file:…?mode=ro. Exposes ONLY read methods."""
     def __init__(self, db_path: str):
-        self._conn = aiosqlite.connect(db_path, uri=True, mode="ro")
+        self._db_path = db_path
+        self._conn: aiosqlite.Connection | None = None
+
+    async def _ensure_conn(self) -> aiosqlite.Connection:
+        if self._conn is None:
+            self._conn = await open_readonly_sqlite(self._db_path)
+        return self._conn
+
     async def get_by_qq(self, qq) -> User | None: ...
     async def get_by_id(self, uid) -> User | None: ...
     # No create(), no get_or_create() — type system enforces read-only
 
+
+# ── Fail-closed wrappers ─────────────────────────────────────────────
 
 class FailClosedScoreRepository:
     """Wraps ReadOnlyScoreRepository; adds fail-closed write stubs."""
@@ -921,12 +996,10 @@ class FailClosedUserRepository:
     async def create(self, *a, **kw):
         raise ShadowWriteViolation("user create in shadow mode")
     async def get_or_create(self, qq_number):
-        # Read-only: look up by QQ, return ephemeral User if not found
         user = await self._ro.get_by_qq(qq_number)
         if user is not None:
             return user
         return User(id=UserId(-1), qq_number=qq_number, game_id=None)
-    # get_by_qq / get_by_id delegate to self._ro
 
 
 class FailClosedOcrRunRepository:
@@ -936,7 +1009,8 @@ class FailClosedOcrRunRepository:
 
 class NoopCandidateStore:
     async def put(self, *a, **kw) -> str:
-        return "shadow-cid-0000"
+        import secrets
+        return f"shadow-cid-{secrets.token_hex(4)}"  # per-call unique, ephemeral
     async def consume_selection(self, *a, **kw):
         return CandidateConsumeResult(CandidateConsumeStatus.NOT_FOUND, None, None)
 
@@ -944,14 +1018,17 @@ class NoopCandidateStore:
 async def shadow_bootstrap(config: dict) -> Runtime:
     """Assemble a read-only Runtime.
 
-    Real write-capable SQLite connections are NEVER opened — ReadOnly*
-    repositories use ``mode=ro``, and FailClosed* wrappers raise on write.
+    Real write-capable SQLite connections are NEVER opened —
+    open_readonly_sqlite() enforces ``mode=ro`` + ``PRAGMA query_only``.
+    FailClosed* wrappers raise on write.
     """
     from pjsk_runtime.bootstrap import bootstrap, shadow_adapters
     return await bootstrap(config, adapters=shadow_adapters(config["database_path"]))
 ```
 
-**`ReadOnlyScoreRepository` 和 `ReadOnlyUserRepository` 自身的类型不暴露任何 write 方法**——物理只读由 SQLite `mode=ro` 保证。`FailClosed*` wrapper 仅补齐 `AdapterBundle` 所需的协议方法，均 fail-closed。
+**`ReadOnlyScoreRepository` 和 `ReadOnlyUserRepository` 自身的类型不暴露任何 write 方法**——物理只读由 SQLite URI `?mode=ro` + `PRAGMA query_only = ON` 保证。`FailClosed*` wrapper 仅补齐 `AdapterBundle` 所需的协议方法，均 fail-closed。
+
+**测试必须确认**：`INSERT INTO …` 在只读连接上抛 `SQLITE_READONLY`。
 
 **验证规则**（必须有测试确认）：
 

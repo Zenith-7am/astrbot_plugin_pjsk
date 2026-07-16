@@ -31,9 +31,9 @@
 |------|--------------|------|------|
 | `pjsk-emu-bot.service` | active/running (pid 762758, since Jul 11; OneBot connection status: **unknown** — health endpoint returned `online:false` with last heartbeat ~50h ago, but this has not been independently verified against NapCat logs) | 旧 NoneBot | 冻结、归档、待切换后停用 |
 | `astrbot.service` | active/running | AstrBot + 我们的插件 | 保留，退出生产消息链 |
-| `render-service.service` | loaded, enabled, crash-looping（未 mask；`Restart=always, RestartSec=3`） | 旧渲染器（`/opt/render_service/`） | 待批准后 stop/disable/mask；当前端口 3000 由 `pjsk-renderer.service` 持有，旧服务启动即 EADDRINUSE 崩溃 |
+| `render-service.service` | disabled（`systemctl is-enabled` 确认）、未 mask、`Restart=always` 导致持续自动重启；每次启动即因端口 3000 被 `pjsk-renderer.service` 占用而 `EADDRINUSE` 崩溃 | 旧渲染器（`/opt/render_service/`） | 待批准后 stop + mask；端口归属已正确 |
 
-**审计依据**：2026-07-16 `systemctl list-units --all`, `systemctl status`, `ss -tlnp`, `curl /health/napcat`, `journalctl -u pjsk-emu-bot` (last log Jul 14). NapCat 日志未查阅，OneBot 实际连接状态未经独立验证。
+**审计依据**：2026-07-16 20:08 实时查询 `systemctl is-enabled` / `is-active` / `journalctl -u render-service.service -n 5`（EADDRINUSE 有 journal 证据）。其他服务状态来自同日 `systemctl list-units --all`, `systemctl status`, `ss -tlnp`, `curl /health/napcat`, `journalctl -u pjsk-emu-bot` (last log Jul 14). NapCat 日志未查阅，OneBot 实际连接状态未经独立验证。
 
 > **以上是审计快照，不是永久事实。任何生产操作前必须重新查询实际状态，不得照抄历史状态做决定。**
 
@@ -143,7 +143,13 @@
 
 **必须同时生成 release 内所有文件的 SHA-256 清单**（`manifest_files.sha256`）。
 
-`required_env_names` 由构建时启用的引擎配置**动态生成**：`ONEBOT_ACCESS_TOKEN` + `ADMIN_QQ` + `CDN_BASE_URL` 始终必填；各引擎的 `*_API_KEY` 仅在该引擎 `enabled=true` 时列入。不硬编码固定列表。
+`required_env_names` 由构建时启用的配置**动态生成**：
+- `ONEBOT_ACCESS_TOKEN`：始终必填
+- `ADMIN_QQ`：始终必填
+- `CDN_BASE_URL`：仅 `cdn.enabled=true` 时必填
+- 各引擎的 `*_API_KEY`：仅该引擎 `enabled=true` 时列入
+
+不硬编码固定列表。
 
 ---
 
@@ -179,24 +185,76 @@
 4.  在未切换 current 时执行预检（见 §G.2 预检端口隔离）
 5.  如需数据库迁移 → 单独审批，不在本流程内自动执行
 6.  使用独立的 preflight 端口启动新 release health check
-7.  原子切换 current：
-    a.  flock /opt/pjsk-astrbot/.deploy.lock  # 防并发发布
-    b.  ln -s releases/<release_id> /opt/pjsk-astrbot/current.new
-    c.  校验 current.new 指向预期 release：
-        [ "$(readlink -f /opt/pjsk-astrbot/current.new)" = "/opt/pjsk-astrbot/releases/<release_id>" ]
-    d.  mv -T /opt/pjsk-astrbot/current.new /opt/pjsk-astrbot/current
-        # mv -T 在同文件系统内是原子的 — 不经过"先删除旧链接"的窗口
-    e.  校验 current 指向预期 release
-    f.  释放锁
+7.  原子切换 + 自动代码回滚（锁内完整执行）：
+
+    # 从这一步起到 health/restart 全部成功，锁才释放
+    exec 9>/opt/pjsk-astrbot/.deploy.lock
+    flock -x 9 || { echo "ABORT: another deploy in progress"; exit 1; }
+
+    RELEASE_DIR="/opt/pjsk-astrbot/releases/<release_id>"
+    CURRENT_LINK="/opt/pjsk-astrbot/current"
+    OLD_CURRENT=$(readlink -f "$CURRENT_LINK" 2>/dev/null || echo "")
+    TEMP_LINK="${CURRENT_LINK}.deploying.$$"  # unique per process
+
+    # Trap: on error or exit, clean up temp link (but NOT the real current)
+    trap 'rm -f "$TEMP_LINK"' EXIT
+
+    # (a) Create temp link and verify
+    ln -s "$RELEASE_DIR" "$TEMP_LINK"
+    [ "$(readlink -f "$TEMP_LINK")" = "$RELEASE_DIR" ] || {
+        echo "ABORT: temp link verification failed"; exit 1
+    }
+
+    # (b) Atomic rename (same filesystem → no empty window)
+    mv -T "$TEMP_LINK" "$CURRENT_LINK"
+
+    # (c) Verify final link
+    [ "$(readlink -f "$CURRENT_LINK")" = "$RELEASE_DIR" ] || {
+        echo "ABORT: final link verification failed"; exit 1
+    }
+
 8.  systemctl restart pjsk-onebot.service
-9.  检查 health：curl /health → status=ok
-10. 执行受控 smoke test（至少 1 条私聊消息，写入隔离确认）
+
+9.  检查 health：curl /health → status=ok，超时 10s，最多重试 3 次
+    → 如果 health 检查失败：
+        # 自动代码回滚 — 恢复 previous release
+        [ -n "$OLD_CURRENT" ] && ln -snf "$OLD_CURRENT" "$CURRENT_LINK"
+        systemctl restart pjsk-onebot.service
+        echo "ROLLED BACK to $OLD_CURRENT"
+        释放锁；记录 deployment record（result=rollback）
+        exit 1
+
+10. 执行受控 smoke test：
+    - 发送一条测试消息，验证消息解析、命令路由（不触发 OCR 写入）
+    - Smoke test 不提交成绩入库（见 §G.3）
+
 11. 观察窗口 ≥ 15 分钟，监控错误率和延迟
-12. 记录 deployment record（见 §L）
+
+12. exec 9>&-  # 释放锁
+
+13. 记录 deployment record（见 §L）
 ```
 
 **禁止**：向现有 release 目录覆盖文件。每个 release 是全新的不可变目录。
 **禁止**：使用 `ln -snf` 切换 `current`——它可能先 unlink 旧链接再创建新链接，存在短暂空窗。
+
+### G.3 Smoke Test 写入策略
+
+**生产切换 smoke test 不提交成绩入库。** 只验证：
+
+- 消息解析正确
+- 命令路由可达
+- OCR 引擎响应（可执行干跑）
+- renderer 健康
+
+Smoke test 写入正式记录的风险是"回滚"会被误解为删除成绩或恢复数据库——与数据库红线冲突（§J）。
+
+如果确需验证完整写入链路，使用以下方案：
+
+- 使用预先注册的 `deployment_test` 账号（非真实用户）；
+- 写入的 `score_attempts` 标记 `source_gateway="deployment_smoke"`；
+- 记录**永久保留**，不因后续部署自动删除；
+- 部署脚本不包含数据库回退逻辑。
 
 ### G.2 预检端口隔离
 
