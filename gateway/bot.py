@@ -1,8 +1,17 @@
 """PJSK Bot — NoneBot 2 + OneBot v11 Gateway."""
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
+
+# Configure Python logging early so _logger.info() calls in gateway/
+# and pjsk_core/ are visible (default is WARNING, which silences them).
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s | %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 # Ensure the project root is on sys.path so that gateway.* imports resolve
 # regardless of how the process is launched.
