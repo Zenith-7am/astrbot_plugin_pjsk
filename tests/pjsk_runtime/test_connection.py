@@ -210,6 +210,87 @@ class TestUnitOfWork:
         finally:
             await conn.close()
 
+    async def test_score_and_pb_both_committed_on_success(
+        self, tmp_path: Path,
+    ) -> None:
+        """Simulate score_attempts + personal_bests in one UoW — both committed."""
+        from adapters.database.migrator import run_migrations
+        db = tmp_path / "test.db"
+        await run_migrations(db)
+        factory = ConnectionFactory(db)
+
+        # Pre-seed user and chart
+        conn = await factory.connect()
+        try:
+            await conn.execute(
+                "INSERT INTO users(qq_number, game_id, append_excluded, "
+                "created_at, updated_at) "
+                "VALUES ('12345', NULL, 1, '2026-01-01', '2026-01-01')"
+            )
+            await conn.execute(
+                "INSERT INTO songs(id, title_ja) VALUES (1, 'Test')"
+            )
+            await conn.execute(
+                "INSERT INTO charts(id, song_id, difficulty, official_level, "
+                "community_constant, note_count, chart_data_version) "
+                "VALUES (1, 1, 'master', 30, '30.5', 1200, 'v1')"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+        async with UnitOfWork(factory) as uow:
+            # Step 1: Simulate ScoreRepository.record_attempt
+            await uow.connection.execute(
+                "INSERT INTO score_attempts "
+                "(user_id, chart_id, perfect, great, good, bad, miss, "
+                "accuracy, rating, status, image_sha256, source_gateway, "
+                "ocr_run_id, created_at) "
+                "VALUES (1, 1, 1000, 100, 0, 0, 0, 100.5, 3100.0, 'fc', "
+                "'abc', 'onebot', NULL, '2026-01-01')"
+            )
+            # Step 2: Simulate personal_bests UPSERT (same transaction)
+            await uow.connection.execute(
+                "INSERT INTO personal_bests "
+                "(user_id, chart_id, best_attempt_id, accuracy, "
+                "rating, status, updated_at) "
+                "VALUES (1, 1, 1, 100.5, 3100.0, 'fc', '2026-01-01')"
+                " ON CONFLICT(user_id, chart_id) DO UPDATE SET "
+                "best_attempt_id = excluded.best_attempt_id, "
+                "accuracy = excluded.accuracy, "
+                "rating = excluded.rating, "
+                "status = excluded.status, "
+                "updated_at = excluded.updated_at"
+            )
+        # UoW committed — both tables must have data
+
+        conn = await factory.connect()
+        try:
+            sa = await conn.execute_fetchall(
+                "SELECT COUNT(*) AS cnt FROM score_attempts"
+            )
+            pb = await conn.execute_fetchall(
+                "SELECT COUNT(*) AS cnt FROM personal_bests"
+            )
+            assert sa[0]["cnt"] == 1
+            assert pb[0]["cnt"] == 1
+
+            # Verify consistency — personal_bests best_attempt_id points to valid score
+            pb_row = await conn.execute_fetchall(
+                "SELECT best_attempt_id, rating FROM personal_bests "
+                "WHERE user_id = 1 AND chart_id = 1"
+            )
+            assert pb_row[0]["best_attempt_id"] == 1
+            assert pb_row[0]["rating"] == 3100.0
+
+            sa_row = await conn.execute_fetchall(
+                "SELECT id, rating FROM score_attempts WHERE id = 1"
+            )
+            assert sa_row[0]["id"] == 1
+            assert sa_row[0]["rating"] == 3100.0
+        finally:
+            await conn.close()
+
 
 class TestOpenReadonlySqlite:
     async def test_readonly_enforced(self, tmp_path: Path) -> None:

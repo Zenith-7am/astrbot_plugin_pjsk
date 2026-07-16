@@ -8,7 +8,10 @@ class TestHealthResponse:
     def test_build_health_structure_and_no_secrets(self) -> None:
         state = build_health(bot_count=0)
         assert state["status"] == "degraded"
+        assert state["gateway"] == "ok"
         assert state["onebot"] == "disconnected"
+        assert state["runtime"] == "unknown"
+        assert state["database"] == "unknown"
         assert "gateway_version" in state
         assert "uptime_seconds" in state
         for v in state.values():
@@ -19,8 +22,15 @@ class TestHealthResponse:
 
     def test_build_health_when_connected(self) -> None:
         state = build_health(bot_count=1)
-        assert state["status"] == "ok"
+        assert state["status"] == "degraded"  # runtime is unknown (no Runtime set)
         assert state["onebot"] == "connected"
+        assert state["gateway"] == "ok"
+
+    def test_build_health_all_fields_present(self) -> None:
+        state = build_health(bot_count=2)
+        for field in ("status", "gateway", "onebot", "runtime", "database",
+                       "gateway_version", "uptime_seconds"):
+            assert field in state, f"Missing field: {field}"
 
     def test_health_endpoint_returns_200(self) -> None:
         app = FastAPI()
@@ -30,7 +40,10 @@ class TestHealthResponse:
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] in ("ok", "degraded")
+        assert "gateway" in body
         assert "onebot" in body
+        assert "runtime" in body
+        assert "database" in body
         assert "gateway_version" in body
         assert "uptime_seconds" in body
 
@@ -42,3 +55,4 @@ class TestHealthResponse:
         body_str = resp.text.lower()
         assert "token" not in body_str
         assert "key" not in body_str
+        assert "/opt" not in body_str
