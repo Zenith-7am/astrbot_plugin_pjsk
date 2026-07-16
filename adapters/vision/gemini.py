@@ -79,14 +79,14 @@ class GeminiVisionEngine:
             VisionResponseError: Unexpected response format or content.
         """
         body = _build_request_body(image, PJSK_OCR_PROMPT)
-        headers = {"x-goog-api-key": self._api_key.reveal()}
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/"
             f"models/{self._model}:generateContent"
+            f"?key={self._api_key.reveal()}"
         )
         try:
             response = await self._client.post(
-                url, json=body, headers=headers, timeout=timeout,
+                url, json=body, timeout=timeout,
             )
         except httpx.RequestError as e:
             raise map_request_error(e) from e
