@@ -19,14 +19,14 @@ register_health_route(nonebot.get_app())
 nonebot.load_plugins(str(Path(__file__).parent / "matchers"))
 
 
-@driver.on_startup  # type: ignore[misc]
+@driver.on_startup  # type: ignore
 async def _startup() -> None:
     nonebot.logger.info(
         "[PJSK] gateway starting — access_token=<present>"
     )
 
 
-@driver.on_shutdown  # type: ignore[misc]
+@driver.on_shutdown  # type: ignore
 async def _shutdown() -> None:
     nonebot.logger.info("[PJSK] gateway stopped")
 

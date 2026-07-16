@@ -20,3 +20,4 @@ data/
 # OS
 Thumbs.db
 .DS_Store
+.wheel-review*/
