@@ -23,17 +23,22 @@ Legacy patterns recognised:
   - ``{song_id:03d}.png``
   - ``{song_id:03d}.jpg``
   - ``{song_id}.jpg``
+  - ``{song_id}.webp``              (new WebP from CDN, already in old cache)
 
-The old directory is **never modified or deleted**.  Files are copied
-with their original extensions (format distribution is preserved for
-audit trail).  A ``manifest.json`` listing every copied file and its
-SHA-256 is written to the new directory on ``--apply``.
+Apply behaviour (no-overwrite guarantee):
+  - Target does not exist → copy, status "copied".
+  - Target exists with identical SHA-256 → skip, "skipped_identical".
+  - Target exists with different SHA-256 → skip, "skipped_conflict".
+  The old directory is **never modified or deleted**.
+  A ``manifest.json`` with status per file is written to the new
+  directory on ``--apply``.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import re
 import shutil
 import sys
@@ -52,16 +57,20 @@ class MigrationResult:
     total_bytes: int = 0
     format_counts: dict[str, int] = field(default_factory=dict)
     manifest: list[dict[str, object]] = field(default_factory=list)
+    copied: int = 0
+    skipped_identical: int = 0
+    skipped_conflict: int = 0
 
 
 # ── Pattern matching ─────────────────────────────────────────────────────
 
-# (regex, format_label)
+# (regex, format_label).  Order is priority — first match wins.
 _LEGACY_PATTERNS: list[tuple[str, str]] = [
     (r"^jacket_s_(\d{3})\.png$", "png"),
     (r"^(\d{3})\.png$",           "png"),
     (r"^(\d{3})\.jpg$",           "jpg"),
     (r"^(\d+)\.jpg$",             "jpg"),
+    (r"^(\d+)\.webp$",            "webp"),
 ]
 
 # Files matching these names are silently excluded (not jackets).
@@ -106,7 +115,8 @@ def migrate(
                If False (default), only scan and report.
 
     Returns:
-        MigrationResult with counts, format distribution, and manifest.
+        MigrationResult with counts, format distribution, manifest,
+        and copy/skip counters.
     """
     result = MigrationResult(
         old_dir=old_dir,
@@ -124,8 +134,8 @@ def migrate(
     if apply:
         new.mkdir(parents=True, exist_ok=True)
 
-    # Scan
-    entries: list[tuple[str, int, str]] = []  # (filename, song_id, format)
+    # Phase 1 — Scan
+    entries: list[tuple[str, int, str, str]] = []  # (name, song_id, fmt, sha256)
     for entry in sorted(old.iterdir()):
         if not entry.is_file():
             continue
@@ -133,24 +143,25 @@ def migrate(
         if matched is None:
             continue
         song_id, fmt = matched
-        entries.append((entry.name, song_id, fmt))
+        sha = _sha256_hex(str(entry))
+        entries.append((entry.name, song_id, fmt, sha))
 
     result.total_files = len(entries)
     result.total_bytes = sum(
-        old.joinpath(name).stat().st_size for name, _, _ in entries
+        old.joinpath(name).stat().st_size for name, _, _, _ in entries
     )
-    for _, _, fmt in entries:
+    for _, _, fmt, _ in entries:
         result.format_counts[fmt] = result.format_counts.get(fmt, 0) + 1
 
-    # Build manifest
-    for name, song_id, fmt in entries:
-        src = old / name
-        sha = _sha256_hex(str(src))
-        result.manifest.append({
+    # Phase 2 — Build manifest (with status placeholders)
+    manifest_entries: list[dict[str, object]] = []
+    for name, song_id, fmt, sha in entries:
+        manifest_entries.append({
             "name": name,
             "song_id": song_id,
             "format": fmt,
             "sha256": sha,
+            "status": "dry-run",
         })
 
     # Report
@@ -163,27 +174,48 @@ def migrate(
     print()
 
     if not apply:
+        result.manifest = manifest_entries
         print("Run with --apply to copy files.")
         return result
 
-    # Copy
-    copied = 0
-    for name, song_id, fmt in entries:
+    # Phase 3 — Apply with no-overwrite
+    for i, (name, song_id, fmt, src_sha) in enumerate(entries):
         src = old / name
         dst = new / name
-        shutil.copy2(str(src), str(dst))
-        copied += 1
 
-    print(f"Copied:     {copied} files")
+        if dst.exists():
+            dst_sha = _sha256_hex(str(dst))
+            if dst_sha == src_sha:
+                manifest_entries[i]["status"] = "skipped_identical"
+                result.skipped_identical += 1
+            else:
+                manifest_entries[i]["status"] = "skipped_conflict"
+                manifest_entries[i]["existing_sha256"] = dst_sha
+                result.skipped_conflict += 1
+        else:
+            shutil.copy2(str(src), str(dst))
+            manifest_entries[i]["status"] = "copied"
+            result.copied += 1
+
+    print(f"Copied:              {result.copied}")
+    print(f"Skipped (identical): {result.skipped_identical}")
+    print(f"Skipped (conflict):  {result.skipped_conflict}")
+    if result.skipped_conflict > 0:
+        print()
+        print(
+            "WARNING: Some files were skipped because the target already exists "
+            "with different content. Review the manifest.json for details."
+        )
+
+    result.manifest = manifest_entries
 
     # Write manifest
-    import json
     manifest_path = new / "manifest.json"
     manifest_path.write_text(
-        json.dumps(result.manifest, indent=2, ensure_ascii=False),
+        json.dumps(manifest_entries, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"Manifest:   {manifest_path}")
+    print(f"Manifest:            {manifest_path}")
 
     return result
 
