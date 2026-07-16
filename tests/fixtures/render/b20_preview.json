@@ -1,0 +1,47 @@
+{
+  "b20": [
+    {
+      "title": "幾望の月",
+      "difficulty": "master",
+      "displayLevel": "32.5",
+      "level": 32,
+      "status": 2,
+      "achievementRate": 101.0,
+      "power": 3295.5,
+      "jacket": null,
+      "judges": {
+        "great": 0,
+        "good": 0,
+        "bad": 0,
+        "miss": 0
+      }
+    },
+    {
+      "title": "Don't Fight The Music",
+      "difficulty": "master",
+      "displayLevel": "33.0+",
+      "level": 33,
+      "status": 1,
+      "achievementRate": 100.25,
+      "power": 3239.0,
+      "jacket": null,
+      "judges": {
+        "great": 15,
+        "good": 0,
+        "bad": 0,
+        "miss": 0
+      }
+    }
+  ],
+  "sp": 3267.25,
+  "playerClass": {
+    "name": "Master",
+    "icon": "🎵",
+    "stars": 2,
+    "fallbackColor": "purple"
+  },
+  "b20Avg": 3267.25,
+  "fcBonus": 0.0,
+  "masterBonus": 0.0,
+  "isAppendExcluded": true
+}

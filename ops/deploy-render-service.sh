@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# DEPRECATED — this script references the old AstrBot plugin layout.
+# The standalone gateway deployment uses the atomic release layout:
+#   /opt/pjsk-astrbot/current  (immutable release)
+#   /opt/pjsk-astrbot/shared/  (persistent data, cache, logs)
+# See docs/production/PRODUCTION-OPERATIONS.md for the current workflow.
+#
 # Deploy PJSK Render Service to HK VPS (154.37.219.8)
 # Run from the plugin project root on the VPS.
 set -euo pipefail

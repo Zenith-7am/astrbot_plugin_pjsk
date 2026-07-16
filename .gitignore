@@ -17,6 +17,9 @@ data/
 # Superpowers scratch
 .superpowers/
 
+# Render preview artifacts (local dev only)
+artifacts/render-preview/
+
 # OS
 Thumbs.db
 .DS_Store
