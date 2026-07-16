@@ -22,6 +22,7 @@ def qq_allowed(external_user_id: str) -> bool:
 class EmuCommand(Enum):
     HELP = "help"
     STATUS = "status"
+    REGISTER = "register"
     UNKNOWN = "unknown"
 
 
@@ -44,14 +45,17 @@ def parse_emu_command(text: str) -> EmuCommand | None:
         return EmuCommand.HELP
     if arg in ("status",):
         return EmuCommand.STATUS
+    if arg in ("register",):
+        return EmuCommand.REGISTER
     return EmuCommand.UNKNOWN
 
 
 _HELP = (
     "PJSK Emu Bot\n"
     "\n"
-    "/emu help         显示此帮助\n"
-    "/emu status       查看运行状态\n"
+    "/emu help              显示此帮助\n"
+    "/emu status            查看运行状态\n"
+    "/emu register          注册账号\n"
 )
 
 

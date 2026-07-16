@@ -34,6 +34,7 @@ from adapters.vision.dashscope import DashScopeVisionEngine
 from adapters.vision.stepfun import StepFunVisionEngine
 from adapters.vision.zhipu import ZhipuVisionEngine
 from pjsk_core.application.confirm_candidate import ConfirmCandidate
+from pjsk_core.application.register_user import RegisterUser
 from pjsk_core.application.ocr_run_recorder import OcrRunRecorder
 from pjsk_core.application.query_b20 import QueryB20
 from pjsk_core.application.query_difficulty_ranking import QueryDifficultyRanking
@@ -138,7 +139,7 @@ async def assemble_plugin_runtime(
     chart_conn: aiosqlite.Connection | None = None
     score_conn: aiosqlite.Connection | None = None
     http_client: httpx.AsyncClient | None = None
-    runtime: PluginRuntime | None = None
+    runtime: Runtime | None = None
 
     db_path = _resolve_db_path()
 
@@ -305,6 +306,7 @@ async def assemble_plugin_runtime(
             charts=chart_repo, scores=score_repo, songs=song_repo,
         )
         toggle_append = ToggleAppend(users=user_repo)
+        register_user = RegisterUser(users=user_repo)
 
         # Renderer is optional — set to None until render service is deployed
         from pjsk_core.ports.renderer import Renderer
@@ -352,6 +354,7 @@ async def assemble_plugin_runtime(
             query_b20=query_b20,
             query_difficulty_ranking=query_difficulty_ranking,
             toggle_append=toggle_append,
+            register_user=register_user,
             renderer=renderer,
             jacket_cache=jacket_cache,
             candidate_store=candidate_store,
@@ -372,6 +375,16 @@ async def assemble_plugin_runtime(
         _logger.info("[PJSK] engines: %s", engine_list)
 
         runtime.mark_ready()
+
+        # Inject Runtime into gateway matchers so they can call use cases.
+        # This is a no-op when the gateway package is not installed or
+        # when NoneBot has not been initialised (e.g. test environments).
+        try:
+            from gateway.matchers.command_handler import set_runtime_for_commands
+            set_runtime_for_commands(runtime)
+        except (ImportError, ValueError):
+            pass
+
         return runtime
 
     except Exception:

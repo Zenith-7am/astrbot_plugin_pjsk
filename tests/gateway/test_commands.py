@@ -12,6 +12,7 @@ class TestParseEmuCommand:
     @pytest.mark.parametrize("text, expected", [
         ("/emu help", EmuCommand.HELP),
         ("/emu status", EmuCommand.STATUS),
+        ("/emu register", EmuCommand.REGISTER),
         ("/emu b20", EmuCommand.UNKNOWN),
         ("/emu xyz", EmuCommand.UNKNOWN),
         ("/emu", EmuCommand.UNKNOWN),
@@ -31,19 +32,21 @@ class TestParseEmuCommand:
         "emu b20",
         "/",
         "/emulator",
+        "/emulator",  # prefix collision: not /emu
     ])
     def test_non_emu_text_returns_none(self, text: str) -> None:
         assert parse_emu_command(text) is None
 
 
 class TestHelpText:
-    def test_help_only_lists_implemented_commands(self) -> None:
+    def test_help_lists_implemented_commands(self) -> None:
         text = build_help_text()
         assert "/emu help" in text
         assert "/emu status" in text
+        assert "/emu register" in text
+        # Not yet implemented
         assert "bind" not in text
         assert "b20" not in text
-        assert "append" not in text
 
     def test_help_is_reasonable_length(self) -> None:
         text = build_help_text()

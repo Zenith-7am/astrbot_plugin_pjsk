@@ -9,6 +9,7 @@ import aiosqlite
 import httpx
 
 from pjsk_core.application.confirm_candidate import ConfirmCandidate
+from pjsk_core.application.register_user import RegisterUser
 from pjsk_core.application.query_b20 import QueryB20
 from pjsk_core.application.query_difficulty_ranking import QueryDifficultyRanking
 from pjsk_core.application.recognize_score import RecognizeScore
@@ -89,6 +90,7 @@ class Runtime:
     query_b20: QueryB20
     query_difficulty_ranking: QueryDifficultyRanking
     toggle_append: ToggleAppend
+    register_user: RegisterUser | None = None
     recognize_score: RecognizeScore | None = None
     renderer: Renderer | None = None
     jacket_cache: Any | None = None
