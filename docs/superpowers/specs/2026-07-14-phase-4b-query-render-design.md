@@ -1,3 +1,8 @@
+> **Status: Superseded** by Phase 5 standalone OneBot gateway direction.
+> **Historical reference only.** Do not use as current implementation authority.
+> Current spec: `docs/superpowers/specs/2026-07-16-phase-5-standalone-onebot-gateway-design.md`
+> Current governance: `CLAUDE.md` §18.
+
 # Phase 4b — B20, Difficulty Rankings & Render Service
 
 > 设计规格。Phase 4a/4a.1 完成后编写。**不实现业务代码，不新建 migration，不操作 VPS。**

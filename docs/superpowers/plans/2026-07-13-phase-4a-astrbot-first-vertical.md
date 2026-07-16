@@ -1,3 +1,8 @@
+> **Status: Superseded** by Phase 5 standalone OneBot gateway direction.
+> **Historical reference only.** Do not use as current implementation authority.
+> Current spec: `docs/superpowers/specs/2026-07-16-phase-5-standalone-onebot-gateway-design.md`
+> Current governance: `CLAUDE.md` §18.
+
 # Phase 4a — AstrBot First Vertical Slice Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.

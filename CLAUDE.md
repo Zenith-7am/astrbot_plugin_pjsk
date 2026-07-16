@@ -1,12 +1,12 @@
-# PJSK AstrBot — 项目宪章与开发指南（CLAUDE.md）
+# PJSK Emu Bot — 项目宪章与开发指南（CLAUDE.md）
 
 > 本文件是本仓库的**最高执行约束**。它规定「怎么工作、不许偏差」。
 > **需求真相源**是设计规格与阶段计划；本文件与它们冲突时，以规格/计划为准，并**先向用户澄清，不得自行决定**。
 >
-> - 架构规格：`docs/superpowers/specs/2026-07-12-pjsk-astrbot-rebuild-design.md`
-> - 第一阶段计划：`docs/superpowers/plans/2026-07-12-foundation-and-legacy-audit.md`
+> - 当前设计规格：`docs/superpowers/specs/2026-07-16-phase-5-standalone-onebot-gateway-design.md`
+> - 生产必读：`docs/production/PRODUCTION-OPERATIONS.md`
 >
-> 开始任何工作前必须完整阅读上面两份文档。
+> 开始任何工作前必须完整阅读上面两份文档，以及当前阶段已批准的实施计划。
 
 ---
 
@@ -20,17 +20,17 @@
 
 ## 1. 项目定位
 
-独立的 **AstrBot 插件项目**。目标：从旧 `emu-bot` 中**提取经过验证的 PJSK 业务规则与历史数据**，在干净的分层架构里重建。旧仓库 `D:\emu-bot` 只作**只读参考**，不整体复制其 `src/`。
+独立的 **PJSK 成绩识别与排行系统**。从旧 `emu-bot` 中**提取经过验证的 PJSK 业务规则与历史数据**，在干净的分层架构里重建。旧仓库 `D:\emu-bot` 只作**只读参考**，不整体复制其 `src/`。
 
 **为什么重建**：旧库长期存在 git↔生产漂移（孤儿文件、缺模块地雷、全量 scp 覆盖手改版），故障面无法收窄。新库以「git 唯一真相源 + 原子发布 + 版本化迁移 + 依赖方向机械强制」根治。
 
 **入口优先级**（三者共享同一业务核心/数据库/规则，**禁止复制三套实现**）：
 
-1. **AstrBot** — 首要生产入口；聊天人格完全交给 AstrBot 自带能力。
+1. **NoneBot 2 + OneBot v11 standalone gateway** — 当前首要生产入口。
 2. **QQ 官方 Bot** — 首版只预留正式适配器接口 + OpenID 绑定流程，不做完整生产连接。
-3. **NapCat / OneBot** — 兜底入口，薄 adapter 调同一核心。NapCat 被腾讯风控踢下线时**只影响 OneBot 入口**，不得停掉业务核心、AstrBot、数据库、OCR 或渲染。
+3. **AstrBot** — 历史实现，非当前生产入口。代码暂时保留，未经独立清理任务批准不得删除。不继续投入开发。
 
-**部署布局**：香港 VPS 承载 AstrBot / PJSK 插件 / SQLite / Redis / 视觉编排 / 渲染服务；国内 VPS 只留 NapCat + 反向隧道。
+**部署布局**：香港 VPS 承载 standalone gateway / SQLite / 视觉编排 / 渲染服务；国内 VPS 只留 NapCat + 反向隧道。
 
 ---
 
@@ -51,7 +51,7 @@
 依赖方向（**单向，机械强制**）：
 
 ```text
-plugin / gateways
+gateway / matchers
        ↓
    application
        ↓
@@ -63,30 +63,44 @@ plugin / gateways
 目录结构：
 
 ```text
-plugin/                 AstrBot 生命周期、事件转换、回复呈现
+gateway/                NoneBot 2 bot 入口、matchers、OneBot 事件转换与回复
+  bot.py
+  matchers/
+  adapters/
+  connection_monitor.py
+  health.py
+
+pjsk_runtime/           平台无关 Composition Root
+  bootstrap.py
+
 pjsk_core/
   domain/               同步、无 I/O 的纯业务规则
   application/          异步用例编排，只依赖 ports
   ports/                repository / vision / renderer / identity / cache 窄接口
+
 adapters/
   database/             SQLite schema、repository、版本化迁移
-  vision/               Gemini / 智谱 / StepFun 适配器与竞速器
+  vision/               Gemini / 智谱 / StepFun / DashScope 适配器与竞速器
   rendering/            独立渲染服务 HTTP 适配器
-  cache/                Redis + 进程内降级
-  gateways/             AstrBot / 官方 QQ / OneBot 适配器
+  cache/                进程内候选存储与降级
+
+render_service/         FastAPI + Playwright 独立渲染服务
 chart_data/             Git 版本化民间精确定数 + manifest
-render_service/         FastAPI + Playwright
 tools/                  旧库迁移、定数导入、启动自检
-tests/                  domain / application / adapter / migration / failure 测试
-ops/                    香港 VPS 原子发布与 systemd
+tests/                  domain / application / adapter / gateway / failure 测试
+ops/                    香港 VPS systemd 单元
+docs/
+  production/           生产必读文档
+  superpowers/specs/    设计规格
+  superpowers/plans/    实施计划
 ```
 
 ### 强制规则（违反即为缺陷，由测试机械检查）
 
 1. `domain` 必须**同步、纯计算、无 I/O**。
-2. `domain` **不得 import**：application / ports / adapters / plugin / AstrBot / SQLite / Redis / httpx / 任何视觉模型 SDK。
+2. `domain` **不得 import**：application / ports / adapters / gateway / NoneBot / SQLite / Redis / httpx / 任何视觉模型 SDK。
 3. `application` 只能依赖 `domain` 和 `ports`。
-4. `application` **不得认识** AstrBot / OneBot / 官方 QQ 事件对象。
+4. `application` **不得认识** NoneBot / OneBot / AstrBot / QQ 官方 Bot 事件对象。
 5. `ports` 只定义窄接口，不放业务实现；repository 方法返回**领域对象**，不返回 dict 或 SQLite 行。
 6. `adapters` 实现数据库、Redis、视觉、渲染、平台接入。
 7. `gateway` 只做事件转换与回复呈现，**不实现** Rating / B20 / OCR 共识 / 数据库规则。
@@ -94,7 +108,7 @@ ops/                    香港 VPS 原子发布与 systemd
 9. 核心领域接口**不得返回无类型的通用 `dict`**——优先 dataclass、enum、明确类型。
 10. **不得把整个旧 `src/` 复制进新仓库。**
 
-核心统一回复类型（不生成 CQ 码 / AstrBot 消息对象）：`TextReply` / `ImageReply` / `CandidateReply` / `ProgressReply` / `ErrorReply`。
+核心统一回复类型（不生成 CQ 码 / OneBot 消息段 / AstrBot 消息对象）：`TextReply` / `ImageReply` / `CandidateReply` / `ProgressReply` / `ErrorReply`。
 
 ---
 
@@ -102,7 +116,7 @@ ops/                    香港 VPS 原子发布与 systemd
 
 **做**：用户注册；QQ 号↔PJSK 游戏 ID 绑定；成绩截图上传；多视觉模型并发识别；识别分歧时候选确认；成绩历史入库；个人最佳更新；B20；民间精确定数**全局难度排行**；**个人难度排行**（须显示该难度等级**全部谱面**：未游玩 / CLEAR / FC / AP）。
 
-**不做**：独立批量上传会话；「开始/结束批量」状态机；Astrobot 人格与聊天模型；传统 OCR / PP-OCR / ONNX；官方 QQ 完整生产连接；旧 NoneBot matcher；CQ 码业务逻辑。
+**不做**：独立批量上传会话；「开始/结束批量」状态机；聊天人格与 LLM 对话模型；传统 OCR / PP-OCR / ONNX；官方 QQ 完整生产连接；CQ 码业务逻辑。
 
 私聊连发图：**每张图独立任务**，靠用户级 + 全局并发上限自然形成批量，不建会话。
 
@@ -191,7 +205,7 @@ B20 选取：只取 FC/AP 的**个人最佳** → 按 Rating 降序 → 取前 2
 
 - 引用 PENTATONIC 系（民间精确定数，`.1`~`.5`、`+/-` 后缀）；EXPERT 定数另有独立源。
 - 难度范围：EASY(1–8) NORMAL(6–14) HARD(11–20) EXPERT(21–32) MASTER(24–37) APPEND(24–38)。
-  - 2026-07-13 基于实际 chart_data 更新：EXPERT 21–32（原 22–30）、APPEND 24–38（原 22–37）。
+  - 基于实际 chart_data 更新：EXPERT 21–32（原 22–30）、APPEND 24–38（原 22–37）。
   - **已知数据异常**：song_id=241 在游戏中不存在，疑为 PJSK 官方编号疏漏（跳号）。chart_data 中该条目暂作占位保留，待深度查证后决定删除或修正。
 
 | 难度 | 缩写 |
@@ -230,7 +244,7 @@ users(id, qq_number UNIQUE, game_id, created_at, updated_at)
 external_identities(id, user_id, platform, external_id, created_at)
 ```
 
-- AstrBot / NapCat 可直接提供 QQ 号。
+- Standalone gateway 和 NapCat 可直接提供 QQ 号。
 - 官方 Bot 的 OpenID 存 `external_identities`，经**一次性绑定码**映射到既有 QQ 用户。
 - **OpenID 不能替代 QQ 号成为内部主身份；官方入口不得自行推断 QQ 号。**
 
@@ -273,7 +287,7 @@ class VisionEngine(Protocol):
 - 单模型仅在**强校验通过**且其他模型超时/不可用时降级采用。
 - 单模型故障不影响其他引擎；引擎连续错误进入**短期熔断**；每引擎独立配置超时/并发/优先级/启用状态。
 - 模型结果继续经本地规则校验：曲名匹配、难度匹配、Note 总数校验、谱面存在性。
-- 无共识 → **给编号候选，不直接判失败**。候选：绑发起用户、短 TTL、消费一次、Redis 优先 / 进程内降级；排序综合模型支持数、Note 校验、曲名相似度、Note 差异。
+- 无共识 → **给编号候选，不直接判失败**。候选：绑发起用户、短 TTL、消费一次、进程内降级；排序综合模型支持数、Note 校验、曲名相似度、Note 差异。
 
 ```text
 ocr_runs(id, user_id, image_sha256, final_state, selected_engine, created_at)
@@ -290,7 +304,7 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 - 先开发**只读审计器**（SQLite `mode=ro`），输出**只含聚合信息**；**禁止输出** QQ 号 / 游戏 ID / OCR 文本 / 图片地址等用户级数据。
 - 流程：审计 → 导入用户/曲目/谱面/别名 → 旧成绩逐条转 `score_attempts` → 按新规则重算 `personal_bests` → 对账（用户数/成绩数/抽样 B20/难度排行）→ 影子查询 → 切换前备份 → 最终增量迁移 → 新库唯一写入。
 - **数据库访问必须经 repository adapter，application 不得直接执行 SQL。**
-- schema 变更用**显式版本化迁移**，**不得在插件启动时隐式大规模改表**。
+- schema 变更用**显式版本化迁移**，**不得在启动时隐式大规模改表。**
 
 ---
 
@@ -305,7 +319,7 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 
 ## 11. 渲染
 
-独立 FastAPI + Playwright 服务；**不得默认把 Chromium 塞进 AstrBot 插件进程**。业务核心只依赖 `Renderer` port。
+独立 FastAPI + Playwright 服务；**不得默认把 Chromium 塞进 gateway 进程**。业务核心只依赖 `Renderer` port。
 
 - 复用 Browser；每次任务独立 Page/Context 且 **finally 关闭**；限并发 + 超时；浏览器断开**最多自动重建一次**。
 - 请求/响应带 renderer/template 版本；缓存 key 含用户、查询参数、数据更新时间、定数版本、模板版本。
@@ -337,7 +351,32 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 
 ---
 
-## 14. 安全红线
+## 14. Git 唯一真相源（铁律）
+
+**禁止**以下任何操作：
+
+- `scp` / `rsync` 单个源码文件到 live 目录。
+- `scp -r src` 覆盖 live 目录。
+- 在 `/opt/.../current` 中直接编辑文件。
+- 从 dirty worktree 构建。
+- 从未提交代码构建。
+- 在 VPS 上直接热修后不回流 Git。
+- 部署缺少 manifest 的 release。
+- 把生产孤儿文件复制进新项目而不审计来源。
+
+**只允许**：
+
+```text
+clean commit
+→ 构建完整 release
+→ 生成 manifest
+→ 在独立 release 目录预检
+→ 原子切换 current
+```
+
+---
+
+## 15. 安全红线
 
 1. 不读取/输出 VPS 密钥；不打印 `.env` 内容。
 2. **不修改、覆盖或删除生产数据库。**
@@ -348,10 +387,38 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 7. 不以 root/system Python 作为最终生产运行方案。
 8. 不用 `git reset --hard` 或破坏用户现有修改。
 9. 旧仓库只作参考，除非用户明确要求否则不得修改。
+10. 生产回滚**不自动包含数据库恢复**——数据库恢复必须单独设计、单独审批。
 
 ---
 
-## 15. 开发流程（TDD，铁律）
+## 16. 生产授权规则
+
+**无需额外授权的只读操作**：
+
+- 查询服务状态、端口、systemd 元数据。
+- 计算源码 SHA-256。
+- 静态 import 检查。
+- 聚合错误数量。
+- 读取脱敏健康状态。
+
+**必须获得用户明确授权**：
+
+- `systemctl stop/start/restart/mask/disable`。
+- `kill` 进程。
+- 修改 systemd unit。
+- 修改生产文件。
+- 创建、删除或切换 release。
+- 修改 `current` 软链接。
+- 数据库备份、迁移、恢复或写入。
+- 修改 NapCat 配置。
+- 部署代码。
+- 清理缓存或旧目录。
+
+即使用户说「处理一下」「看一下」，也不能解释为生产写授权。
+
+---
+
+## 17. 开发流程（TDD，铁律）
 
 1. 先写**最小失败测试**（RED）。
 2. 运行确认测试因目标功能缺失而失败。
@@ -367,62 +434,36 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 
 ---
 
-## 16. 当前执行边界（最重要）
+## 18. 当前执行边界（最重要）
 
-> **当前阶段：Phase 4a — AstrBot 首个可用纵向链路** ✅ 已完成
-> Phase 1、2、3a、3b、4a 已完成。Head: `a058ba9`，369 tests。
+> **当前阶段：Phase 5 — Governance and Production Baseline**
 
-Phase 1（Foundation and Legacy Audit）已完成 ✅
-Phase 2（Chart Data and Persistence Layer）已完成 ✅
-Phase 3a（Vision Race — 适配器、编排器、共识）已完成 ✅
-Phase 3b（CandidateStore + OCR 持久化 + 候选确认）已完成 ✅
+Phase 1–4b（含 AstrBot 插件、OCR、B20、查询、渲染）已完成并标记为历史。
+AstrBot 集成已停止继续开发，不属于当前生产路径。
 
-### Phase 3 交付物总览
-
-| 模块 | 状态 |
-|------|------|
-| SongMatcher 曲名匹配 | ✅ |
-| VisionRacePolicy / EnginePolicy | ✅ |
-| ValidationPipeline | ✅ |
-| VisionRace 编排器（并发竞速+共识） | ✅ |
-| RecognizeScore 用例 | ✅ |
-| Gemini / 智谱 / StepFun 适配器 | ✅ |
-| MemoryCircuitBreaker | ✅ |
-| Vision config loader | ✅ |
-| Migration 004 — ocr_runs + ocr_observations | ✅ |
-| OcrRunRecorder 用例 | ✅ |
-| CandidateStore（内存版，原子消费） | ✅ |
-| ConfirmCandidate 用例（5 项可确认性验证） | ✅ |
-
-### Phase 4a 交付物
-
-| 模块 | 状态 |
-|------|------|
-| PluginRuntime + PjskPlugin skeleton | ✅ |
-| EventMapper（ID/图片/会话提取） | ✅ |
-| CandidatePresenter（候选格式化与解析） | ✅ |
-| EphemeralImageBuffer（群聊 15s 窗口） | ✅ |
-| UserRateLimiter（用户冷却） | ✅ |
-| ReplyBuilder（错误码→中文回复） | ✅ |
-| Bootstrap（Composition Root 装配） | ✅ |
-| Main handlers（消息分流/图片识别/候选确认） | ✅ |
-
-### 当前授权
-
-**Phase 4b：查询与渲染（待设计）**
-
-**允许**：brainstorming、设计规格、实施计划编写。
+**允许**：
+- 文档修订（CLAUDE.md、生产 runbook、设计规格）
+- 生产只读审计
+- 旧生产归档设计
+- release manifest 设计
+- shadow composition root 设计
+- 部署与回滚流程设计
+- 测试计划设计
 
 **禁止**：
-- 旧库数据迁移
-- VPS 写操作
-- Redis adapter
-- 渲染服务实现
-- 没有计划的新功能
+- 实现 Gateway 业务代码
+- 新增 matcher
+- 修改生产源码
+- 修改生产数据库
+- 停止、启动或重启生产服务
+- 终止生产进程
+- 部署任何代码
+- 删除 AstrBot 或旧 Bot 文件
+- 创建 placeholder 函数或假实现
 
 ---
 
-## 17. 开始工作时的固定步骤
+## 19. 开始工作时的固定步骤
 
 1. 确认当前目录与分支。
 2. `git status --short --branch`。
@@ -430,14 +471,6 @@ Phase 3b（CandidateStore + OCR 持久化 + 候选确认）已完成 ✅
 4. 检查工作树是否干净。
 5. 运行基线：pytest / Ruff / Mypy。
 6. 明确本次**只执行哪个任务**。
-7. 若用户未授权业务实现，**立即停在工程骨架范围**。
+7. 若用户未授权业务实现，**立即停在文档/审计范围**。
 8. 遇规格冲突或范围不明**先询问**，不自行决定。
-
----
-
-## 18. 铁律：Git 是唯一真相源
-
-- 每个任务以一个聚焦 commit 结束；只从 git 已提交代码构建/部署。
-- **禁止手改生产环境源码**；紧急热修必须立刻同步回 git 并 commit。
-- 部署前 `git status` 确认无未提交改动，并确认所推版本的 import 依赖在目标环境齐全。
-- **反面教材（旧 emu-bot，2026-07 血泪）**：生产长期领先/落后 git（孤儿文件、`handler_b20` 引用 git 缺失的 `player_class.py`、限流模块未部署却被 `__init__` 硬引用），一次全量 scp 用旧 git 覆盖生产手改版直接带崩 OCR。本项目用 §13 原子发布 + §3 依赖机械强制 + 本节铁律根治此类漂移。
+9. 生产写操作前，确认已获得用户明确授权。
