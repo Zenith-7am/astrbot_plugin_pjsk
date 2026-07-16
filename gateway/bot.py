@@ -34,6 +34,15 @@ async def _startup() -> None:
     nonebot.logger.info(
         "[PJSK] gateway starting — access_token=<present>"
     )
+    # Bootstrap Runtime so matchers can access repositories and use cases.
+    # ImportError / ValueError = gateway not available (test / import check).
+    try:
+        from pjsk_emubot.bootstrap import assemble_plugin_runtime
+        nonebot.logger.info("[PJSK] assembling Runtime …")
+        _rt = await assemble_plugin_runtime()
+        nonebot.logger.info("[PJSK] Runtime ready — status=%s", _rt.status.value)
+    except Exception:
+        nonebot.logger.exception("[PJSK] Runtime assembly failed — gateway degraded")
 
 
 @driver.on_shutdown
