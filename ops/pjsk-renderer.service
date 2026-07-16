@@ -5,11 +5,11 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/pjsk-astrbot/current
+WorkingDirectory=/root/data/plugins/astrbot_plugin_pjsk
 Environment=RENDER_HOST=127.0.0.1
 Environment=RENDER_PORT=3000
 Environment=RENDER_MAX_CONCURRENT=4
-ExecStart=/opt/pjsk-astrbot/current/.venv/bin/python render_service/main.py
+ExecStart=/root/.local/share/uv/tools/astrbot/bin/python render_service/main.py
 Restart=on-failure
 RestartSec=5
 
