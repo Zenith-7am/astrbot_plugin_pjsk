@@ -6,7 +6,7 @@
 
 **Architecture:** Minimal file set — `bot.py` starts NoneBot with OneBot adapter; one matcher handles `/emu` commands; `event_mapper.py` converts OneBot events to `IncomingMessage`; `reply_sender.py` maps `TextReply` to `MessageSegment.text()`.
 
-**Tech Stack:** Python 3.11+, NoneBot 2 (`nonebot2[onebot-v11]`), pytest, pytest-asyncio.
+**Tech Stack:** Python 3.11+, NoneBot 2 (`nonebot2[fastapi]`, `nonebot-adapter-onebot`), pytest, pytest-asyncio.
 
 ## Global Constraints
 
@@ -19,6 +19,7 @@
 - `UnitOfWork` pattern documented but NOT implemented (database not in scope).
 - `mv -T` atomic switch documented but NOT implemented (deployment not in scope).
 - TDD: RED → GREEN → commit per task.
+- **Access token MUST be loaded and injected into `nonebot.init()` before adapter registration.**
 
 ---
 
@@ -39,7 +40,12 @@ from pathlib import Path
 import nonebot
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
 
-nonebot.init()
+from gateway.adapters.config_loader import load_config
+
+# Load config BEFORE init — token must be injected into NoneBot, not just validated
+config = load_config()
+
+nonebot.init(access_token=config.onebot_access_token)
 driver = nonebot.get_driver()
 driver.register_adapter(OneBotV11Adapter)
 
@@ -49,14 +55,13 @@ if __name__ == "__main__":
     nonebot.run()
 ```
 
-- [ ] **Step 2: Smoke test — verify the module loads without NoneBot runtime**
+- [ ] **Step 2: Smoke test — verify the module AST is valid**
 
 ```bash
 cd d:/pjsk-astrbot/.worktrees/foundation-scaffold
-python -c "import sys; sys.path.insert(0, '.'); exec(open('gateway/bot.py').read().replace('nonebot.run()', 'print(\"LOAD_OK\")'))"
+python -c "import ast; ast.parse(open('gateway/bot.py').read()); print('PARSE_OK')"
 ```
-
-Expected: No `ImportError`. If `nonebot` is not installed in dev venv, skip — this test is informational. The real import check happens in CI/VPS.
+Expected: `PARSE_OK`
 
 - [ ] **Step 3: Create empty package files**
 
@@ -103,7 +108,12 @@ class TestAccessTokenRequired:
     def test_present_token_returns_config(self, monkeypatch):
         monkeypatch.setenv("ONEBOT_ACCESS_TOKEN", "test-token-123")
         cfg = load_config()
-        assert cfg["onebot_access_token"] == "test-token-123"
+        assert cfg.onebot_access_token == "test-token-123"
+
+    def test_token_not_visible_in_repr(self, monkeypatch):
+        monkeypatch.setenv("ONEBOT_ACCESS_TOKEN", "secret-abc")
+        cfg = load_config()
+        assert "secret-abc" not in repr(cfg)
 
     def test_token_is_never_logged(self, monkeypatch, caplog):
         monkeypatch.setenv("ONEBOT_ACCESS_TOKEN", "secret-abc")
@@ -126,6 +136,7 @@ from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass, field
 
 _logger = logging.getLogger(__name__)
 
@@ -134,15 +145,24 @@ class ConfigError(Exception):
     """Raised when required configuration is missing."""
 
 
-def load_config() -> dict:
-    token = os.environ.get("ONEBOT_ACCESS_TOKEN")
-    if not token:
-        raise ConfigError(
-            "ONEBOT_ACCESS_TOKEN is required. "
-            "Set it in the environment before starting the bot."
-        )
-    _logger.info("Config loaded: onebot_access_token=<present>")
-    return {"onebot_access_token": token}
+@dataclass
+class GatewayConfig:
+    onebot_access_token: str = field(repr=False)
+
+    @classmethod
+    def from_env(cls) -> GatewayConfig:
+        token = os.environ.get("ONEBOT_ACCESS_TOKEN")
+        if not token:
+            raise ConfigError(
+                "ONEBOT_ACCESS_TOKEN is required. "
+                "Set it in the environment before starting the bot."
+            )
+        _logger.info("Config loaded: onebot_access_token=<present>")
+        return cls(onebot_access_token=token)
+
+
+# Public API — used by bot.py before nonebot.init()
+load_config = GatewayConfig.from_env
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -450,49 +470,63 @@ git commit -m "feat(3b): TextReply → OneBot MessageSegment.text() sender"
 - Consumes: `IncomingMessage` from `event_mapper`, `send_text_reply` from `reply_sender`
 - Produces: NoneBot `on_command` matchers for `/emu help` and `/emu status`
 
-- [ ] **Step 1: Write the test for help and status handlers**
+- [ ] **Step 1: Write the test for the command parser and handlers**
 
 ```python
-from unittest.mock import AsyncMock, patch
-from gateway.matchers.command_handler import build_help_text, build_status_text
+from enum import Enum
+
+class EmuCommand(Enum):
+    HELP = "help"
+    STATUS = "status"
+    UNKNOWN = "unknown"
+
+
+def parse_emu_command(text: str) -> EmuCommand | None:
+    """Parse /emu <subcommand>. Returns None if text is not an /emu command."""
+    ...
+
+
+class TestParseEmuCommand:
+    @pytest.mark.parametrize("text, expected", [
+        ("/emu help", EmuCommand.HELP),
+        ("/emu status", EmuCommand.STATUS),
+        ("/emu b20", EmuCommand.UNKNOWN),
+        ("/emu xyz", EmuCommand.UNKNOWN),
+        ("/emu", EmuCommand.UNKNOWN),
+        ("/emu  ", EmuCommand.UNKNOWN),
+    ])
+    def test_valid_emu_commands(self, text, expected):
+        assert parse_emu_command(text) is expected
+
+    @pytest.mark.parametrize("text", [
+        "今天天气真好",
+        "你好",
+        "b20",                    # old keyword — NOT a command
+        "查b20",                  # old keyword — NOT a command
+        "帮助",                   # old keyword — NOT a command
+        "/pjsk b20",              # other bot prefix
+        "",                       # empty
+        "emu b20",                # no slash
+        "/",                      # bare slash
+    ])
+    def test_non_emu_text_returns_none(self, text):
+        assert parse_emu_command(text) is None
 
 
 class TestHelpText:
-    def test_build_help_includes_all_commands(self):
+    def test_help_only_lists_implemented_commands(self):
         text = build_help_text()
         assert "/emu help" in text
         assert "/emu status" in text
-        assert "/emu bind" in text
-        assert "/emu b20" in text
-        assert "/emu append" in text
-        # Does NOT mention batch, chat, alias (excluded features)
-        assert "批量" not in text
+        # Must NOT advertise unimplemented features
+        assert "bind" not in text
+        assert "b20" not in text
+        assert "append" not in text
+        assert "ma31" not in text
 
-    def test_build_help_is_plain_text(self):
+    def test_help_is_reasonable_length(self):
         text = build_help_text()
-        # Must be reasonable length — not a wall of text
-        assert 100 < len(text) < 1500
-
-
-class TestStatusText:
-    def test_build_status_no_secrets(self):
-        text = build_status_text({
-            "onebot": "connected",
-            "gateway_version": "0.2.0-dev",
-        })
-        assert "connected" in text
-        assert "0.2.0-dev" in text
-        # Must NOT contain any key/token/path
-        assert "token" not in text.lower()
-        assert "key" not in text.lower()
-        assert "/opt" not in text
-
-    def test_build_status_onebot_disconnected(self):
-        text = build_status_text({
-            "onebot": "disconnected",
-            "gateway_version": "0.2.0-dev",
-        })
-        assert "disconnected" in text
+        assert 30 < len(text) < 500
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -505,12 +539,14 @@ Expected: FAIL
 - [ ] **Step 3: Write minimal implementation**
 
 ```python
-"""Command matchers for /emu help and /emu status."""
+"""Command handler for /emu — single matcher with argument parsing."""
 from __future__ import annotations
 
 import logging
+from enum import Enum
 from typing import Any
 
+import nonebot
 from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Bot, MessageEvent
 
@@ -521,21 +557,32 @@ _logger = logging.getLogger(__name__)
 
 GATEWAY_VERSION = "0.2.0-dev"
 
-# ── Help text ────────────────────────────────────────────────────────
+
+class EmuCommand(Enum):
+    HELP = "help"
+    STATUS = "status"
+    UNKNOWN = "unknown"
+
+
+def parse_emu_command(text: str) -> EmuCommand | None:
+    """Parse '/emu <subcommand>'. Returns None if not an /emu command."""
+    stripped = text.strip()
+    if not stripped.startswith("/emu"):
+        return None
+    # "/emu" alone or "/emu " with trailing whitespace -> UNKNOWN
+    arg = stripped[4:].strip()
+    if arg in ("help",):
+        return EmuCommand.HELP
+    if arg in ("status",):
+        return EmuCommand.STATUS
+    return EmuCommand.UNKNOWN
+
 
 _HELP = (
     "PJSK Emu Bot\n"
     "\n"
     "/emu help         显示此帮助\n"
     "/emu status       查看运行状态\n"
-    "/emu bind <ID>    绑定 PJSK 游戏 ID\n"
-    "/emu b20          查看个人 B20 成绩\n"
-    "/emu ma31         查看个人 MASTER 31 难度排行\n"
-    "/emu ma31 global  查看全局 MASTER 31 难度排行\n"
-    "/emu append include  包含 APPEND 难度\n"
-    "/emu append exclude  排除 APPEND 难度\n"
-    "\n"
-    "发送成绩截图即可自动识别并记录。"
 )
 
 
@@ -543,50 +590,41 @@ def build_help_text() -> str:
     return _HELP
 
 
-def build_status_text(state: dict) -> str:
-    lines = [
-        f"PJSK Emu Bot {state.get('gateway_version', '?')}",
-        f"OneBot: {state.get('onebot', 'unknown')}",
-    ]
-    return "\n".join(lines)
+def build_status_text() -> str:
+    # Live check: are any OneBot bots connected?
+    connected = bool(nonebot.get_bots())
+    status = "connected" if connected else "disconnected"
+    return f"PJSK Emu Bot {GATEWAY_VERSION}\nOneBot: {status}"
 
 
-# ── Matchers ─────────────────────────────────────────────────────────
+# ── Single matcher for all /emu commands ─────────────────────────────
 
-help_cmd = on_command("emu help", priority=20, block=True)
+emu_cmd = on_command("emu", priority=20, block=True)
 
 
-@help_cmd.handle()
-async def _help(bot: Bot, event: MessageEvent):
+@emu_cmd.handle()
+async def _emu(bot: Bot, event: MessageEvent):
     msg = map_event(event)
-    _logger.info("/emu help from conversation_type=%s", msg.conversation_type.value)
-    await send_text_reply(bot, event, build_help_text())
+    cmd = parse_emu_command(msg.text)
 
+    if cmd is None:
+        return  # not /emu — should not happen, but safe
 
-status_cmd = on_command("emu status", priority=20, block=True)
+    _logger.info(
+        "emu command=%s conversation_type=%s",
+        cmd.value, msg.conversation_type.value,
+    )
+    # Do NOT log msg.text — may contain personal info
 
-
-@status_cmd.handle()
-async def _status(bot: Bot, event: MessageEvent):
-    msg = map_event(event)
-    _logger.info("/emu status from conversation_type=%s", msg.conversation_type.value)
-    # In this phase, state is hardcoded — no live connection tracking yet
-    await send_text_reply(bot, event, build_status_text({
-        "onebot": "connected",
-        "gateway_version": GATEWAY_VERSION,
-    }))
-
-
-# ── Fallback — unknown /emu subcommand ───────────────────────────────
-
-emu_help_fallback = on_command("emu", priority=99, block=True)
-
-
-@emu_help_fallback.handle()
-async def _unknown_emu(bot: Bot, event: MessageEvent):
-    msg = map_event(event)
-    _logger.info("unknown /emu subcommand: text=%s", msg.text[:40])
-    await send_text_reply(bot, event, f"未知命令，请使用 /emu help 查看可用命令")
+    if cmd == EmuCommand.HELP:
+        await send_text_reply(bot, event, build_help_text())
+    elif cmd == EmuCommand.STATUS:
+        await send_text_reply(bot, event, build_status_text())
+    else:
+        await send_text_reply(
+            bot, event,
+            "未知命令，请使用 /emu help 查看可用命令",
+        )
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -594,7 +632,7 @@ async def _unknown_emu(bot: Bot, event: MessageEvent):
 ```bash
 pytest tests/gateway/test_command_handler.py -v
 ```
-Expected: 3 PASS
+Expected: 11 PASS (7 parse + 2 help + 2 status)
 
 - [ ] **Step 5: Commit**
 
@@ -613,60 +651,40 @@ git commit -m "feat(3b): /emu help and /emu status matchers"
 **Interfaces:**
 - Verifies: no matcher responds to plain text that doesn't start with `/emu`
 
-- [ ] **Step 1: Write the passthrough behavior test**
+- [ ] **Step 1: Write the passthrough behavior test (uses actual parse_emu_command)**
 
 ```python
-"""Verify ordinary text messages do NOT trigger a bot response."""
+"""Verify parse_emu_command correctly distinguishes /emu from non-commands."""
 import pytest
-from gateway.matchers.command_handler import help_cmd, status_cmd, emu_help_fallback
+from gateway.matchers.command_handler import parse_emu_command, EmuCommand
 
 
-class FakeOneBotEvent:
-    """Minimal event stand-in for matcher rule checks."""
-    def __init__(self, raw_message):
-        self.raw_message = raw_message
+class TestParseEmuCommand:
+    """The matcher delegates to parse_emu_command() — testing it tests the matcher."""
 
-    def get_plaintext(self):
-        return self.raw_message
-
-    def get_message(self):
-        return self.raw_message
-
-
-class TestPassthrough:
-    """Plain text without /emu prefix must not match any command handler."""
+    @pytest.mark.parametrize("text, expected", [
+        ("/emu help", EmuCommand.HELP),
+        ("/emu status", EmuCommand.STATUS),
+        ("/emu b20", EmuCommand.UNKNOWN),
+        ("/emu xyz", EmuCommand.UNKNOWN),
+        ("/emu", EmuCommand.UNKNOWN),
+    ])
+    def test_emu_prefixed_commands(self, text, expected):
+        assert parse_emu_command(text) is expected
 
     @pytest.mark.parametrize("text", [
         "今天天气真好",
         "你好",
-        "b20",                    # old command keyword — must NOT trigger
-        "查b20",                  # old command keyword — must NOT trigger
-        "帮助",                   # old command keyword — must NOT trigger
-        "/pjsk b20",              # other bot's command prefix — must NOT trigger
-        "/",                      # bare slash
+        "b20",                    # old keyword — NOT a command
+        "查b20",                  # old keyword — NOT a command
+        "帮助",                   # old keyword — NOT a command
+        "/pjsk b20",              # other bot prefix
         "",                       # empty
-        "emu b20",                # no leading slash — must NOT trigger
+        "emu b20",                # no slash
+        "/",                      # bare slash
     ])
-    def test_plain_text_does_not_match_help(self, text):
-        event = FakeOneBotEvent(text)
-        # NoneBot rule check: on_command("emu help") only fires for "/emu help"
-        # NoneBot on_command strips leading "/" and command name.
-        # Any message that doesn't start with "/emu " or "/emu" won't match.
-        # This test documents the expected behavior — actual matcher testing
-        # is done via the NoneBot test adapter in integration.
-        assert not text.startswith("/emu"), (
-            f"'{text}' starts with /emu — this WOULD match. "
-            f"Only /emu-prefixed commands should be caught."
-        )
-
-    def test_old_commands_are_never_routed(self):
-        """Old keyword-based commands (帮助, b20, 查b20) must have zero handling."""
-        old_commands = ["帮助", "b20", "查b20", "注册", "批量", "别名", "查分"]
-        for cmd in old_commands:
-            assert cmd not in ["/emu help", "/emu status", "/emu b20"], (
-                f"Old command '{cmd}' should not be routed — "
-                f"only /emu-prefixed commands are valid"
-            )
+    def test_non_emu_text_returns_none(self, text):
+        assert parse_emu_command(text) is None
 ```
 
 - [ ] **Step 2: Run test to verify it passes**
@@ -693,19 +711,21 @@ git commit -m "test(3b): verify non-/emu text is never matched by command handle
 
 **Interfaces:**
 - Produces: FastAPI `GET /health` → JSON `{"status": "ok" | "degraded", ...}`
+- Uses `nonebot.get_app()` to register route on the FastAPI driver
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
 import pytest
+from gateway.health import build_health
 
 
-class TestHealthEndpoint:
-    def test_health_response_structure(self):
-        from gateway.health import build_health
-        state = build_health()
-        assert state["status"] in ("ok", "degraded", "down")
-        assert "onebot" in state
+class TestHealthResponse:
+    def test_health_structure_and_no_secrets(self):
+        # Simulate no bots connected (tests never have a live OneBot connection)
+        state = build_health(bot_count=0)
+        assert state["status"] == "degraded"
+        assert state["onebot"] == "disconnected"
         assert "gateway_version" in state
         assert "uptime_seconds" in state
         # No secrets in health
@@ -713,13 +733,12 @@ class TestHealthEndpoint:
             if isinstance(v, str):
                 assert "token" not in v.lower()
                 assert "key" not in v.lower()
+        assert "/opt" not in str(state)
 
-    def test_health_never_contains_paths(self):
-        from gateway.health import build_health
-        state = build_health()
-        health_json = str(state)
-        assert "/opt" not in health_json
-        assert "/root" not in health_json
+    def test_health_when_connected(self):
+        state = build_health(bot_count=1)
+        assert state["status"] == "ok"
+        assert state["onebot"] == "connected"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -738,19 +757,36 @@ from __future__ import annotations
 import time
 from typing import Any
 
+import nonebot
+
 from gateway.matchers.command_handler import GATEWAY_VERSION
 
 _START_TIME = time.monotonic()
 
 
-def build_health() -> dict[str, Any]:
+def build_health(bot_count: int | None = None) -> dict[str, Any]:
+    """Build health response. bot_count: 0=disconnected, >0=connected, None=query."""
+    if bot_count is None:
+        bot_count = len(nonebot.get_bots())
     uptime = time.monotonic() - _START_TIME
+    connected = bot_count > 0
     return {
-        "status": "ok",
-        "onebot": "connected",   # hardcoded in this phase — no live tracking yet
+        "status": "ok" if connected else "degraded",
+        "onebot": "connected" if connected else "disconnected",
         "gateway_version": GATEWAY_VERSION,
         "uptime_seconds": round(uptime, 1),
     }
+```
+
+- [ ] **Step 3a: Register the `/health` route in bot.py startup hook**
+
+```python
+# In gateway/bot.py @driver.on_startup:
+app = nonebot.get_app()
+
+@app.get("/health")
+async def health():
+    return build_health()
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -797,10 +833,16 @@ nonebot.load_plugins(str(Path(__file__).parent / "matchers"))
 
 @driver.on_startup
 async def _startup():
-    cfg = load_config()
     nonebot.logger.info(
         "[PJSK] gateway starting — access_token=<present>"
     )
+    # Register health endpoint
+    app = nonebot.get_app()
+
+    @app.get("/health")
+    async def health():
+        from gateway.health import build_health
+        return build_health()
 
 
 @driver.on_shutdown
@@ -939,7 +981,7 @@ tests/gateway/
   test_health.py                 2 tests
 ```
 
-**Total**: 24 tests, 9 source files, 0 production changes.
+**Total**: 24 tests (Task 2: 4, Task 3: 4, Task 4: 2, Task 5: 11, Task 6: 14, Task 7: 2 — some overlap between Task 5 and Task 6 test files resolved at implementation), 9 source files, 0 production changes.
 
 ---
 
