@@ -177,9 +177,9 @@ class VisionRace:
                 f"Duplicate providers among enabled engines: "
                 f"{enabled_providers}"
             )
-        if len(set(enabled_providers)) > 3:
+        if len(set(enabled_providers)) > 4:
             raise ValueError(
-                f"At most 3 distinct providers allowed, "
+                f"At most 4 distinct providers allowed, "
                 f"got {len(set(enabled_providers))}"
             )
 

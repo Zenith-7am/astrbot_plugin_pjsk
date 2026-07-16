@@ -12,6 +12,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s | %(message)s",
     datefmt="%H:%M:%S",
 )
+from gateway.log_config import sanitize_third_party_loggers  # noqa: E402
+sanitize_third_party_loggers()
 
 # Ensure the project root is on sys.path so that gateway.* imports resolve
 # regardless of how the process is launched.
