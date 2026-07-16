@@ -384,6 +384,11 @@ async def assemble_plugin_runtime(
             set_runtime_for_commands(runtime)
         except (ImportError, ValueError):
             pass
+        try:
+            from gateway.matchers.image_handler import set_image_runtime
+            set_image_runtime(runtime)
+        except (ImportError, ValueError):
+            pass
 
         return runtime
 

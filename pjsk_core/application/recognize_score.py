@@ -92,26 +92,34 @@ class RecognizeScore:
         image: bytes,
         *,
         source_gateway: str,
+        readonly: bool = False,
     ) -> RecognizeResult:
-        """Run vision race, record score if consensus or degraded-single."""
+        """Run vision race, record score if consensus or degraded-single.
+
+        When *readonly* is True, no database writes are performed —
+        OCR runs are not recorded, scores are not persisted, and
+        candidates are not stored.  ScoreAttempt fields (accuracy,
+        rating, status) are still computed for display.
+        """
         image_sha256 = hashlib.sha256(image).hexdigest()
         outcome = await self._race.run(image)
 
-        # Record OCR run. On failure: warn and continue with ocr_run_id=None.
+        # Record OCR run.  Skipped when readonly.  On failure: warn and continue.
         ocr_run_id: int | None = None
-        try:
-            ocr_run = await self._recorder.record(
-                user_id, image_sha256, source_gateway, outcome,
-            )
-            ocr_run_id = ocr_run.id
-        except Exception:
-            now = time.monotonic()
-            if now - self._last_audit_warn >= self._AUDIT_WARN_INTERVAL:
-                _logger.warning(
-                    "Failed to persist OCR run for user=%s sha256=%s",
-                    user_id, image_sha256[:16],
+        if not readonly:
+            try:
+                ocr_run = await self._recorder.record(
+                    user_id, image_sha256, source_gateway, outcome,
                 )
-                self._last_audit_warn = now
+                ocr_run_id = ocr_run.id
+            except Exception:
+                now = time.monotonic()
+                if now - self._last_audit_warn >= self._AUDIT_WARN_INTERVAL:
+                    _logger.warning(
+                        "Failed to persist OCR run for user=%s sha256=%s",
+                        user_id, image_sha256[:16],
+                    )
+                    self._last_audit_warn = now
 
         if outcome.decision in (
             VisionRaceDecision.CONSENSUS,
@@ -126,6 +134,7 @@ class RecognizeScore:
                 )
             attempt = await self._record(
                 selected, user_id, image_sha256, source_gateway, ocr_run_id,
+                readonly=readonly,
             )
             return RecognizeResult(
                 outcome=outcome, validated=selected,
@@ -135,17 +144,19 @@ class RecognizeScore:
 
         if outcome.decision == VisionRaceDecision.DISAGREEMENT:
             candidates = self._collect_candidates(outcome)
-            catalog = await self._charts.get_song_catalog()
-            cs = CandidateSet(
-                candidates=candidates,
-                image_sha256=image_sha256,
-                source_gateway=source_gateway,
-                ocr_run_id=ocr_run_id if ocr_run_id is not None else 0,
-                chart_data_version=catalog.version,
-            )
-            cid = await self._store.put(
-                user_id, cs, ttl_seconds=self._candidate_ttl_seconds,
-            )
+            cid: str | None = None
+            if not readonly:
+                catalog = await self._charts.get_song_catalog()
+                cs = CandidateSet(
+                    candidates=candidates,
+                    image_sha256=image_sha256,
+                    source_gateway=source_gateway,
+                    ocr_run_id=ocr_run_id if ocr_run_id is not None else 0,
+                    chart_data_version=catalog.version,
+                )
+                cid = await self._store.put(
+                    user_id, cs, ttl_seconds=self._candidate_ttl_seconds,
+                )
             return RecognizeResult(
                 outcome=outcome, validated=outcome.selected,
                 candidates_for_user=candidates,
@@ -157,6 +168,7 @@ class RecognizeScore:
             if outcome.selected is not None:
                 return await self._adopt_timeout_result(
                     outcome, user_id, image_sha256, source_gateway, ocr_run_id,
+                    readonly=readonly,
                 )
             # Return partial candidates from completed results even on timeout
             candidates = self._collect_candidates(outcome)
@@ -248,8 +260,13 @@ class RecognizeScore:
         image_sha256: str,
         source_gateway: str,
         ocr_run_id: int | None,
+        *,
+        readonly: bool = False,
     ) -> ScoreAttempt:
-        """Construct and persist a ScoreAttempt from a validated observation."""
+        """Construct (and optionally persist) a ScoreAttempt from a validated observation.
+
+        When *readonly* is True the ScoreAttempt is computed but NOT saved.
+        """
         primary = selected.primary
         if primary is None:
             raise RuntimeError("Cannot record: selected has no primary candidate")
@@ -272,6 +289,8 @@ class RecognizeScore:
             image_sha256=image_sha256, source_gateway=source_gateway,
             ocr_run_id=ocr_run_id, created_at=now,
         )
+        if readonly:
+            return attempt
         return await self._scores.record_attempt(attempt)
 
     async def _adopt_timeout_result(
@@ -281,6 +300,8 @@ class RecognizeScore:
         image_sha256: str,
         source_gateway: str,
         ocr_run_id: int | None,
+        *,
+        readonly: bool = False,
     ) -> RecognizeResult:
         """Adopt a single STRONG result when global timeout fired.
 
@@ -295,6 +316,7 @@ class RecognizeScore:
             )
         attempt = await self._record(
             outcome.selected, user_id, image_sha256, source_gateway, ocr_run_id,
+            readonly=readonly,
         )
         return RecognizeResult(
             outcome=outcome, validated=outcome.selected,
