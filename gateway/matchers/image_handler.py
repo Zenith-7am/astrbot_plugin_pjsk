@@ -14,7 +14,7 @@ from pjsk_core.application.replies import TextReply
 from pjsk_core.application.vision_race import VisionRaceDecision
 from pjsk_core.domain.users import QqNumber, User
 from gateway.commands import qq_allowed
-from gateway.adapters.event_mapper import map_event
+from gateway.adapters.event_mapper import IncomingMessage, map_event
 from gateway.adapters.reply_sender import send_text_reply
 
 _logger = logging.getLogger(__name__)
@@ -230,7 +230,13 @@ def _format_candidates_text(result: RecognizeResult) -> str:
 
 @image_matcher.handle()
 async def _handle_image(bot: Bot, event: MessageEvent) -> None:
-    """Handle image OCR — readonly, no DB writes."""
+    """Handle image OCR.
+
+    Consensus → auto-save score.  Disagreement → store candidates for user pick.
+    Set ``PJSK_OCR_READONLY=1`` in environment to skip persistence (shadow mode).
+    """
+    import os
+
     msg = map_event(event)
 
     if not qq_allowed(msg.external_user_id):
@@ -277,14 +283,22 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
         await send_text_reply(bot, event, TextReply(text=error))
         return
 
-    # OCR — readonly
+    # OCR — snapshot old PB before recognize (for "刷新个人最佳" status)
+    readonly = os.environ.get("PJSK_OCR_READONLY") == "1"
+    old_pb_rating: float | None = None
     _logger.info(
-        "image received: type=%s size=%d", msg.conversation_type.value, len(image_data),
+        "image received: type=%s size=%d readonly=%s",
+        msg.conversation_type.value, len(image_data), readonly,
     )
     try:
         result = await runtime.recognize_score.recognize(
-            user.id, image_data, source_gateway="onebot", readonly=True,
+            user.id, image_data, source_gateway="onebot", readonly=readonly,
         )
+        # Capture old PB *after* recognize in case of race (rare, cosmetic impact)
+        if result.score_attempt is not None and not readonly:
+            pb = await runtime.score_repo.get_personal_best(user.id, result.score_attempt.chart_id)
+            # If the current PB is ours (same attempt id), check if there was a previous one
+            old_pb_rating = pb.rating if pb is not None and pb.id != result.score_attempt.id else None
     except Exception:
         _logger.exception("OCR failed")
         await send_text_reply(bot, event, TextReply(text="识别失败，请稍后重试"))
@@ -293,9 +307,15 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
     # Format and reply
     decision = result.outcome.decision
     if decision in (VisionRaceDecision.CONSENSUS, VisionRaceDecision.DEGRADED_SINGLE):
-        text = _format_readonly_result(result) if result.validated is not None else "识别完成但无法解析结果"
+        if readonly:
+            text = _format_readonly_result(result) if result.validated is not None else "识别完成但无法解析结果"
+        else:
+            text = _format_consensus_reply(result, old_pb_rating)
     elif decision == VisionRaceDecision.DISAGREEMENT:
-        text = _format_candidates_text(result)
+        if readonly:
+            text = _format_candidates_text(result)
+        else:
+            text = await _handle_disagreement(result, user, msg, runtime)
     elif decision == VisionRaceDecision.ALL_FAILED:
         text = "所有识别模型均失败，请稍后重试"
     elif decision == VisionRaceDecision.NO_AVAILABLE_ENGINES:
@@ -306,3 +326,41 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
         text = "识别失败，请稍后重试"
 
     await send_text_reply(bot, event, TextReply(text=text))
+
+
+def _format_consensus_reply(
+    result: RecognizeResult, old_pb_rating: float | None,
+) -> str:
+    """Format consensus result with PB update status."""
+    if result.score_attempt is None or result.validated is None:
+        return "识别完成但无法保存"
+
+    lines = [_format_readonly_result(result)]
+    if result.score_attempt.rating > 0:  # valid rating → was saved
+        if old_pb_rating is None:
+            lines.append("")
+            lines.append("新曲目，已记录")
+        else:
+            lines.append("")
+            lines.append(f"已记录（原个人最佳: {old_pb_rating:.2f}）")
+    return "\n".join(lines)
+
+
+async def _handle_disagreement(
+    result: RecognizeResult, user: User, msg: IncomingMessage, runtime: object,
+) -> str:
+    """Store candidates and return a pick list."""
+    from pjsk_runtime.runtime import Runtime
+    rt: Runtime = runtime  # type: ignore[assignment]
+
+    if not result.candidates_for_user or result.candidate_set_id is None:
+        return "多模型识别不一致，请重新发送截图"
+
+    cid = result.candidate_set_id
+    display = _format_candidates_text(result)
+
+    # Store pending candidate reference
+    conv_id = msg.group_id if msg.group_id else f"private_{msg.external_user_id}"
+    rt.set_pending(user.id.value, "onebot", conv_id, cid, display)
+
+    return display
