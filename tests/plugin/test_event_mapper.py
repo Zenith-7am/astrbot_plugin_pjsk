@@ -48,8 +48,8 @@ class FakeMessageEvent:
     def get_sender_id(self) -> str:
         return self.sender_id
 
-    def get_group_id(self) -> str | None:
-        return None  # default: private chat
+    def get_group_id(self) -> str:
+        return ""  # default: private chat
 
     def get_message_type(self) -> str:
         return "private"

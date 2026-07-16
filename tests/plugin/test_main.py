@@ -61,7 +61,7 @@ class FakeEvent:
     message_obj: FakeMessageObj = field(default_factory=FakeMessageObj)
     platform_id: str = "onebot_v11"
     sender_id: str = "123456789"
-    _group_id: str | None = None
+    _group_id: str = ""
     message_str: str = ""
     _stopped: bool = field(default=False, init=False)
 
@@ -71,7 +71,7 @@ class FakeEvent:
     def get_sender_id(self) -> str:
         return self.sender_id
 
-    def get_group_id(self) -> str | None:
+    def get_group_id(self) -> str:
         return self._group_id
 
     def get_message_type(self) -> str:
@@ -414,7 +414,7 @@ class TestIsGroupChat:
         assert _is_group_chat(event) is True
 
     def test_private_chat_returns_false(self) -> None:
-        event = FakeEvent(_group_id=None)
+        event = FakeEvent(_group_id="")
         assert _is_group_chat(event) is False
 
 

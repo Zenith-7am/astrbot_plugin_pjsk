@@ -75,8 +75,13 @@ def _is_at_bot(event: Any, bot_self_id: str) -> bool:
 
 
 def _is_group_chat(event: Any) -> bool:
-    """Check if the event is from a group chat (not private)."""
-    return event.get_group_id() is not None
+    """Check if the event is from a group chat (not private).
+
+    AstrBot returns an empty string ``""`` for private-chat ``group_id``,
+    not ``None``.  We use ``bool()`` so both falsy values are treated as
+    "not a group chat".
+    """
+    return bool(event.get_group_id())
 
 
 def _get_self_id(event: Any) -> str:
