@@ -38,10 +38,9 @@
 cd D:\emu-bot
 git log --oneline -5
 git status --short --branch
-git remote -v
 ```
 
-Record the output verbatim (it contains no secrets). If the repo is dirty, record which files are modified.
+Record the output verbatim. **Do NOT run `git remote -v`** — remote URLs are unnecessary for the audit and may expose private repository addresses. (it contains no secrets). If the repo is dirty, record which files are modified.
 
 - [ ] **Step 2: Generate a full file listing with SHA-256 hashes**
 
@@ -114,10 +113,10 @@ git commit -m "audit(3a): record local old-repo file manifest and git status"
 ssh root@154.37.219.8 \
   "systemctl is-active pjsk-emu-bot.service;
    systemctl is-enabled pjsk-emu-bot.service;
-   systemctl cat pjsk-emu-bot.service"
+   systemctl show pjsk-emu-bot.service -p Id -p ActiveState -p SubState -p ExecStart -p WorkingDirectory -p Restart -p RestartSec -p User"
 ```
 
-Record the unit file — but **redact** any `Environment=` lines containing `KEY`, `SECRET`, `TOKEN`, or `PROXY`. Replace values with `<REDACTED>`.
+Use `systemctl show` with explicit property names — this returns only the requested fields and never dumps `Environment=` lines. **Do NOT use `systemctl cat`** — the unit file may contain plaintext API keys in `Environment=` directives.
 
 - [ ] **Step 2: Generate VPS file listing with SHA-256**
 
@@ -145,19 +144,35 @@ Record the Python version and top-level packages. Do NOT record the full `pip fr
 
 ```bash
 ssh root@154.37.219.8 \
-  "sqlite3 /opt/pjsk-emu-bot/data/bot.db '.schema' 2>&1"
+  "sqlite3 'file:/opt/pjsk-emu-bot/data/bot.db?mode=ro' '.schema' 2>&1"
 ```
 
-Record the CREATE TABLE statements. Do NOT run any SELECT queries. If the database is missing or the path differs, record the actual path found via `find /opt/pjsk-emu-bot -name '*.db'`.
+The URI `file:…?mode=ro` opens the database **read-only at the engine level**. Even if `.schema` were accidentally replaced with a write query, SQLite would reject it. Record the CREATE TABLE statements. Do NOT run any SELECT queries. If the database is missing or the path differs, record the actual path found via `find /opt/pjsk-emu-bot -name '*.db'`.
 
-- [ ] **Step 5: Sample recent journal for behavioral evidence**
+- [ ] **Step 5: Extract behavioral evidence from journal (anonymized aggregates only)**
+
+**Do NOT dump raw journal lines** — they may contain QQ numbers, OCR text, and image URLs.
+
+Instead, use anonymous aggregation:
 
 ```bash
+# Count log lines by module (no user data in module names)
 ssh root@154.37.219.8 \
-  "journalctl -u pjsk-emu-bot --no-pager -n 100 2>&1"
+  "journalctl -u pjsk-emu-bot --no-pager -n 5000 2>&1 |
+   grep -oP 'module=\S+' | sort | uniq -c | sort -rn | head -20"
+
+# Count event types (INFO/WARNING/ERROR) — safe aggregate
+ssh root@154.37.219.8 \
+  "journalctl -u pjsk-emu-bot --no-pager -n 5000 2>&1 |
+   grep -oP '\[(INFO|WARNING|ERROR)\]' | sort | uniq -c"
+
+# Date range of available logs
+ssh root@154.37.219.8 \
+  "journalctl -u pjsk-emu-bot --no-pager --output=short-iso -n 1 2>&1;
+   journalctl -u pjsk-emu-bot --no-pager --output=short-iso --reverse -n 1 2>&1"
 ```
 
-**Privacy**: If any line contains a QQ number (5-11 digit numeric string in a user-visible position), replace it with `<QQ_REDACTED>`. If any line contains an OCR text or image URL, replace the value with `<REDACTED>`.
+Record only the aggregate counts and date range — never the raw log text.
 
 - [ ] **Step 6: Write the VPS snapshot section**
 
@@ -214,7 +229,7 @@ ssh root@154.37.219.8 \
 
 Classify each orphan:
 - **LIVE_ORPHAN**: imported by at least one other source file (production depends on it)
-- **DEAD_ORPHAN**: not imported by any source file (likely residual)
+- **NO_STATIC_REFERENCE**: not imported by any source file (likely residual)
 - **UNKNOWN**: cannot determine (e.g., dynamic import, `__import__`)
 
 - [ ] **Step 3: Build the drift matrix**
@@ -231,7 +246,7 @@ Classify each orphan:
 | GIT_ONLY | <N> |
 | VPS_ONLY (ORPHAN) | <N> |
 | … of which LIVE_ORPHAN | <N> |
-| … of which DEAD_ORPHAN | <N> |
+| … of which NO_STATIC_REFERENCE | <N> |
 
 ### 3.2 DRIFT files
 
@@ -243,7 +258,7 @@ Classify each orphan:
 | File | Imported by | Risk if missing |
 |------|-------------|-----------------|
 
-### 3.4 DEAD_ORPHAN files (no known importers)
+### 3.4 NO_STATIC_REFERENCE files (no known importers)
 
 | File | Size | Last modified (VPS) |
 |------|------|---------------------|
@@ -418,35 +433,111 @@ else:
 ' 2>&1"
 ```
 
-- [ ] **Step 3: Verify critical-path import chain**
+- [ ] **Step 3: Verify critical-path import chain (static AST only — no runtime import)**
 
-Check that the main entry point's import chain is complete:
+**Do NOT use `importlib.import_module()`** — it executes module-level code and may trigger side effects (network connections, file I/O, Redis/DB init).
+
+Instead, use static AST analysis to check that imported modules exist on the filesystem:
 
 ```bash
 ssh root@154.37.219.8 \
   "cd /opt/pjsk-emu-bot && python3 -c '
-import sys; sys.path.insert(0, \".\")
-try:
-    # Dry-run imports for critical path only — no side effects
-    import ast, importlib
-    critical = [
-        \"src.core.calc_accuracy\",
-        \"src.core.kn_power\",
-        \"src.features.handler_b20\",
-        \"src.features.handler_ocr\",
-    ]
-    for mod in critical:
-        try:
-            importlib.import_module(mod)
-            print(f\"OK: {mod}\")
-        except ImportError as e:
-            print(f\"MISSING: {mod} — {e}\")
-except Exception as e:
-    print(f\"FATAL: {e}\")
+import ast, sys
+from pathlib import Path
+
+SRC = Path(\"src\")
+critical_py = [
+    SRC / \"core/calc_accuracy.py\",
+    SRC / \"core/kn_power.py\",
+    SRC / \"features/handler_b20.py\",
+    SRC / \"features/handler_ocr.py\",
+]
+
+def extract_relative_imports(filepath: Path) -> list[str]:
+    \"\"\"Parse a .py file and return relative import targets (no execution).\"\"\"
+    try:
+        tree = ast.parse(filepath.read_text())
+    except SyntaxError as e:
+        return [f\"SYNTAX_ERROR: {e}\"]
+    imports = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.append(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imports.append(node.module)
+    return imports
+
+missing = []
+for pyfile in critical_py:
+    if not pyfile.exists():
+        missing.append(f\"FILE_MISSING: {pyfile}\")
+        continue
+    relative_imports = extract_relative_imports(pyfile)
+    for imp in relative_imports:
+        if \"SYNTAX_ERROR\" in imp:
+            missing.append(f\"{pyfile}: {imp}\")
+            continue
+        # Convert dotted import to expected path
+        expected = SRC / (imp.replace(\".\", \"/\") + \".py\")
+        init_expected = SRC / (imp.replace(\".\", \"/\") + \"/__init__.py\")
+        if not expected.exists() and not init_expected.exists():
+            missing.append(f\"{pyfile}: MISSING {imp} (expected {expected})\")
+
+if missing:
+    for m in missing:
+        print(m)
+else:
+    print(\"ALL_STATIC_IMPORTS_RESOLVED\")
 ' 2>&1"
 ```
 
-**Privacy**: The module names above do not contain secrets. If the import fails because of a missing `.env`-based config, record "import blocked by missing config (non-fatal for static check)".
+- [ ] **Step 3a: Also resolve absolute imports (non-relative) for the same files**
+
+```bash
+ssh root@154.37.219.8 \
+  "cd /opt/pjsk-emu-bot && python3 -c '
+import ast, sys
+from pathlib import Path
+
+SRC = Path(\"src\")
+critical_py = [
+    SRC / \"core/calc_accuracy.py\",
+    SRC / \"core/kn_power.py\",
+    SRC / \"features/handler_b20.py\",
+    SRC / \"features/handler_ocr.py\",
+]
+
+def extract_absolute_imports(filepath: Path) -> list[str]:
+    try:
+        tree = ast.parse(filepath.read_text())
+    except SyntaxError:
+        return []
+    imports = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                top = alias.name.split(\".\")[0]
+                imports.append(top)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and node.level == 0:  # level=0 = absolute
+                top = node.module.split(\".\")[0]
+                imports.append(top)
+    return list(set(imports))
+
+all_absolute = set()
+for pyfile in critical_py:
+    if pyfile.exists():
+        all_absolute.update(extract_absolute_imports(pyfile))
+
+# Report top-level packages (no secrets in package names like \"nonebot\", \"sqlite3\")
+for pkg in sorted(all_absolute):
+    print(pkg)
+' 2>&1"
+```
+
+This tells us the top-level dependencies without executing any code.
 
 - [ ] **Step 4: Write the rollback eligibility assessment**
 
