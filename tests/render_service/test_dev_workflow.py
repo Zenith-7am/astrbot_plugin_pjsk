@@ -3,6 +3,38 @@
 import json
 from pathlib import Path
 
+import pytest
+
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────
+
+
+def _chromium_available() -> bool:
+    """Return True if Playwright + Chromium are installed and usable."""
+    try:
+        from playwright.sync_api import sync_playwright
+        p = sync_playwright().start()
+        try:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+            return True
+        except Exception:
+            return False
+        finally:
+            p.stop()
+    except Exception:
+        return False
+
+
+def _load_b20_fixture() -> dict:
+    fixture_path = (
+        Path(__file__).parent.parent.parent
+        / "tests" / "fixtures" / "render" / "b20_preview.json"
+    )
+    return json.loads(fixture_path.read_text(encoding="utf-8"))
+
 
 class TestDevHealthEndpoint:
     """Health endpoint returns the function list needed by preview tooling."""
@@ -89,3 +121,87 @@ class TestPreviewScriptImport:
         # Don't actually execute — just verify the file exists and is parseable
         source = (tools_dir / "render_preview.py").read_text(encoding="utf-8")
         compile(source, str(tools_dir / "render_preview.py"), "exec")
+
+
+# ── Real Playwright rendering (requires Chromium) ───────────────────────
+
+
+@pytest.mark.visual
+class TestRealPlaywrightRender:
+    """End-to-end: start FastAPI lifespan, POST fixture, verify PNG output.
+
+    These tests require Playwright + Chromium. They are skipped
+    automatically when Chromium is not installed (e.g. CI).
+    """
+
+    @pytest.fixture(autouse=True)
+    def _skip_if_no_chromium(self) -> None:
+        if not _chromium_available():
+            pytest.skip("Chromium not available — use 'playwright install chromium'")
+
+    def test_render_b20_returns_valid_png(self) -> None:
+        """POST the bundled b20_preview fixture → 200, image/png, PNG bytes."""
+        import render_service.main as svc
+        from fastapi.testclient import TestClient
+
+        # The lifespan starts Playwright + Chromium automatically.
+        # TestClient enters/exits the lifespan for us.
+        with TestClient(svc.app) as client:
+            data = _load_b20_fixture()
+            response = client.post("/render/b20", json=data)
+
+        assert response.status_code == 200, (
+            f"Render failed: {response.text[:200]}"
+        )
+        assert response.headers["content-type"] == "image/png"
+        content = response.content
+        assert content[:8] == _PNG_SIGNATURE, (
+            f"Not a PNG: first 8 bytes = {content[:8]!r}"
+        )
+        assert len(content) > 1000, (
+            f"PNG too small ({len(content)} bytes) — likely empty/error render"
+        )
+
+    def test_health_returns_functions_after_startup(self) -> None:
+        """After lifespan, /health reports loaded functions."""
+        import render_service.main as svc
+        from fastapi.testclient import TestClient
+
+        with TestClient(svc.app) as client:
+            resp = client.get("/health")
+            assert resp.status_code == 200
+            body = resp.json()
+            assert "functions" in body
+            assert "b20" in body["functions"]
+            assert body["browser"] == "connected"
+
+    def test_render_difficulty_fixture(self) -> None:
+        """POST a minimal difficulty fixture → 200, image/png."""
+        import render_service.main as svc
+        from fastapi.testclient import TestClient
+
+        difficulty_data = {
+            "mode": "global",
+            "title": "EXP 28",
+            "tiers": [
+                {
+                    "constant": 28.5,
+                    "songs": [
+                        {
+                            "song_id": 1, "song_title": "Test Song",
+                            "community_constant": "28.5", "note_count": 1200,
+                            "jacket": None, "is_played": False,
+                            "status": 0, "accuracy": 0.0, "power": 0.0,
+                            "judges": {},
+                        }
+                    ],
+                }
+            ],
+        }
+
+        with TestClient(svc.app) as client:
+            response = client.post("/render/difficulty", json=difficulty_data)
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
+        assert response.content[:8] == _PNG_SIGNATURE
