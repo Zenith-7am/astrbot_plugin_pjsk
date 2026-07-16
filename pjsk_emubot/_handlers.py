@@ -301,7 +301,7 @@ async def _get_image_result_text(
     return ReplyBuilder.error_text(code)
 
 
-# ── /pjsk command helpers ────────────────────────────────────────────────────
+# ── /emu command helpers ────────────────────────────────────────────────────
 
 _DIFFICULTY_ABBR: dict[str, str] = {
     "ma": "master", "ex": "expert", "apd": "append",
@@ -386,7 +386,7 @@ def _unique_song_ids_from_entries(entries: list[Any]) -> list[int]:
 async def _pjsk_b20(
     rt: PluginRuntime, mapper: EventMapper, event: Any,
 ) -> tuple[str, bytes | None]:
-    """Handle /pjsk b20 — render image, fall back to text."""
+    """Handle /emu b20 — render image, fall back to text."""
     if rt.query_b20 is None:
         return "B20 查询暂不可用", None
 
@@ -420,7 +420,7 @@ async def _pjsk_b20(
 async def _pjsk_append(
     rt: PluginRuntime, mapper: EventMapper, event: Any, sub: str,
 ) -> str:
-    """Handle /pjsk append [on|off|status]."""
+    """Handle /emu append [on|off|status]."""
     if rt.toggle_append is None:
         return "设置暂不可用"
 
@@ -439,7 +439,7 @@ async def _pjsk_append(
         excluded = await rt.toggle_append.get(user.id)
         return f"APPEND {'已排除' if excluded else '已包含'}"
     else:
-        return "用法: /pjsk append on|off|status"
+        return "用法: /emu append on|off|status"
 
 
 def _difficulty_text(
@@ -524,7 +524,7 @@ async def _pjsk_difficulty(
     rt: PluginRuntime, mapper: EventMapper, event: Any,
     abbr: str, level: int, global_mode: bool,
 ) -> tuple[str, bytes | None]:
-    """Handle /pjsk <diff><level> [global] — difficulty ranking."""
+    """Handle /emu <diff><level> [global] — difficulty ranking."""
     if rt.query_difficulty_ranking is None:
         return "难度排行暂不可用", None
 

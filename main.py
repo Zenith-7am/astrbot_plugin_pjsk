@@ -274,11 +274,11 @@ class PjskPlugin(Star):  # type: ignore[misc]
 
         return
 
-    # ── /pjsk commands ─────────────────────────────────────────────────
+    # ── /emu commands ─────────────────────────────────────────────────
 
-    @filter.command("pjsk")  # type: ignore[untyped-decorator]
+    @filter.command("emu")  # type: ignore[untyped-decorator]
     async def pjsk_command(self, event: AstrMessageEvent) -> None:  # type: ignore[misc]
-        """Handle /pjsk subcommands: b20, difficulty, append."""
+        """Handle /emu subcommands: b20, difficulty, append."""
         if self._runtime is None:
             return
 
@@ -291,11 +291,11 @@ class PjskPlugin(Star):  # type: ignore[misc]
             return
 
         text = raw.strip()
-        if not text.startswith("/pjsk"):
+        if not text.startswith("/emu"):
             return
 
-        # Extract the subcommand part: "/pjsk b20" → "b20"
-        parts = text[len("/pjsk"):].strip().split(maxsplit=1)
+        # Extract the subcommand part: "/emu b20" → "b20"
+        parts = text[len("/emu"):].strip().split(maxsplit=1)
         subcommand = parts[0].lower() if parts else ""
         rest = parts[1] if len(parts) > 1 else ""
 
@@ -314,7 +314,7 @@ class PjskPlugin(Star):  # type: ignore[misc]
             event.stop_event()
             return
 
-        # Difficulty ranking: e.g. /pjsk ma31, /pjsk exp28 global
+        # Difficulty ranking: e.g. /emu ma31, /emu exp28 global
         import re
         m = re.match(r"^(ma|ex|apd|exp|hd|nm|ez)(\d{1,2})$", subcommand)
         if m:
