@@ -11,6 +11,7 @@ AstrBot process pass real AstrBot events; tests pass fakes.
 """
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
@@ -20,6 +21,8 @@ from pjsk_emubot.reply_builder import PluginErrorCode, ReplyBuilder
 from pjsk_emubot.runtime import PluginRuntime
 from pjsk_core.domain.users import UserId
 from pjsk_core.ports.cache import CandidateSet as _CandidateSet
+
+_LOGGER = logging.getLogger(__name__)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -113,6 +116,7 @@ async def _handle_image(
     """
     count = _image_count(event)
     if count == 0:
+        _LOGGER.info("[PJSK] _handle_image: img_count=0 — not a PJSK screenshot")
         return PluginErrorCode.NOT_PJSK_SCREENSHOT, None
     if count > 1:
         return PluginErrorCode.MULTIPLE_IMAGES, None
@@ -120,6 +124,7 @@ async def _handle_image(
     mapper = EventMapper()
     ctx = await mapper.extract_async(event, rt.http_client)
     if ctx is None:
+        _LOGGER.info("[PJSK] _handle_image: extract_async returned None")
         return PluginErrorCode.NOT_PJSK_SCREENSHOT, None
 
     if ctx.qq_number is None:
@@ -128,12 +133,15 @@ async def _handle_image(
     user = await rt.user_repo.get_or_create(ctx.qq_number)
 
     if not rt.rate_limiter.check(user.id):
+        _LOGGER.info("[PJSK] _handle_image: user %s rate limited", user.id.value)
         return PluginErrorCode.USER_RATE_LIMITED, None
     rt.rate_limiter.mark(user.id)
 
     if rt.recognize_score is None:
+        _LOGGER.info("[PJSK] _handle_image: recognize_score is None — no engines configured")
         return PluginErrorCode.ALL_ENGINES_DOWN, None
 
+    _LOGGER.info("[PJSK] _handle_image: calling recognize_score.recognize...")
     result = await rt.recognize_score.recognize(
         user.id, ctx.image_bytes, source_gateway=ctx.source_gateway,
     )

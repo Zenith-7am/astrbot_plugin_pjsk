@@ -153,6 +153,17 @@ class PjskPlugin(Star):  # type: ignore[misc]
         group_id = event.get_group_id() or "" if group_chat else ""
         sender_qq = mapper.extract_qq(event) if group_chat else None
 
+        # ── Diagnostic: log component classes (remove after debug) ────
+        try:
+            comp_names = [c.__class__.__name__ for c in event.message_obj.message]
+            logger.info(
+                "[PJSK] on_message: img_count=%d group_chat=%s has_at=%s "
+                "platform=%s components=%s",
+                img_count, group_chat, has_at, platform_id, comp_names,
+            )
+        except Exception:
+            logger.info("[PJSK] on_message: (unable to enumerate components)")
+
         # ── 2. Group chat: @Bot without image → consume buffer / arm ─
         if group_chat and has_at and img_count == 0:
             buffered = rt.image_buffer.consume(
