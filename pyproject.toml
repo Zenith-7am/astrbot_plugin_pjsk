@@ -29,7 +29,7 @@ render = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["pjsk_core", "pjsk_core.*", "adapters", "adapters.*"]
+include = ["pjsk_core", "pjsk_core.*", "adapters", "adapters.*", "pjsk_emubot", "pjsk_emubot.*", "gateway", "gateway.*"]
 
 [tool.setuptools.package-data]
 "adapters.database.migrations" = ["*.sql"]

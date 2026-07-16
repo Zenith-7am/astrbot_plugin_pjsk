@@ -25,7 +25,7 @@ class IncomingMessage:
         return (
             f"IncomingMessage(gateway={self.gateway!r}, "
             f"conversation_type={self.conversation_type.value!r}, "
-            f"text={self.text[:40]!r}, "
+            f"text_length={len(self.text)}, "
             f"is_bot_mentioned={self.is_bot_mentioned})"
         )
 

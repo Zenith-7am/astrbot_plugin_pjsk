@@ -1,5 +1,6 @@
 """Tests for gateway.adapters.reply_sender."""
 import pytest
+from pjsk_core.application.replies import TextReply
 from gateway.adapters.reply_sender import send_text_reply
 
 
@@ -21,7 +22,7 @@ class TestSendTextReply:
     async def test_sends_text_segment(self) -> None:
         bot = FakeBot()
         event = object()
-        await send_text_reply(bot, event, "hello world")
+        await send_text_reply(bot, event, TextReply(text="hello world"))
         assert len(bot.sent_messages) == 1
         sent = bot.sent_messages[0]
         assert sent["message"].type == "text"
@@ -31,5 +32,5 @@ class TestSendTextReply:
     async def test_empty_text_not_sent(self) -> None:
         bot = FakeBot()
         event = object()
-        await send_text_reply(bot, event, "")
+        await send_text_reply(bot, event, TextReply(text=""))
         assert len(bot.sent_messages) == 0
