@@ -1,5 +1,4 @@
 """Tests for gateway.adapters.event_mapper."""
-import pytest
 from gateway.adapters.event_mapper import map_event, IncomingMessage, ConversationType
 
 
@@ -28,7 +27,7 @@ class FakeOneBotEvent:
 
 
 class TestMapEvent:
-    def test_private_message(self):
+    def test_private_message(self) -> None:
         event = FakeOneBotEvent(
             message_type="private", user_id="123456789",
             message_id="msg-001", raw_message="/emu status",
@@ -41,7 +40,7 @@ class TestMapEvent:
         assert msg.text == "/emu status"
         assert msg.is_bot_mentioned is True
 
-    def test_group_message_with_at(self):
+    def test_group_message_with_at(self) -> None:
         event = FakeOneBotEvent(
             message_type="group", user_id="111111",
             message_id="msg-002", raw_message="/emu help",
@@ -52,7 +51,7 @@ class TestMapEvent:
         assert msg.group_id == "987654321"
         assert msg.is_bot_mentioned is True
 
-    def test_group_message_without_at(self):
+    def test_group_message_without_at(self) -> None:
         event = FakeOneBotEvent(
             message_type="group", user_id="111111",
             message_id="msg-003", raw_message="today weather",
@@ -61,7 +60,7 @@ class TestMapEvent:
         msg = map_event(event)
         assert msg.is_bot_mentioned is False
 
-    def test_repr_never_exposes_external_user_id(self):
+    def test_repr_never_exposes_external_user_id(self) -> None:
         event = FakeOneBotEvent(
             message_type="private", user_id="999999999",
             message_id="msg-004", raw_message="/emu help",

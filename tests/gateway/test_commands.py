@@ -17,7 +17,7 @@ class TestParseEmuCommand:
         ("/emu", EmuCommand.UNKNOWN),
         ("/emu  ", EmuCommand.UNKNOWN),
     ])
-    def test_valid_emu_commands(self, text, expected):
+    def test_valid_emu_commands(self, text: str, expected: object) -> None:
         assert parse_emu_command(text) is expected
 
     @pytest.mark.parametrize("text", [
@@ -32,12 +32,12 @@ class TestParseEmuCommand:
         "/",
         "/emulator",
     ])
-    def test_non_emu_text_returns_none(self, text):
+    def test_non_emu_text_returns_none(self, text: str) -> None:
         assert parse_emu_command(text) is None
 
 
 class TestHelpText:
-    def test_help_only_lists_implemented_commands(self):
+    def test_help_only_lists_implemented_commands(self) -> None:
         text = build_help_text()
         assert "/emu help" in text
         assert "/emu status" in text
@@ -45,18 +45,18 @@ class TestHelpText:
         assert "b20" not in text
         assert "append" not in text
 
-    def test_help_is_reasonable_length(self):
+    def test_help_is_reasonable_length(self) -> None:
         text = build_help_text()
         assert 30 < len(text) < 500
 
 
 class TestStatusText:
-    def test_status_no_secrets(self):
+    def test_status_no_secrets(self) -> None:
         text = build_status_text(bot_count=0)
         assert "disconnected" in text
         assert "token" not in text.lower()
         assert "key" not in text.lower()
 
-    def test_status_connected(self):
+    def test_status_connected(self) -> None:
         text = build_status_text(bot_count=1)
         assert "connected" in text

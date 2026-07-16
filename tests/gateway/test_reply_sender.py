@@ -5,10 +5,10 @@ from gateway.adapters.reply_sender import send_text_reply
 
 class FakeBot:
     """Minimal stand-in for nonebot.adapters.onebot.v11.Bot."""
-    def __init__(self):
+    def __init__(self) -> None:
         self.sent_messages: list[dict] = []
 
-    async def send(self, event, message, **kwargs):
+    async def send(self, event: object, message: object, **kwargs: object) -> None:
         self.sent_messages.append({
             "event": event,
             "message": message,
@@ -18,7 +18,7 @@ class FakeBot:
 
 class TestSendTextReply:
     @pytest.mark.anyio
-    async def test_sends_text_segment(self):
+    async def test_sends_text_segment(self) -> None:
         bot = FakeBot()
         event = object()
         await send_text_reply(bot, event, "hello world")
@@ -28,7 +28,7 @@ class TestSendTextReply:
         assert sent["message"].data["text"] == "hello world"
 
     @pytest.mark.anyio
-    async def test_empty_text_not_sent(self):
+    async def test_empty_text_not_sent(self) -> None:
         bot = FakeBot()
         event = object()
         await send_text_reply(bot, event, "")

@@ -52,3 +52,11 @@ strict = true
 [[tool.mypy.overrides]]
 module = "astrbot.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "nonebot.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["fastapi", "fastapi.*"]
+ignore_missing_imports = true
