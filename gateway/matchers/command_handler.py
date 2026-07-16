@@ -17,7 +17,7 @@ _logger = logging.getLogger(__name__)
 emu_cmd = on_command("emu", priority=20, block=True)
 
 
-@emu_cmd.handle()  # type: ignore
+@emu_cmd.handle()
 async def _emu(bot: Bot, event: MessageEvent) -> None:
     msg = map_event(event)
     cmd = parse_emu_command(msg.text)

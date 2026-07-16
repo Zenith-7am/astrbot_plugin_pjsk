@@ -26,7 +26,7 @@ def build_health(bot_count: int = 0) -> dict[str, Any]:
 def register_health_route(app: FastAPI) -> None:
     """Register GET /health. Call once after app creation, before startup."""
 
-    @app.get("/health")  # type: ignore
+    @app.get("/health")
 
     async def health() -> dict[str, Any]:
         try:
