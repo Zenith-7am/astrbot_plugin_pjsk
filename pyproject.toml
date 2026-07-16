@@ -41,6 +41,9 @@ include = ["pjsk_core", "pjsk_core.*", "adapters", "adapters.*", "pjsk_emubot", 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "visual: tests that require Playwright + Chromium (skipped in CI)",
+]
 
 [tool.ruff]
 target-version = "py311"

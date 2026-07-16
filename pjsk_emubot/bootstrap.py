@@ -332,16 +332,22 @@ async def assemble_plugin_runtime(
         # PJSK_JACKET_CACHE_DIR env var takes priority over config dict;
         # if neither is set or the directory is unwritable, jacket_cache
         # stays None and render payloads will pass jacket=null (gray placeholder).
+        # CDN fallback is opt-in via PJSK_JACKET_CDN_FALLBACK=1 (default off).
         jacket_cache = None
         jacket_cache_dir = os.environ.get("PJSK_JACKET_CACHE_DIR", "").strip()
         if not jacket_cache_dir:
             jacket_cache_dir = cfg.get("jacket_cache_dir", "").strip()
         if jacket_cache_dir:
+            cdn_enabled = (
+                os.environ.get("PJSK_JACKET_CDN_FALLBACK", "").strip() == "1"
+                or str(cfg.get("jacket_cdn_fallback", "")).strip().lower() in ("1", "true", "yes")
+            )
             try:
                 from adapters.rendering.jacket_cache import JacketCache
                 jacket_cache = JacketCache(
                     cache_dir=jacket_cache_dir,
                     client=http_client,
+                    cdn_fallback=cdn_enabled,
                 )
                 if jacket_cache.cache_disabled:
                     _logger.warning(
@@ -350,7 +356,10 @@ async def assemble_plugin_runtime(
                     )
                     jacket_cache = None
                 else:
-                    _logger.info("JacketCache wired: %s", jacket_cache_dir)
+                    _logger.info(
+                        "JacketCache wired: %s (cdn_fallback=%s)",
+                        jacket_cache_dir, cdn_enabled,
+                    )
             except Exception:
                 _logger.exception("Failed to create JacketCache")
 
