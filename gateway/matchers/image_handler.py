@@ -344,7 +344,7 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
         return
 
     # Format and reply
-    decision = result.outcome.decision.decision
+    decision = result.outcome.decision
     if decision in (VisionRaceDecision.CONSENSUS, VisionRaceDecision.DEGRADED_SINGLE):
         if readonly:
             text = _format_readonly_result(result) if result.validated is not None else "识别完成但无法解析结果"
