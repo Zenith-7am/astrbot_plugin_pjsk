@@ -8,7 +8,7 @@ from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Bot, MessageEvent
 
 from pjsk_core.application.replies import TextReply
-from gateway.commands import EmuCommand, parse_emu_command, build_help_text, build_status_text
+from gateway.commands import EmuCommand, parse_emu_command, build_help_text, build_status_text, qq_allowed
 from gateway.adapters.event_mapper import map_event
 from gateway.adapters.reply_sender import send_text_reply
 
@@ -20,8 +20,12 @@ emu_cmd = on_command("emu", priority=20, block=True)
 @emu_cmd.handle()
 async def _emu(bot: Bot, event: MessageEvent) -> None:
     msg = map_event(event)
-    cmd = parse_emu_command(msg.text)
 
+    # Test allowlist — when set, only listed QQ numbers get replies
+    if not qq_allowed(msg.external_user_id):
+        return
+
+    cmd = parse_emu_command(msg.text)
     if cmd is None:
         return
 

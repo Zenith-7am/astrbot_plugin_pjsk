@@ -1,9 +1,22 @@
 """Pure command parsing and text builders — no NoneBot imports."""
 from __future__ import annotations
 
+import os
 from enum import Enum
 
 GATEWAY_VERSION = "0.2.0-dev"
+
+
+def qq_allowed(external_user_id: str) -> bool:
+    """Check whether a QQ number is allowed to interact with the bot.
+
+    If TEST_QQ_ALLOWLIST is set, only listed QQ numbers receive replies.
+    If unset (production), all users are served.
+    """
+    allowed = os.environ.get("TEST_QQ_ALLOWLIST", "")
+    if not allowed:
+        return True
+    return external_user_id in allowed.split(",")
 
 
 class EmuCommand(Enum):
