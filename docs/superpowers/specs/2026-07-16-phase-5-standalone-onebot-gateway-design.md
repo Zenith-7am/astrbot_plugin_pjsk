@@ -1,6 +1,11 @@
 ﻿# Phase 5 — Standalone OneBot Gateway (NoneBot-Based)
 
-> 设计规格 v2。修订于 2026-07-16，修复 5 个阻塞项 + 12 个修订项。
+> **Status: Under Review** — not yet approved for implementation.
+> **Supersedes:** v2 (commit `da2c00f`, subsequently `15e982d`).
+> **Implementation allowed: No** — pending governance approval.
+>
+> 设计规格 v3。修订于 2026-07-16。
+> v2→v3: shadow-composition fail-closed, CDN lifecycle independence, rollback gated on freeze-baseline, atomic-publish reference to production runbook.
 
 **目标：** 将项目从"AstrBot 插件为生产入口"切换为"NoneBot 2 + OneBot v11 独立 Gateway"，AstrBot 退出生产消息链但代码保留。
 
@@ -397,7 +402,8 @@ cdn:
 - `ONEBOT_ACCESS_TOKEN` 未定义 -> **启动失败**（跨 VPS 连接必须鉴权）。
 - 所有视觉引擎 API Key 均缺失 -> **启动失败**，明确错误。
 - `ADMIN_QQ` 未定义 -> **启动失败**（管理员通知是安全关键路径）。
-- `CDN_BASE_URL` 未定义且 `cdn.enabled=true` -> CDN 降级为 disable，日志 warning。
+- `cdn.enabled=true` 且 `CDN_BASE_URL` 未定义 -> **启动失败**。不得自动把用户配置的 `enabled=true` 静默改成 `false`。
+- `cdn.enabled=false` -> 允许启动，图片回复始终降级为文本。
 - Renderer URL 不可达 -> 降级（文本回复），不阻塞。
 - 数据库路径不可写 -> 启动失败。
 
@@ -566,7 +572,27 @@ NapCat 在国内 VPS，香港 VPS 的 `127.0.0.1` 不可达。`CDN_BASE_URL` 必
 
 ### 10.5 CDN 降级
 
-CDN 不可用时（`CDN_BASE_URL` 未配置、base URL 不可达或 FastAPI 图片路由未加载），退化为 **文本回复**：显示识别结果摘要，不发送图片。
+**仅当 `cdn.enabled=false` 时**图片回复降级为文本回复。`cdn.enabled=true` 但 CDN 运行时不可用（HTTP 503 等）时，单次渲染失败降级为文本，同时记录 warning——不下调全局配置。
+
+### 10.6 CDN 生命周期独立
+
+当前 8082 图片服务由旧 Bot（`pjsk-emu-bot.service`，端口 8082 + `/images/{filename}` 路由）提供。新设计推荐将 CDN 拆为独立服务：
+
+```text
+pjsk-cdn.service  (独立于旧 Bot 和新 Gateway)
+  - FastAPI 单路由: GET /images/{filename}
+  - 只服务受控图片目录
+  - URL token 有效期（可选）
+  - 文件名白名单 + magic-byte 校验
+  - 拒绝符号链接
+  - 限制文件大小
+  - 定时清理
+  - NapCat 跨 VPS 可达（通过反向隧道暴露或 HTTPS）
+```
+
+**优势**：Gateway 停止不必导致已生成图片立即不可访问。旧 Bot 停用时 CDN 不受影响。
+
+如果不采用独立服务，必须在实施计划中给出同等可靠的生命周期设计和切换顺序：确保 CDN 在新旧 Bot 切换期间持续可用，不依赖任何单一 Bot 进程。
 
 ---
 
@@ -709,6 +735,8 @@ HTTP endpoint `GET /health`：
 
 ## 15. systemd 与部署
 
+**原子发布流程、release manifest、预检门禁、共享数据边界和回滚定义**参见 `docs/production/PRODUCTION-OPERATIONS.md` §§D–H。本节约定的 systemd unit 和 env 文件必须与 runbook 中的发布布局一致。
+
 ### 15.1 `pjsk-onebot.service`
 
 ```ini
@@ -778,40 +806,100 @@ pjsk-onebot.service    --> Wants=pjsk-renderer.service
 
 **方案 B（次选）**：真正只读的影子观测模式
 
-影子模式的 **non-writing composition root**：不修改 `pjsk_core` 或 `adapters/`。在 `gateway/` 层装配时注入**非写入适配器**：
+影子模式通过**独立的 shadow composition root** 实现，从初始化阶段物理禁止写入：
 
 ```python
-# shadow_bootstrap.py — shadow-mode assembly（仅用于验证阶段）
-async def shadow_bootstrap(config: dict) -> Runtime:
-    """Assemble a read-only Runtime for shadow verification."""
-    # 注入 non-writing stubs，替代真实 repository
-    config["_shadow_readonly"] = True
-    runtime = await bootstrap(config)
+# gateway/shadow_bootstrap.py — shadow-mode assembly（仅用于验证阶段）
 
-    # 替换为只读桩：
-    # - ReadOnlyScoreRepository   — 任何写入方法返回 success 但不执行 I/O
-    # - ReadOnlyOcrRunRepository  — 同上
-    # - NoopUserRepository        — get_or_create 返回临时 User，不持久化
-    # - NoopCandidateStore        — 接受 put/consume 但不存储
-    return runtime
+class ShadowWriteViolation(Exception):
+    """Raised when shadow-mode code attempts a write operation."""
+
+
+class FailClosedScoreRepository:
+    """Score repository that refuses all writes — fail-closed, not silent."""
+    async def save(self, *args, **kwargs):
+        raise ShadowWriteViolation("score_attempts write in shadow mode")
+    async def update_personal_best(self, *args, **kwargs):
+        raise ShadowWriteViolation("personal_bests write in shadow mode")
+    # read methods delegate to real repository (read-only safe)
+
+
+class FailClosedOcrRunRepository:
+    async def save(self, *args, **kwargs):
+        raise ShadowWriteViolation("ocr_runs write in shadow mode")
+
+
+class FailClosedUserRepository:
+    async def create(self, *args, **kwargs):
+        raise ShadowWriteViolation("user create in shadow mode")
+    async def get_or_create(self, qq_number):
+        # Return ephemeral User WITHOUT persisting — reads only
+        return User(id=UserId(-1), qq_number=qq_number, game_id=None)
+    # get_by_qq / get_by_id delegate to real repository (read-only)
+
+
+class NoopCandidateStore:
+    async def put(self, *args, **kwargs) -> str:
+        return "shadow-cid-0000"  # ephemeral, never persisted
+    async def consume_selection(self, *args, **kwargs):
+        return CandidateConsumeResult(CandidateConsumeStatus.NOT_FOUND, None, None)
+
+
+async def shadow_bootstrap(config: dict) -> Runtime:
+    """Assemble a read-only Runtime. Real write-adapters are NEVER instantiated."""
+    shadow_adapters = {
+        "score_repo": FailClosedScoreRepository(real_score_repo),
+        "ocr_run_repo": FailClosedOcrRunRepository(),
+        "user_repo": FailClosedUserRepository(real_user_repo),
+        "candidate_store": NoopCandidateStore(),
+    }
+    return await bootstrap(config, adapters=shadow_adapters)
 ```
+
+**关键设计规则**：
+
+- **真实写 adapter 从未被实例化**——`FailClosedScoreRepository` 在构造时接收只读 repo 用于 reads，但 write 方法无条件抛 `ShadowWriteViolation`。
+- 不创建或迁移数据库（使用现有数据库的只读连接）。
+- 不生成持久文件（允许明确批准的临时缓存除外）。
+- **所有 shadow write 方法 fail-closed**：`raise ShadowWriteViolation`——不得"返回 success 但静默不写"，否则会掩盖错误路径。
 
 **验证规则**（必须有测试确认）：
 
 | # | 禁止写入项 | 测试方法 |
 |---|-----------|---------|
-| 1 | 不写 `ocr_runs` | Mock OcrRunRepository，验证 `save()` 未被调用 |
+| 1 | 不写 `ocr_runs` | 调用 `FailClosedOcrRunRepository.save()` → assert raises `ShadowWriteViolation` |
 | 2 | 不写 `ocr_observations` | 同上（是 `save()` 的传入参数） |
-| 3 | 不写 `score_attempts` | Mock ScoreRepository，验证 `save()` 未被调用 |
-| 4 | 不写 `personal_bests` | 同上 |
-| 5 | 不创建 `users` | Mock UserRepository，验证 `create()` 未被调用 |
-| 6 | 不修改候选状态 | 注入 NoopCandidateStore |
+| 3 | 不写 `score_attempts` | 调用 `FailClosedScoreRepository.save()` → assert raises `ShadowWriteViolation` |
+| 4 | 不写 `personal_bests` | 调用 `update_personal_best()` → assert raises `ShadowWriteViolation` |
+| 5 | 不创建 `users` | 调用 `FailClosedUserRepository.create()` → assert raises `ShadowWriteViolation` |
+| 6 | 不修改候选状态 | `NoopCandidateStore.put()` 不写磁盘，`consume_selection()` 返回 NOT_FOUND |
 
-**方案 C（最后选择）**：受控时间窗口
-- 暂停旧 bot -> 启动新 gateway 5 分钟 -> 恢复旧 bot
-- 仅在前两种方案都不可行时使用
+### 16.2 影子验证与测试账号验证拆分
 
-### 16.2 验证项
+**Shadow E2E**（只读观测——不发送用户回复，零持久化写入）：
+
+- 接收 OneBot 事件；
+- 下载图片；
+- OCR 竞速 + 校验；
+- 生成候选；
+- 渲染或文本摘要（发送到管理员测试通道或仅 log）；
+- 零持久化写入（由 fail-closed adapters 保证）。
+
+**Test-Account E2E**（独立测试环境——完整写入验证）：
+
+- 独立测试 QQ 号；
+- 独立 NapCat 实例；
+- 独立测试数据库（全新创建或测试专用副本）；
+- 完整确认入库；
+- PB 更新；
+- B20；
+- 难度排行；
+- 图片发送；
+- 重启一致性。
+
+**不得在 `NoopCandidateStore` 下要求验证"候选确认入库"**——shadow 模式物理上不支持写入。
+
+### 16.3 验证项
 
 | # | 测试 | 验收标准 |
 |---|------|---------|
@@ -856,17 +944,23 @@ async def shadow_bootstrap(config: dict) -> Runtime:
 12. 如果异常 -> 见回滚
 ```
 
-### 17.2 回滚步骤
+### 17.2 回滚前提
+
+**旧 Bot 只有完成冻结基线（`PRODUCTION-OPERATIONS.md` §I）后，才能成为服务入口回滚候选。** 在此之前，旧 Bot 仅是未经验证的应急候选，不得在回滚流程中引用。
+
+冻结基线包含：完整文件列表 + SHA-256、Python 版本和依赖记录、静态 import 检查（确认无缺失模块）、Git↔VPS 差异清单（孤儿文件标记）、归档 tarball、隔离环境 smoke test、Legacy baseline ID。
+
+### 17.3 回滚步骤（旧 Bot 冻结后生效）
 
 ```
 1. systemctl stop pjsk-onebot.service
 2. systemctl start pjsk-emu-bot.service
-3. 验证旧 bot 恢复（/health/napcat -> online: true）
+3. 验证旧 bot 恢复（health check）
 4. 观察 5 分钟确认正常
 5. 记录故障原因和时间线
 ```
 
-**回滚时的数据库处理（红线）**：
+### 17.4 回滚时的数据库处理（红线）
 
 - **回滚入口服务时，不自动回滚数据库。**
 - 新 gateway 切换期间写入的成绩**保留在新数据库中**，不作删除或回退。
@@ -875,9 +969,9 @@ async def shadow_bootstrap(config: dict) -> Runtime:
   - 是否迁移回旧库；
   - 是否保留在新库等待下次切换；
   - 是否标记为"切换期"并人工审核。
-- **数据库回退必须另行设计并经明确批准**，不得在回滚操作中自动执行 `cp pjsk.db.bak-* pjsk.db`（与 CLAUDE.md 安全红线冲突）。
+- **数据库回退必须另行设计并经明确批准**，不得在回滚操作中自动执行 `cp pjsk.db.bak-* pjsk.db`（与 CLAUDE.md §15 安全红线冲突）。
 
-### 17.3 切换期间的增量追踪
+### 17.5 切换期间的增量追踪
 
 新 gateway 写入的每条记录标记 `source_gateway="onebot"`。回滚后可通过以下查询定位切换期间的增量：
 
