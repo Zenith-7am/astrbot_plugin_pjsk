@@ -17,6 +17,19 @@
 - AstrBot 已退出生产路径，代码保留但不继续投入
 - 业务核心（`pjsk_core` / `adapters` / `render_service`）保持不变
 
+### Phase 5 实施计划
+
+| 文档 | 状态 |
+|------|------|
+| `superpowers/plans/2026-07-16-phase-5-task-3a-legacy-production-baseline.md` | Task 3A — 旧生产冻结与功能基线 |
+
+### Legacy Audit (Phase 5 Task 3A)
+
+| 文档 | 用途 |
+|------|------|
+| [`production/LEGACY-PRODUCTION-BASELINE.md`](production/LEGACY-PRODUCTION-BASELINE.md) | Old bot frozen baseline — files, drift, rollback eligibility |
+| [`production/LEGACY-FEATURE-MATRIX.md`](production/LEGACY-FEATURE-MATRIX.md) | Old bot command and trigger inventory |
+
 ## 历史资料
 
 以下文档为 AstrBot 时期的设计与计划，**已废止**。保留作为历史参考，不作为当前实施依据。
