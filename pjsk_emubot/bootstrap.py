@@ -118,6 +118,8 @@ def _read_config(config: dict[str, Any] | None) -> dict[str, Any]:
         cfg["zhipu_api_key"] = os.environ.get("ZHIPU_API_KEY", "")
     if not cfg.get("stepfun_api_key"):
         cfg["stepfun_api_key"] = os.environ.get("STEPFUN_API_KEY", "")
+    if not cfg.get("dashscope_api_key"):
+        cfg["dashscope_api_key"] = os.environ.get("DASHSCOPE_API_KEY", "")
 
     return cfg
 
@@ -196,7 +198,7 @@ async def assemble_plugin_runtime(
         zhipu_key = cfg.get("zhipu_api_key", "")
         stepfun_key = cfg.get("stepfun_api_key", "")
 
-        gemini_model = cfg.get("gemini_model", "2.5-flash")
+        gemini_model = cfg.get("gemini_model", "gemini-2.5-flash")
         zhipu_model = cfg.get("zhipu_model", "glm-4.6v-flash")
         stepfun_model = cfg.get("stepfun_model", "step-1v-32k")
 
