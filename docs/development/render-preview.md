@@ -24,9 +24,10 @@ python -m playwright install chromium
 .\ops\run-render-dev.ps1
 ```
 
-This starts a FastAPI + Playwright service on **`127.0.0.1:3001`** with
-auto-reload for Python changes. JS changes do NOT require a restart —
-just re-POST the payload.
+This starts a FastAPI + Playwright service on **`127.0.0.1:3001`**.
+JS changes do NOT require a restart — just re-POST the payload.
+For Python changes, restart the dev server manually (Ctrl+C, then
+re-run the script).
 
 Production uses port **3000**; the dev service never touches it.
 
@@ -92,6 +93,7 @@ the normal `pytest` run.
 | `503: browser unavailable` | Run `python -m playwright install chromium` |
 | `404: unknown render function` | Check that `render_service/functions/b20.js` exists |
 | `500: render failed` | Check the dev service terminal for JS error details |
+| `NotImplementedError: create_subprocess_exec` on Windows | Uvicorn `--reload` on Windows selects `SelectorEventLoop` which lacks `asyncio.create_subprocess_exec` (Playwright needs it to launch Chromium). Do NOT add `--reload` to the dev server on Windows — `ops/run-render-dev.ps1` already omits it. |
 
 ## Production Service
 

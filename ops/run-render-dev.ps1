@@ -14,11 +14,14 @@ $env:RENDER_MAX_CONCURRENT = "2"
 Write-Host "=== PJSK Render Dev Server ===" -ForegroundColor Cyan
 Write-Host "Host:  $env:RENDER_HOST" -ForegroundColor Gray
 Write-Host "Port:  $env:RENDER_PORT" -ForegroundColor Gray
-Write-Host "Reload: ON (Python changes auto-restart)" -ForegroundColor Gray
+Write-Host "Reload: OFF (required for Playwright on Windows)" -ForegroundColor Gray
 Write-Host "JS changes: re-POST to see updates (no restart needed)" -ForegroundColor Gray
+Write-Host "Python changes: restart this dev server" -ForegroundColor Gray
 Write-Host ""
 
+# NOTE: DO NOT add --reload on Windows.
+# Uvicorn --reload on Windows selects SelectorEventLoop, which lacks
+# asyncio.create_subprocess_exec — Playwright needs it to launch Chromium.
 & .\.venv\Scripts\python.exe -m uvicorn render_service.main:app `
     --host $env:RENDER_HOST `
-    --port $env:RENDER_PORT `
-    --reload
+    --port $env:RENDER_PORT
