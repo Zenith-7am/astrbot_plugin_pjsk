@@ -1,3 +1,7 @@
+> **Status: Approved** (core layer — still valid under Phase 5 standalone direction).
+> The domain, application, ports, and adapter designs in this document remain authoritative for `pjsk_core` and `adapters/`.
+> Current governance: `CLAUDE.md`. Phase-5 gateway design: `docs/superpowers/specs/2026-07-16-phase-5-standalone-onebot-gateway-design.md`.
+
 # Render Service 部署文档
 
 > 状态：Phase 4b 渲染服务已可部署。本文件只写事实，不假设 AstrBot WebUI 配置字段。

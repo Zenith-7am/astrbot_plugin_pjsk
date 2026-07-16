@@ -270,27 +270,98 @@ NoneBot 开始监听 -> NapCat 发起反向 WebSocket 连接 -> OneBot events fl
 
 ## 7. `pjsk_runtime/bootstrap.py` — 平台无关 Composition Root
 
-从现有 `pjsk_emubot/bootstrap.py` 提取。返回类型从 `PluginRuntime` 重命名为 `Runtime`（平台无关）。
+从现有 `pjsk_emubot/bootstrap.py` 提取。`Runtime` 最终归属 `pjsk_runtime/runtime.py`（当前过渡阶段从 `pjsk_emubot/runtime.py` 导入，迁移后 AstrBot 兼容层通过 re-export 引用）。
 
-核心函数签名：
+### 7.1 AdapterBundle
+
+`bootstrap()` 通过显式 `AdapterBundle` 接收依赖，区分三种装配模式：
 
 ```python
-from pjsk_emubot.runtime import Runtime  # renamed from PluginRuntime
+from dataclasses import dataclass
 
-async def bootstrap(config: dict[str, object]) -> Runtime:
+@dataclass
+class AdapterBundle:
+    """Collection of adapters passed to the composition root.
+
+    Three pre-built bundles are provided; callers SHOULD use one of them
+    rather than constructing AdapterBundle manually.
+    """
+    user_repo: UserRepository
+    chart_repo: ChartRepository
+    score_repo: ScoreRepository
+    song_repo: SongRepository
+    ocr_run_repo: OcrRunRepository
+    candidate_store: CandidateStore
+```
+
+### 7.2 三种预定义 Bundle
+
+```python
+# ── Production bundle ──────────────────────────────────────────
+def production_adapters(db_path: str) -> AdapterBundle:
+    """Real SQLite repositories, read-write connections."""
+    return AdapterBundle(
+        user_repo=SqliteUserRepository(get_connection(db_path)),
+        chart_repo=SqliteChartRepository(get_connection(db_path)),
+        score_repo=SqliteScoreRepository(get_connection(db_path)),
+        song_repo=SqliteSongRepository(get_connection(db_path)),
+        ocr_run_repo=SqliteOcrRunRepository(db_path),
+        candidate_store=MemoryCandidateStore(),
+    )
+
+
+# ── Test-account bundle ────────────────────────────────────────
+def test_account_adapters(db_path: str) -> AdapterBundle:
+    """Real SQLite repositories pointing to a test-only database.
+
+    The test database MUST NOT contain production user data.  Use an
+    empty database initialised by migrations, or one populated solely
+    from synthesised fixtures / irreversibly anonymised data.
+    """
+    return production_adapters(db_path)  # same wiring, different path
+
+
+# ── Shadow (read-only) bundle ──────────────────────────────────
+def shadow_adapters(db_path: str) -> AdapterBundle:
+    """Physically read-only repositories.  Every write method raises
+    ShadowWriteViolation — callers cannot accidentally persist data.
+
+    Real write-capable repository objects are NEVER instantiated.
+    Read methods delegate to SQLite connections opened with mode=ro.
+    """
+    ro_user = ReadOnlyUserRepository(db_path, mode="ro")
+    ro_score = ReadOnlyScoreRepository(db_path, mode="ro")
+    return AdapterBundle(
+        user_repo=FailClosedUserRepository(ro_user),
+        chart_repo=SqliteChartRepository(get_connection(db_path, mode="ro")),
+        score_repo=FailClosedScoreRepository(ro_score),
+        song_repo=SqliteSongRepository(get_connection(db_path, mode="ro")),
+        ocr_run_repo=FailClosedOcrRunRepository(),
+        candidate_store=NoopCandidateStore(),
+    )
+```
+
+### 7.3 Bootstrap 签名
+
+```python
+async def bootstrap(
+    config: dict[str, object],
+    adapters: AdapterBundle,
+) -> Runtime:
     """Assemble all long-lived resources. Platform-agnostic.
-    
-    Accepts a plain dict (from env vars + YAML), NOT an AstrBot config dict.
-    Returns Runtime with all dependencies wired.
+
+    Accepts a plain config dict (from env vars + YAML) and a
+    pre-built AdapterBundle.  Callers choose production, test-account,
+    or shadow adapters; bootstrap() does not decide.
     """
 ```
 
-提取规则：
+### 7.4 提取规则
+
 - 移除 `from astrbot.core.utils.astrbot_path import get_astrbot_data_path`
 - 数据库路径改为显式传入 `config["database_path"]`
 - `_read_config()` 改为纯 YAML + env 合并（见 §8.1），不再 merge AstrBot WebUI dict
-- `PLUGIN_NAME` 改为 `"pjsk-bot"`
-- `PluginRuntime` 重命名为 `Runtime`（`pjsk_emubot/runtime.py` 同步改动）
+- `PluginRuntime` 重命名为 `Runtime`，最终归属 `pjsk_runtime/runtime.py`（过渡期从 `pjsk_emubot/runtime.py` 导入）
 - 其他装配逻辑不变（connections, repos, vision engines, use cases）
 
 **兼容过渡**：旧 `pjsk_emubot/bootstrap.py` 改为 thin wrapper：
@@ -389,7 +460,6 @@ cdn:
   enabled: true
   # CDN base URL — NapCat 用于下载图片的地址。
   # NapCat 在国内 VPS，必须通过反向隧道或公网 HTTPS 可达。
-  # 暂定：先评估 NapCat 的其他图片发送方式，CDN 设计待 T3 细化。
   base_url: "${CDN_BASE_URL}"             # 必填，无默认值
   image_dir: "/opt/pjsk-astrbot/shared/cache/images"  # shared 目录，非 /tmp
   cleanup_ttl_seconds: 600
@@ -576,7 +646,7 @@ NapCat 在国内 VPS，香港 VPS 的 `127.0.0.1` 不可达。`CDN_BASE_URL` 必
 
 ### 10.6 CDN 生命周期独立
 
-当前 8082 图片服务由旧 Bot（`pjsk-emu-bot.service`，端口 8082 + `/images/{filename}` 路由）提供。新设计推荐将 CDN 拆为独立服务：
+**采用独立 `pjsk-cdn.service`**。Task 3 不重新决定架构归属——只负责实现和验证。
 
 ```text
 pjsk-cdn.service  (独立于旧 Bot 和新 Gateway)
@@ -590,9 +660,9 @@ pjsk-cdn.service  (独立于旧 Bot 和新 Gateway)
   - NapCat 跨 VPS 可达（通过反向隧道暴露或 HTTPS）
 ```
 
-**优势**：Gateway 停止不必导致已生成图片立即不可访问。旧 Bot 停用时 CDN 不受影响。
+**跨 VPS 可达性是实施前验收门禁**（Task 3 必须实测 NapCat 能 GET 到 CDN URL），不是未决设计问题。
 
-如果不采用独立服务，必须在实施计划中给出同等可靠的生命周期设计和切换顺序：确保 CDN 在新旧 Bot 切换期间持续可用，不依赖任何单一 Bot 进程。
+Gateway 停止不必导致已生成图片立即不可访问。旧 Bot 停用时 CDN 不受影响。
 
 ---
 
@@ -815,53 +885,73 @@ class ShadowWriteViolation(Exception):
     """Raised when shadow-mode code attempts a write operation."""
 
 
+class ReadOnlyScoreRepository:
+    """Opens SQLite with mode=ro. Exposes ONLY read methods."""
+    def __init__(self, db_path: str):
+        self._conn = aiosqlite.connect(db_path, uri=True, mode="ro")
+    async def get_best(self, user_id, chart_id) -> ScoreAttempt | None: ...
+    async def get_b20(self, user_id) -> list[ScoreAttempt]: ...
+    # No save(), no update_personal_best() — type system enforces read-only
+
+
+class ReadOnlyUserRepository:
+    """Opens SQLite with mode=ro. Exposes ONLY read methods."""
+    def __init__(self, db_path: str):
+        self._conn = aiosqlite.connect(db_path, uri=True, mode="ro")
+    async def get_by_qq(self, qq) -> User | None: ...
+    async def get_by_id(self, uid) -> User | None: ...
+    # No create(), no get_or_create() — type system enforces read-only
+
+
 class FailClosedScoreRepository:
-    """Score repository that refuses all writes — fail-closed, not silent."""
-    async def save(self, *args, **kwargs):
+    """Wraps ReadOnlyScoreRepository; adds fail-closed write stubs."""
+    def __init__(self, ro: ReadOnlyScoreRepository):
+        self._ro = ro
+    # delegate all read methods to self._ro
+    async def save(self, *a, **kw):
         raise ShadowWriteViolation("score_attempts write in shadow mode")
-    async def update_personal_best(self, *args, **kwargs):
+    async def update_personal_best(self, *a, **kw):
         raise ShadowWriteViolation("personal_bests write in shadow mode")
-    # read methods delegate to real repository (read-only safe)
-
-
-class FailClosedOcrRunRepository:
-    async def save(self, *args, **kwargs):
-        raise ShadowWriteViolation("ocr_runs write in shadow mode")
 
 
 class FailClosedUserRepository:
-    async def create(self, *args, **kwargs):
+    """Wraps ReadOnlyUserRepository; adds fail-closed write stubs."""
+    def __init__(self, ro: ReadOnlyUserRepository):
+        self._ro = ro
+    async def create(self, *a, **kw):
         raise ShadowWriteViolation("user create in shadow mode")
     async def get_or_create(self, qq_number):
-        # Return ephemeral User WITHOUT persisting — reads only
+        # Read-only: look up by QQ, return ephemeral User if not found
+        user = await self._ro.get_by_qq(qq_number)
+        if user is not None:
+            return user
         return User(id=UserId(-1), qq_number=qq_number, game_id=None)
-    # get_by_qq / get_by_id delegate to real repository (read-only)
+    # get_by_qq / get_by_id delegate to self._ro
+
+
+class FailClosedOcrRunRepository:
+    async def save(self, *a, **kw):
+        raise ShadowWriteViolation("ocr_runs write in shadow mode")
 
 
 class NoopCandidateStore:
-    async def put(self, *args, **kwargs) -> str:
-        return "shadow-cid-0000"  # ephemeral, never persisted
-    async def consume_selection(self, *args, **kwargs):
+    async def put(self, *a, **kw) -> str:
+        return "shadow-cid-0000"
+    async def consume_selection(self, *a, **kw):
         return CandidateConsumeResult(CandidateConsumeStatus.NOT_FOUND, None, None)
 
 
 async def shadow_bootstrap(config: dict) -> Runtime:
-    """Assemble a read-only Runtime. Real write-adapters are NEVER instantiated."""
-    shadow_adapters = {
-        "score_repo": FailClosedScoreRepository(real_score_repo),
-        "ocr_run_repo": FailClosedOcrRunRepository(),
-        "user_repo": FailClosedUserRepository(real_user_repo),
-        "candidate_store": NoopCandidateStore(),
-    }
-    return await bootstrap(config, adapters=shadow_adapters)
+    """Assemble a read-only Runtime.
+
+    Real write-capable SQLite connections are NEVER opened — ReadOnly*
+    repositories use ``mode=ro``, and FailClosed* wrappers raise on write.
+    """
+    from pjsk_runtime.bootstrap import bootstrap, shadow_adapters
+    return await bootstrap(config, adapters=shadow_adapters(config["database_path"]))
 ```
 
-**关键设计规则**：
-
-- **真实写 adapter 从未被实例化**——`FailClosedScoreRepository` 在构造时接收只读 repo 用于 reads，但 write 方法无条件抛 `ShadowWriteViolation`。
-- 不创建或迁移数据库（使用现有数据库的只读连接）。
-- 不生成持久文件（允许明确批准的临时缓存除外）。
-- **所有 shadow write 方法 fail-closed**：`raise ShadowWriteViolation`——不得"返回 success 但静默不写"，否则会掩盖错误路径。
+**`ReadOnlyScoreRepository` 和 `ReadOnlyUserRepository` 自身的类型不暴露任何 write 方法**——物理只读由 SQLite `mode=ro` 保证。`FailClosed*` wrapper 仅补齐 `AdapterBundle` 所需的协议方法，均 fail-closed。
 
 **验证规则**（必须有测试确认）：
 
@@ -901,27 +991,38 @@ async def shadow_bootstrap(config: dict) -> Runtime:
 
 ### 16.3 验证项
 
-| # | 测试 | 验收标准 |
-|---|------|---------|
-| 1 | OneBot 连接 | WebSocket connected, heartbeat 正常 |
-| 2 | 私聊文本 | 无 PJSK 内容 -> 不回复，passthrough |
-| 3 | 私聊图片 | 成绩截图 -> OCR 成功 -> 富文本 Echo 回复 |
-| 4 | 群聊 @Bot + 图片 | 同消息 @ -> OCR 触发 |
-| 5 | 先图后 @（15s 内） | buffer consume -> OCR 触发 |
-| 6 | 先 @ 后图（15s 内） | arm -> consume_arm -> OCR 触发 |
-| 7 | 候选确认 | 发数字 -> 确认入库 -> 确认 Echo |
-| 8 | `/emu help` | 返回帮助文本 |
-| 9 | `/emu status` | 返回安全运行状态 |
-| 10 | `/emu b20` | 渲染图片或文本降级 |
-| 11 | `/emu ma31` | 个人难度排行 |
-| 12 | `/emu ma31 global` | 全局难度排行 |
-| 13 | `/emu append exclude` | 切换 APPEND 设置 |
-| 14 | OCR 超时 | 单引擎超时不阻塞 |
-| 15 | 单引擎故障 | 其他引擎继续 |
-| 16 | Renderer 故障 | 文本降级 |
-| 17 | NapCat 断线重连 | NapCat 自动重连 |
-| 18 | 服务重启 | 数据库一致 |
-| 19 | 并发多图 | rate limit + semaphore 生效 |
+> **标注**：🟢 = Test-Account E2E（写入验证）。🔵 = Shadow E2E（只读观测，不回复用户）。⚪ = 两种模式通用。
+
+| # | 模式 | 测试 | 验收标准 |
+|---|------|------|---------|
+| 1 | ⚪ | OneBot 连接 | WebSocket connected, heartbeat 正常 |
+| 2 | ⚪ | 私聊文本 | 无 PJSK 内容 -> 不回复 |
+| 3 | 🟢 | 私聊图片 → 入库 | 成绩截图 -> OCR 成功 -> Echo 回复 -> score_attempts 写入 |
+| 4 | 🟢 | 群聊 @Bot + 图片 → 入库 | 同消息 @ -> OCR -> 写入 |
+| 5 | 🟢 | 先图后 @（15s 内）→ 入库 | buffer consume -> OCR -> 写入 |
+| 6 | 🟢 | 先 @ 后图（15s 内）→ 入库 | arm -> consume_arm -> OCR -> 写入 |
+| 7 | 🟢 | 候选确认 → 入库 | 数字确认 -> score_attempts + personal_bests 写入 |
+| 8 | ⚪ | `/emu help` | 返回帮助文本 |
+| 9 | ⚪ | `/emu status` | 返回安全运行状态 |
+| 10 | 🟢 | `/emu b20` | 渲染图片或文本降级 |
+| 11 | 🟢 | `/emu ma31` | 个人难度排行 |
+| 12 | 🟢 | `/emu ma31 global` | 全局难度排行 |
+| 13 | 🟢 | `/emu append exclude` | 切换 APPEND 设置 |
+| 14 | 🔵 | OCR 超时（shadow） | 单引擎超时不阻塞；零写入确认 |
+| 15 | 🔵 | 单引擎故障（shadow） | 其他引擎继续；零写入确认 |
+| 16 | 🔵 | Renderer 故障（shadow） | 文本降级；零写入确认 |
+| 17 | ⚪ | NapCat 断线重连 | NapCat 自动重连 |
+| 18 | 🟢 | 服务重启 | 数据库一致，in-flight 成绩不丢失 |
+| 19 | ⚪ | 并发多图 | rate limit + semaphore 生效 |
+
+**Test-Account 测试数据库约束**：
+- 不得使用包含真实用户信息的生产数据库副本。
+- 只能使用：空库（经 migration 初始化）、合成 fixtures 生成的数据、或完成**不可逆脱敏**（QQ 号替换为随机值、游戏 ID 哈希）的数据集。
+
+**Shadow 验证约束**：
+- Shadow 不发送用户回复（回复仅 log 或发送到管理员测试通道）。
+- Shadow 不写入任何持久化状态（由 fail-closed adapters 和 SQLite `mode=ro` 保证）。
+- Shadow 不要求验证"候选确认入库"——这在 shadow 模式下物理不支持。 |
 
 ---
 

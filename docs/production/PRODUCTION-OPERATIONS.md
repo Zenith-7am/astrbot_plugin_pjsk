@@ -29,9 +29,11 @@
 
 | 服务 | 状态（审计时） | 角色 | 处置 |
 |------|--------------|------|------|
-| `pjsk-emu-bot.service` | active/running（OneBot 已断） | 旧 NoneBot | 冻结、归档、待切换后停用 |
+| `pjsk-emu-bot.service` | active/running (pid 762758, since Jul 11; OneBot connection status: **unknown** — health endpoint returned `online:false` with last heartbeat ~50h ago, but this has not been independently verified against NapCat logs) | 旧 NoneBot | 冻结、归档、待切换后停用 |
 | `astrbot.service` | active/running | AstrBot + 我们的插件 | 保留，退出生产消息链 |
-| `render-service.service` | inactive（crash loop） | 旧渲染器 | 已 mask，待确认彻底清理 |
+| `render-service.service` | loaded, enabled, crash-looping（未 mask；`Restart=always, RestartSec=3`） | 旧渲染器（`/opt/render_service/`） | 待批准后 stop/disable/mask；当前端口 3000 由 `pjsk-renderer.service` 持有，旧服务启动即 EADDRINUSE 崩溃 |
+
+**审计依据**：2026-07-16 `systemctl list-units --all`, `systemctl status`, `ss -tlnp`, `curl /health/napcat`, `journalctl -u pjsk-emu-bot` (last log Jul 14). NapCat 日志未查阅，OneBot 实际连接状态未经独立验证。
 
 > **以上是审计快照，不是永久事实。任何生产操作前必须重新查询实际状态，不得照抄历史状态做决定。**
 
@@ -133,13 +135,15 @@
   "schema_version": 6,
   "chart_data_version": "2026-07-12",
   "renderer_template_version": "1.0",
-  "required_env_names": ["ONEBOT_ACCESS_TOKEN", "GEMINI_API_KEY", "ZHIPU_API_KEY", "DASHSCOPE_API_KEY", "ADMIN_QQ", "CDN_BASE_URL"],
+  "required_env_names": ["<dynamic — see note>"],
   "migration_required": false,
   "previous_release_id": "<previous release id or null>"
 }
 ```
 
 **必须同时生成 release 内所有文件的 SHA-256 清单**（`manifest_files.sha256`）。
+
+`required_env_names` 由构建时启用的引擎配置**动态生成**：`ONEBOT_ACCESS_TOKEN` + `ADMIN_QQ` + `CDN_BASE_URL` 始终必填；各引擎的 `*_API_KEY` 仅在该引擎 `enabled=true` 时列入。不硬编码固定列表。
 
 ---
 
@@ -172,21 +176,42 @@
 1.  从干净 Git commit 构建完整 release（生成所有文件 + manifest）
 2.  上传到新的 /opt/pjsk-astrbot/releases/<release_id>/
 3.  校验 manifest 文件 hash 与预期一致
-4.  在未切换 current 时执行预检：
-    a.  全模块 import
-    b.  health endpoint 可达
-    c.  数据库连接测试（只读）
+4.  在未切换 current 时执行预检（见 §G.2 预检端口隔离）
 5.  如需数据库迁移 → 单独审批，不在本流程内自动执行
-6.  启动或探测新 release（systemd 或手动 smoke）
-7.  原子切换：ln -snf releases/<release_id> /opt/pjsk-astrbot/current
-8.  重启目标服务：systemctl restart pjsk-onebot.service
+6.  使用独立的 preflight 端口启动新 release health check
+7.  原子切换 current：
+    a.  flock /opt/pjsk-astrbot/.deploy.lock  # 防并发发布
+    b.  ln -s releases/<release_id> /opt/pjsk-astrbot/current.new
+    c.  校验 current.new 指向预期 release：
+        [ "$(readlink -f /opt/pjsk-astrbot/current.new)" = "/opt/pjsk-astrbot/releases/<release_id>" ]
+    d.  mv -T /opt/pjsk-astrbot/current.new /opt/pjsk-astrbot/current
+        # mv -T 在同文件系统内是原子的 — 不经过"先删除旧链接"的窗口
+    e.  校验 current 指向预期 release
+    f.  释放锁
+8.  systemctl restart pjsk-onebot.service
 9.  检查 health：curl /health → status=ok
-10. 执行受控 smoke test（至少 1 条私聊消息）
+10. 执行受控 smoke test（至少 1 条私聊消息，写入隔离确认）
 11. 观察窗口 ≥ 15 分钟，监控错误率和延迟
 12. 记录 deployment record（见 §L）
 ```
 
 **禁止**：向现有 release 目录覆盖文件。每个 release 是全新的不可变目录。
+**禁止**：使用 `ln -snf` 切换 `current`——它可能先 unlink 旧链接再创建新链接，存在短暂空窗。
+
+### G.2 预检端口隔离
+
+新旧 release 不能同时绑定同一端口。预检使用以下策略：
+
+**采用方案：独立 preflight 端口**
+
+- 新 release 启动时使用 `PREFLIGHT_PORT=<临时端口>`（通过 environment 或命令行参数传入）。
+- Preflight 端口不与生产端口冲突，仅用于 health check + import 验证。
+- Preflight 进程完成后立即停止；不进入正式消息处理循环。
+- Smoke test 仅在正式切换后执行——此时旧 release 已停止，端口已释放。
+
+**禁止**：
+- 在生产端口上同时运行新旧实例（端口冲突）。
+- Smoke test 在预检阶段写入生产数据库——预检只做只读验证。Smoke test 的写入在切换后执行，且必须能区分并回滚。
 
 ---
 

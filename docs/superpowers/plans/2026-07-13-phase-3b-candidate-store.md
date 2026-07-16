@@ -1,3 +1,7 @@
+> **Status: Approved** (core layer — still valid under Phase 5 standalone direction).
+> The domain, application, ports, and adapter designs in this document remain authoritative for `pjsk_core` and `adapters/`.
+> Current governance: `CLAUDE.md`. Phase-5 gateway design: `docs/superpowers/specs/2026-07-16-phase-5-standalone-onebot-gateway-design.md`.
+
 # Phase 3b — CandidateStore + OCR Run Persistence + Candidate Confirmation
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

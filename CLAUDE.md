@@ -346,7 +346,7 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 ```
 
 - 从**干净 Git commit** 构建；依赖版本锁定；生成文件 SHA-256 manifest；记录 Git SHA / schema 版本 / 定数版本 / 渲染模板版本。
-- 发布到新 release 目录 → 预检（测试 / 迁移对账 / 全模块导入 / 配置检查 / 敏感文件扫描）→ 健康检查 → **原子切换 `current`**，失败**自动回滚**。
+- 发布到新 release 目录 → 预检（测试 / 迁移对账 / 全模块导入 / 配置检查 / 敏感文件扫描）→ 健康检查 → **原子切换 `current`**。切换失败**自动回滚 `current` 到上一个已验证的代码 release**（不涉及服务入口回滚或数据库回滚）。
 - **不直接覆盖 live 源码；不通过 scp 单个源码文件拼装生产；发布包不含 `.env` / 数据库 / 日志 / 缓存 / `.pyc`。**
 
 ---
