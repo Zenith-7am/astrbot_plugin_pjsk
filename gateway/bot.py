@@ -1,5 +1,15 @@
 """PJSK Bot — NoneBot 2 + OneBot v11 Gateway."""
+from __future__ import annotations
+
+import sys
 from pathlib import Path
+
+# Ensure the project root is on sys.path so that gateway.* imports resolve
+# regardless of how the process is launched.
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
 import nonebot
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
 
