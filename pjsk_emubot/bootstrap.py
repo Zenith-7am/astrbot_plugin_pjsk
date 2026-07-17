@@ -211,7 +211,7 @@ async def assemble_plugin_runtime(
         stepfun_key = cfg.get("stepfun_api_key", "")
 
         gemini_model = cfg.get("gemini_model", "gemini-2.5-flash")
-        zhipu_model = cfg.get("zhipu_model", "glm-4.6v-flash")
+        zhipu_model = cfg.get("zhipu_model", "glm-4v-flash")
         stepfun_model = cfg.get("stepfun_model", "step-1v-32k")
 
         ocr_timeout = float(cfg.get("ocr_timeout_seconds", 15))
