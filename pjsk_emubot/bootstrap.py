@@ -217,7 +217,8 @@ async def assemble_plugin_runtime(
         ocr_timeout = float(cfg.get("ocr_timeout_seconds", 15))
         ocr_concurrency = int(cfg.get("ocr_concurrency", 3))
 
-        http_client = httpx.AsyncClient(timeout=30.0)
+        proxy = os.environ.get("GEMINI_FORWARD_PROXY", "").strip() or None
+        http_client = httpx.AsyncClient(timeout=30.0, proxy=proxy)
         breaker = MemoryCircuitBreaker()
 
         engines: list[EngineRuntime] = []
