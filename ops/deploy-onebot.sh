@@ -1,0 +1,171 @@
+#!/bin/bash
+# Atomic deploy for PJSK OneBot Gateway (production only).
+#
+# Usage: ops/deploy-onebot.sh
+#
+# Reads the project root from the caller's cwd (must be the repo root).
+# Uploads a clean tarball to HK VPS, builds a new immutable release in
+# /opt/pjsk-astrbot/releases/<release_id>/, preflights it on a temporary
+# port, atomically switches /opt/pjsk-astrbot/current, restarts
+# pjsk-onebot.service, and runs health checks.
+#
+# On failure the script auto-rolls-back current to the previous release
+# (service restart + health check).  Database is NEVER rolled back.
+#
+# This script NEVER uses rm -rf on production directories.
+# It does NOT reuse test-gateway scripts.
+set -euo pipefail
+
+VPS="${VPS_HOST:-root@154.37.219.8}"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+RELEASE_BASE="/opt/pjsk-astrbot/releases"
+CURRENT_LINK="/opt/pjsk-astrbot/current"
+SHARED_DIR="/opt/pjsk-astrbot/shared"
+SERVICE_NAME="pjsk-onebot.service"
+PREFLIGHT_PORT=19999
+RELEASE_ID="$(date -u +%Y%m%d-%H%M%S)-$(git -C "$REPO_ROOT" rev-parse --short=7 HEAD)"
+
+# ── Step 0: Check clean git ──────────────────────────────────────────────
+if ! git -C "$REPO_ROOT" diff-index --quiet HEAD --; then
+    echo "ERROR: git worktree is dirty. Commit or stash changes before deploying." >&2
+    exit 1
+fi
+GIT_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+echo "=== Deploying $RELEASE_ID (git $GIT_SHA) ==="
+
+# ── Step 1: Build and upload release tarball ────────────────────────────
+TARBALL="/tmp/pjsk-release-${RELEASE_ID}.tar.gz"
+cd "$REPO_ROOT"
+tar czf "$TARBALL" \
+    --exclude='.venv' --exclude='.git' --exclude='__pycache__' \
+    --exclude='*.pyc' --exclude='.pytest_cache' --exclude='.worktrees' \
+    --exclude='node_modules' --exclude='data' \
+    --exclude='artifacts' --exclude='.mypy_cache' --exclude='.ruff_cache' \
+    --exclude='.superpowers' --exclude='*.egg-info' \
+    .
+echo "=== Tarball: $(du -h "$TARBALL" | cut -f1) ==="
+
+echo "=== Uploading to VPS ==="
+scp "$TARBALL" "$VPS:/tmp/"
+
+# ── Step 2: Build new release on VPS ────────────────────────────────────
+ssh "$VPS" bash -lc "
+    set -euo pipefail
+    RELEASE_DIR='${RELEASE_BASE}/${RELEASE_ID}'
+    echo '=== Creating release directory ==='
+    mkdir -p \"\$RELEASE_DIR\"
+
+    echo '=== Extracting tarball ==='
+    tar xzf '/tmp/pjsk-release-${RELEASE_ID}.tar.gz' -C \"\$RELEASE_DIR\"
+    rm '/tmp/pjsk-release-${RELEASE_ID}.tar.gz'
+
+    cd \"\$RELEASE_DIR\"
+
+    # ── Venv ────────────────────────────────────────────────────────────
+    echo '=== Creating venv ==='
+    python3 -m venv .venv
+    .venv/bin/pip install -q --upgrade pip
+    .venv/bin/pip install -q -e '.[dev,render]'
+
+    # ── Import check ────────────────────────────────────────────────────
+    echo '=== Import check ==='
+    .venv/bin/python -c '
+import gateway.health
+import pjsk_core
+import pjsk_runtime
+import adapters.database
+import render_service.main
+print(\"All imports OK\")
+'
+
+    # ── Chart data import (first-install safe) ─────────────────────────
+    echo '=== Chart data import ==='
+    .venv/bin/python -c '
+from adapters.database.migrator import run_migrations
+from tools.import_chart_data import import_chart_data
+from pathlib import Path
+import asyncio, os
+
+db_path = Path(os.environ.get(\"PJSK_DB_PATH\", \"${SHARED_DIR}/data/pjsk.db\"))
+asyncio.run(run_migrations(db_path))
+print(f\"Migrations applied to {db_path}\")
+'
+
+    # ── Preflight on temp port ─────────────────────────────────────────
+    echo '=== Preflight (port ${PREFLIGHT_PORT}) ==='
+    .venv/bin/python -m uvicorn render_service.main:app \
+        --host 127.0.0.1 --port ${PREFLIGHT_PORT} &
+    RENDER_PID=\$!
+    sleep 3
+
+    # Verify render service health
+    curl -sf http://127.0.0.1:${PREFLIGHT_PORT}/health || {
+        echo 'ERROR: render preflight health failed'
+        kill \$RENDER_PID 2>/dev/null || true
+        exit 1
+    }
+    kill \$RENDER_PID 2>/dev/null || true
+    sleep 1
+    echo 'Preflight OK'
+
+    # ── Switch current atomically ──────────────────────────────────────
+    echo '=== Atomic switch ==='
+    OLD_CURRENT=\$(readlink -f '${CURRENT_LINK}' 2>/dev/null || echo '')
+
+    exec 9>'${SHARED_DIR}/.deploy.lock'
+    flock -x 9 || { echo 'ABORT: another deploy in progress'; exit 1; }
+
+    TEMP_LINK='${CURRENT_LINK}.deploying.\$\$'
+    ln -s \"\$RELEASE_DIR\" \"\$TEMP_LINK\"
+    mv -T \"\$TEMP_LINK\" '${CURRENT_LINK}'
+
+    FINAL=\$(readlink -f '${CURRENT_LINK}')
+    if [ \"\$FINAL\" != \"\$RELEASE_DIR\" ]; then
+        echo 'ERROR: atomic switch verification failed'
+        exec 9>&-
+        exit 1
+    fi
+    echo \"current -> \$FINAL\"
+    exec 9>&-
+"
+
+# ── Step 3: Restart service and health check ────────────────────────────
+echo "=== Restarting $SERVICE_NAME ==="
+ssh "$VPS" bash -lc "
+    set -euo pipefail
+    systemctl restart '${SERVICE_NAME}'
+    sleep 3
+
+    # Health check: up to 3 retries, 5s timeout each
+    for i in 1 2 3; do
+        echo \"Health attempt \$i/3 …\"
+        if curl -sf --max-time 5 http://127.0.0.1:8080/health > /dev/null; then
+            curl -s http://127.0.0.1:8080/health | python3 -m json.tool
+            echo '=== Deploy SUCCESS ==='
+            echo \"Release: ${RELEASE_ID}\"
+            echo \"Git SHA: ${GIT_SHA}\"
+            exit 0
+        fi
+        sleep 2
+    done
+
+    # ── ROLLBACK ────────────────────────────────────────────────────────
+    echo '=== Health check FAILED — rolling back ==='
+    OLD_CURRENT=\$(readlink -f '${CURRENT_LINK}' 2>/dev/null || echo '')
+
+    # Find previous release
+    PREV=\$(ls -1d '${RELEASE_BASE}'/*/ 2>/dev/null | grep -v '${RELEASE_ID}' | sort -r | head -1 || echo '')
+    if [ -n \"\$PREV\" ]; then
+        ln -snf \"\$PREV\" '${CURRENT_LINK}'
+        echo \"Rolled back current -> \$PREV\"
+    fi
+
+    systemctl restart '${SERVICE_NAME}'
+    sleep 2
+    curl -s http://127.0.0.1:8080/health | python3 -m json.tool || true
+    echo '=== Deploy FAILED — rolled back ==='
+    exit 1
+"
+
+# Clean up local tarball
+rm -f "$TARBALL"

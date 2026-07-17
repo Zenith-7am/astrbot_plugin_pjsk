@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 # Configure Python logging early so _logger.info() calls in gateway/
 # and pjsk_core/ are visible (default is WARNING, which silences them).
@@ -25,7 +26,11 @@ import nonebot
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
 
 from gateway.adapters.config_loader import load_config
-from gateway.health import register_health_route
+from gateway.health import register_health_route, set_runtime
+
+# ── Module-level Runtime reference ───────────────────────────────────────
+# Saved by _startup(), read by /health and cleared by _shutdown().
+_runtime: Any | None = None
 
 # Config MUST be loaded before nonebot.init() — token is injected into the adapter
 config = load_config()
@@ -42,6 +47,7 @@ nonebot.load_plugins(str(Path(__file__).parent / "matchers"))
 
 @driver.on_startup
 async def _startup() -> None:
+    global _runtime
     nonebot.logger.info(
         "[PJSK] gateway starting — access_token=<present>"
     )
@@ -50,14 +56,28 @@ async def _startup() -> None:
     try:
         from pjsk_emubot.bootstrap import assemble_plugin_runtime
         nonebot.logger.info("[PJSK] assembling Runtime …")
-        _rt = await assemble_plugin_runtime()
-        nonebot.logger.info("[PJSK] Runtime ready — status=%s", _rt.status.value)
+        _runtime = await assemble_plugin_runtime()
+        set_runtime(_runtime)
+        nonebot.logger.info("[PJSK] Runtime ready — status=%s", _runtime.status.value)
     except Exception:
         nonebot.logger.exception("[PJSK] Runtime assembly failed — gateway degraded")
+        _runtime = None
+        set_runtime(None)
 
 
 @driver.on_shutdown
 async def _shutdown() -> None:
+    global _runtime
+    nonebot.logger.info("[PJSK] gateway shutting down …")
+    if _runtime is not None:
+        try:
+            await _runtime.close()
+            nonebot.logger.info("[PJSK] Runtime closed")
+        except Exception:
+            nonebot.logger.exception("[PJSK] Runtime close failed")
+        finally:
+            _runtime = None
+            set_runtime(None)
     nonebot.logger.info("[PJSK] gateway stopped")
 
 

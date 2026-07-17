@@ -1,0 +1,25 @@
+[Unit]
+Description=PJSK OneBot Gateway (NoneBot 2 + OneBot v11)
+After=network.target
+Wants=pjsk-renderer.service
+After=pjsk-renderer.service
+
+[Service]
+Type=simple
+User=pjsk
+WorkingDirectory=/opt/pjsk-astrbot/current
+EnvironmentFile=/opt/pjsk-astrbot/shared/bot.env
+Environment=PJSK_JACKET_CACHE_DIR=/opt/pjsk-astrbot/shared/cache/jackets
+ExecStart=/opt/pjsk-astrbot/current/.venv/bin/python gateway/bot.py
+Restart=on-failure
+RestartSec=5
+
+# Security
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+# NOT a hard dependency — Redis is optional (fail-safe).
+# Do NOT add Requires=redis-server.service or After=redis-server.service.
+
+[Install]
+WantedBy=multi-user.target
