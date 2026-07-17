@@ -27,6 +27,9 @@ import httpx
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DEFAULT_FIXTURES: dict[str, Path] = {
     "b20": _PROJECT_ROOT / "tests" / "fixtures" / "render" / "b20_preview.json",
+    "ocr_result": (
+        _PROJECT_ROOT / "tests" / "fixtures" / "render" / "ocr_result_preview.json"
+    ),
 }
 _DEFAULT_OUTPUT_DIR = _PROJECT_ROOT / "artifacts" / "render-preview"
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -41,8 +44,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--template", required=True,
-        choices=["b20", "difficulty"],
-        help="Render template name (b20 or difficulty).",
+        choices=["b20", "difficulty", "ocr_result"],
+        help="Render template name (b20, difficulty, or ocr_result).",
     )
     parser.add_argument(
         "--payload", default=None,

@@ -36,6 +36,17 @@ def _load_b20_fixture() -> dict:
     return json.loads(fixture_path.read_text(encoding="utf-8"))
 
 
+def _ocr_result_fixture_path() -> Path:
+    return (
+        Path(__file__).parent.parent.parent
+        / "tests" / "fixtures" / "render" / "ocr_result_preview.json"
+    )
+
+
+def _load_ocr_result_fixture() -> dict:
+    return json.loads(_ocr_result_fixture_path().read_text(encoding="utf-8"))
+
+
 class TestDevHealthEndpoint:
     """Health endpoint returns the function list needed by preview tooling."""
 
@@ -103,6 +114,78 @@ class TestB20PreviewFixture:
         assert "3366463190" not in text
         # No external URLs (jackets should be local data URLs or null)
         assert "api.pjsk-rate-api.com" not in text
+
+
+class TestOcrResultPreviewFixture:
+    """The OCR card has a fictional preview payload and CLI option."""
+
+    def test_fixture_is_valid_and_fictional(self) -> None:
+        """The fixture documents the Canvas input contract without user data."""
+        fixture_path = _ocr_result_fixture_path()
+        assert fixture_path.exists(), f"Missing fixture: {fixture_path}"
+
+        data = _load_ocr_result_fixture()
+        assert data["title"] == "Render Preview Song"
+        assert data["qqNumber"] == "10000001"
+        assert data["grade"] == "SSS"
+        assert data["jacket"] is None
+        assert set(data["judges"]) == {
+            "perfect", "great", "good", "bad", "miss",
+        }
+
+    def test_preview_parser_accepts_ocr_result(self) -> None:
+        """The local preview command recognises the OCR card template."""
+        import importlib.util
+
+        tools_dir = Path(__file__).parent.parent.parent / "tools"
+        spec = importlib.util.spec_from_file_location(
+            "render_preview_ocr_result",
+            tools_dir / "render_preview.py",
+        )
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        args = module.build_parser().parse_args(["--template", "ocr_result"])
+        assert args.template == "ocr_result"
+
+    def test_template_uses_compact_official_style_judgements(self) -> None:
+        """The card removes a generic heading and formats four-digit counts."""
+        source_path = (
+            Path(__file__).parent.parent.parent
+            / "render_service" / "functions" / "ocr_result.js"
+        )
+        source = source_path.read_text(encoding="utf-8")
+
+        assert "JUDGEMENT" not in source
+        assert "drawPaddedCount" in source
+        assert "padStart(4, \"0\")" in source
+
+    def test_template_embeds_an_attached_top_right_grade_cutout(self) -> None:
+        """Grade is embedded in the header and remains a supplied display value."""
+        source_path = (
+            Path(__file__).parent.parent.parent
+            / "render_service" / "functions" / "ocr_result.js"
+        )
+        source = source_path.read_text(encoding="utf-8")
+
+        assert "drawAttachedAchievementGrade" in source
+        assert "data.grade" in source
+        assert "COLORS.indigo" in source
+        assert "gradeCharacters" in source
+        assert "GRADE_DIAGONAL_POSITIONS" in source
+
+    def test_template_includes_original_low_contrast_background_decoration(self) -> None:
+        """The Canvas background has local visual texture, not external assets."""
+        source_path = (
+            Path(__file__).parent.parent.parent
+            / "render_service" / "functions" / "ocr_result.js"
+        )
+        source = source_path.read_text(encoding="utf-8")
+
+        assert "drawBackgroundDecorations" in source
+        assert "data:image/" in source
+        assert "https://" not in source
 
 
 class TestPreviewScriptImport:
@@ -205,3 +288,18 @@ class TestRealPlaywrightRender:
         assert response.status_code == 200
         assert response.headers["content-type"] == "image/png"
         assert response.content[:8] == _PNG_SIGNATURE
+
+    def test_render_ocr_result_fixture(self) -> None:
+        """POSTing the OCR result fixture returns a non-empty PNG."""
+        import render_service.main as svc
+        from fastapi.testclient import TestClient
+
+        with TestClient(svc.app) as client:
+            response = client.post(
+                "/render/ocr_result", json=_load_ocr_result_fixture(),
+            )
+
+        assert response.status_code == 200, response.text[:200]
+        assert response.headers["content-type"] == "image/png"
+        assert response.content[:8] == _PNG_SIGNATURE
+        assert len(response.content) > 1000
