@@ -58,12 +58,23 @@ PLUGIN_VERSION = "0.1.0-alpha.1"
 
 
 def _resolve_db_path() -> Path:
-    """Return the database path using AstrBot's plugin-data convention.
+    """Return the database path.
 
-    In production (AstrBot ≥ 4.16): ``data/plugin_data/astrbot_plugin_pjsk/pjsk.db``.
-    In dev/testing (no AstrBot import): ``data/pjsk.db``.
+    Resolution order:
+    1. ``PJSK_DB_PATH`` environment variable (standalone gateway / custom path).
+    2. AstrBot plugin-data directory (AstrBot plugin deployment).
+    3. ``data/plugin_data/astrbot_plugin_pjsk/pjsk.db`` (dev / test fallback).
+
     The parent directory is created if it does not exist.
     """
+    import os
+
+    env_path = os.environ.get("PJSK_DB_PATH", "").strip()
+    if env_path:
+        db_path = Path(env_path)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        return db_path
+
     try:
         from astrbot.core.utils.astrbot_path import get_astrbot_data_path
         base = Path(get_astrbot_data_path())
