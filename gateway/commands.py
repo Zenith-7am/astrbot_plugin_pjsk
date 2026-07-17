@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import os
+import re
+from dataclasses import dataclass
 from enum import Enum
 
 GATEWAY_VERSION = "0.2.0-dev"
@@ -23,7 +25,26 @@ class EmuCommand(Enum):
     HELP = "help"
     STATUS = "status"
     REGISTER = "register"
+    B20 = "b20"
+    MY_DIFFICULTY = "my_difficulty"          # "我的ma31"
+    GLOBAL_DIFFICULTY = "global_difficulty"  # "难度排行ma31"
+    OCR_TRIGGER = "ocr_trigger"              # ".emu" no args (group only)
     UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class ParsedTrigger:
+    """Result of parsing a user message as a command trigger."""
+    command: EmuCommand
+    level: int | None = None  # difficulty level for MY_DIFFICULTY / GLOBAL_DIFFICULTY
+
+
+# ── Regex patterns ───────────────────────────────────────────────────────────
+
+_STRIP_EMU_PREFIX = re.compile(r"^[.。]emu(?:\s+|$)")
+_B20 = re.compile(r"^(?:b20|查b20)$", re.IGNORECASE)
+_MY_DIFF = re.compile(r"^我的ma(\d+)$")
+_GLOBAL_DIFF = re.compile(r"^难度排行ma(\d+)$")
 
 
 def parse_emu_command(text: str) -> EmuCommand | None:
@@ -49,6 +70,52 @@ def parse_emu_command(text: str) -> EmuCommand | None:
         return EmuCommand.REGISTER
     return EmuCommand.UNKNOWN
 
+
+def parse_trigger(text: str, *, is_group: bool) -> ParsedTrigger | None:
+    """Parse a non-image text message into a command trigger.
+
+    Private chat: no prefix needed for B20 / difficulty commands.
+    Group chat: ``.emu`` or ``。emu`` prefix required.
+
+    Returns None if the message does not match any command.
+    """
+    text = text.strip()
+    if not text:
+        return None
+
+    # Group: strip ".emu"/"。emu" prefix
+    if is_group:
+        if not _STRIP_EMU_PREFIX.match(text):
+            return None
+        text = _STRIP_EMU_PREFIX.sub("", text).strip()
+        # ".emu" / "。emu" with no arguments → OCR trigger
+        if not text:
+            return ParsedTrigger(EmuCommand.OCR_TRIGGER)
+
+    # B20
+    if _B20.match(text):
+        return ParsedTrigger(EmuCommand.B20)
+
+    # 我的maXX
+    m = _MY_DIFF.match(text)
+    if m:
+        return ParsedTrigger(EmuCommand.MY_DIFFICULTY, level=int(m.group(1)))
+
+    # 难度排行maXX
+    m = _GLOBAL_DIFF.match(text)
+    if m:
+        return ParsedTrigger(EmuCommand.GLOBAL_DIFFICULTY, level=int(m.group(1)))
+
+    # Legacy /emu commands (private chat only)
+    if not is_group:
+        legacy = parse_emu_command(text)
+        if legacy is not None and legacy != EmuCommand.UNKNOWN:
+            return ParsedTrigger(legacy)
+
+    return None
+
+
+# ── Help text ────────────────────────────────────────────────────────────────
 
 _HELP = (
     "PJSK Emu Bot\n"
