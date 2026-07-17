@@ -222,7 +222,11 @@ async def _handle_ocr_trigger(
 
     if decision in (VisionRaceDecision.CONSENSUS, VisionRaceDecision.DEGRADED_SINGLE):
         if readonly:
-            text = _format_readonly_result(result) if result.validated is not None else "识别完成但无法解析结果"
+            text = (
+                _format_readonly_result(result)
+                if result.validated is not None
+                else "识别完成但无法解析结果"
+            )
         else:
             text = _format_consensus_reply(result, None)
     elif decision == VisionRaceDecision.DISAGREEMENT:
