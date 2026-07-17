@@ -355,7 +355,8 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 
 **禁止**以下任何操作：
 
-- `scp` / `rsync` 单个源码文件到 live 目录。
+- `scp` / `rsync` / `cat | ssh >` / 任何形式**覆盖生产单个源码文件**。
+  - 反面教材 2026-07-17：试测时用 `cat bootstrap.py | ssh "cat > /opt/.../current/.../bootstrap.py"` 打了两个补丁，导致 VPS 代码不属于任何 git commit（「手工覆盖漂移」）。后面虽然 MD5 对上，但违背了原子发布原则。
 - `scp -r src` 覆盖 live 目录。
 - 在 `/opt/.../current` 中直接编辑文件。
 - 从 dirty worktree 构建。
@@ -363,6 +364,7 @@ ocr_observations(id, ocr_run_id, engine, elapsed_ms, parsed_result,
 - 在 VPS 上直接热修后不回流 Git。
 - 部署缺少 manifest 的 release。
 - 把生产孤儿文件复制进新项目而不审计来源。
+- **VPS 运行的代码必须始终等于某个 `git rev-parse HEAD` 的完整快照。** 任何时刻 `readlink -f /opt/pjsk-astrbot/current` 指向的 release ID 必须对应一个本地存在的 commit。
 
 **只允许**：
 
