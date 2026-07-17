@@ -1,4 +1,4 @@
-"""NoneBot matcher for image/OCR — private direct, group @Bot trigger."""
+"""NoneBot matcher for image/OCR — private direct, group stores for .emu trigger."""
 from __future__ import annotations
 
 import logging
@@ -16,8 +16,17 @@ from pjsk_core.domain.users import QqNumber, User
 from gateway.commands import qq_allowed
 from gateway.adapters.event_mapper import IncomingMessage, map_event
 from gateway.adapters.reply_sender import send_text_reply
+from gateway.matchers.pending_image_store import PendingImageStore
 
 _logger = logging.getLogger(__name__)
+
+# Module-level pending-image store — shared with command_handler
+_pending_store = PendingImageStore()
+
+
+def get_pending_store() -> PendingImageStore:
+    """Return the module-level PendingImageStore for use by command_handler."""
+    return _pending_store
 
 # ── Image validation ─────────────────────────────────────────────────────────
 
@@ -269,9 +278,10 @@ def _log_engine_results(result: RecognizeResult) -> None:
 
 @image_matcher.handle()
 async def _handle_image(bot: Bot, event: MessageEvent) -> None:
-    """Handle image OCR.
+    """Handle image messages.
 
-    Consensus → auto-save score.  Disagreement → store candidates for user pick.
+    Private: OCR immediately, reply with text (future: render image).
+    Group:   store image in PendingImageStore, confirm with a short text.
     """
     import os
 
@@ -280,6 +290,31 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
     if not qq_allowed(msg.external_user_id):
         return
 
+    # ── Group chat: store image for later .emu trigger ──────────────────────
+    if event.message_type == "group":
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            image_data = await _download_image(event, bot, client)
+        if image_data is None:
+            await send_text_reply(bot, event, TextReply(text="图片下载失败，请重新发送"))
+            return
+        error = _validate_image(image_data)
+        if error is not None:
+            await send_text_reply(bot, event, TextReply(text=error))
+            return
+        group_id = str(getattr(event, "group_id", "0"))
+        qq = msg.external_user_id
+        _pending_store.put(group_id, qq, image_data)
+        _logger.info(
+            "image stored: group=%s qq=%s size=%d",
+            group_id, qq, len(image_data),
+        )
+        await send_text_reply(
+            bot, event,
+            TextReply(text="截图已记录，30秒内发送 .emu 开始识别"),
+        )
+        return
+
+    # ── Private chat: full OCR flow ─────────────────────────────────────────
     if _runtime is None:
         await send_text_reply(bot, event, TextReply(text="服务正在启动中，请稍后再试"))
         return
@@ -332,9 +367,7 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
         result = await runtime.recognize_score.recognize(
             user.id, image_data, source_gateway="onebot", readonly=readonly,
         )
-        # Log engine-level diagnostics
         _log_engine_results(result)
-        # Capture old PB after recognize (cosmetic — for "刷新个人最佳" status)
         if result.score_attempt is not None and not readonly:
             pb = await runtime.score_repo.get_personal_best(user.id, result.score_attempt.chart_id)
             old_pb_rating = pb.rating if pb is not None and pb.id != result.score_attempt.id else None
