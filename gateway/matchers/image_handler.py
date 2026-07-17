@@ -129,13 +129,13 @@ async def _download_image(
 
 
 async def _image_trigger(event: MessageEvent) -> bool:
-    """Private: any image triggers.  Group: only @Bot + image triggers."""
+    """Private: any image triggers OCR.  Group: any image is stored for .emu."""
     has_image = any(seg.type == "image" for seg in event.message)
     if not has_image:
         return False
-    if event.message_type == "private":
-        return True
-    return bool(getattr(event, "to_me", False))
+    # Group: store ALL images (no @Bot needed — .emu command handles the trigger)
+    # Private: OCR immediately
+    return True
 
 
 image_matcher = on_message(rule=Rule(_image_trigger), priority=10, block=False)
@@ -308,10 +308,7 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
             "image stored: group=%s qq=%s size=%d",
             group_id, qq, len(image_data),
         )
-        await send_text_reply(
-            bot, event,
-            TextReply(text="截图已记录，30秒内发送 .emu 开始识别"),
-        )
+        # Silent storage — user triggers OCR later with .emu
         return
 
     # ── Private chat: full OCR flow ─────────────────────────────────────────
