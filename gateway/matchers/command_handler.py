@@ -270,7 +270,7 @@ async def _handle_b20(
         return
 
     try:
-        b20_result = await runtime.query_b20.execute(user.id)
+        b20_result = await runtime.query_b20.query(user.id)
     except Exception:
         _logger.exception("B20 query failed")
         await send_text_reply(bot, event, TextReply(text="查询失败，请稍后重试"))
@@ -287,9 +287,9 @@ async def _handle_b20(
             f"ACC {e.accuracy:.2f}% · Rating {e.rating:.2f}"
         )
     lines.append("")
-    lines.append(f"B20 平均: {b20_result.average:.2f}")
-    if b20_result.total_sp > 0:
-        lines.append(f"SEKAI POWER: {b20_result.total_sp:.2f}")
+    lines.append(f"B20 平均: {b20_result.b20_avg:.2f}")
+    if b20_result.sp > 0:
+        lines.append(f"SEKAI POWER: {b20_result.sp:.2f}")
 
     await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
 
@@ -302,6 +302,7 @@ async def _handle_my_difficulty(
         await send_text_reply(bot, event, TextReply(text="服务暂不可用"))
         return
 
+    from pjsk_core.domain.charts import Difficulty
     from pjsk_runtime.runtime import Runtime
     runtime: Runtime = _runtime  # type: ignore[assignment]
 
@@ -318,26 +319,25 @@ async def _handle_my_difficulty(
         return
 
     try:
-        ranking = await runtime.query_difficulty_ranking.execute_personal(
-            user.id, "master", level,
+        ranking = await runtime.query_difficulty_ranking.query_personal(
+            user.id, Difficulty.MASTER, level,
         )
     except Exception:
         _logger.exception("Personal difficulty ranking failed")
         await send_text_reply(bot, event, TextReply(text="查询失败，请稍后重试"))
         return
 
-    if not ranking:
+    if not ranking.entries:
         await send_text_reply(bot, event, TextReply(text=f"MA {level} 暂无成绩"))
         return
 
     lines = [f"个人 MA {level} 排行", ""]
-    for i, e in enumerate(ranking[:20], 1):
-        status = getattr(e, "status", "?")
-        acc = getattr(e, "accuracy", 0.0)
-        rating = getattr(e, "rating", 0.0)
-        lines.append(
-            f"[{i}] {e.song_title} · {status} · ACC {acc:.2f}% · Rating {rating:.2f}"
-        )
+    for i, e in enumerate(ranking.entries[:20], 1):
+        status_str = e.status.value.upper() if e.status else "未游玩"
+        acc_str = f"ACC {e.accuracy:.2f}%" if e.accuracy is not None else ""
+        rating_str = f"Rating {e.rating:.2f}" if e.rating is not None else ""
+        parts = [f"[{i}] {e.song_title}", status_str, acc_str, rating_str]
+        lines.append(" · ".join(p for p in parts if p))
 
     await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
 
@@ -350,24 +350,25 @@ async def _handle_global_difficulty(
         await send_text_reply(bot, event, TextReply(text="服务暂不可用"))
         return
 
+    from pjsk_core.domain.charts import Difficulty
     from pjsk_runtime.runtime import Runtime
     runtime: Runtime = _runtime  # type: ignore[assignment]
 
     try:
-        ranking = await runtime.query_difficulty_ranking.execute_global(
-            "master", level,
+        ranking = await runtime.query_difficulty_ranking.query_global(
+            Difficulty.MASTER, level,
         )
     except Exception:
         _logger.exception("Global difficulty ranking failed")
         await send_text_reply(bot, event, TextReply(text="查询失败，请稍后重试"))
         return
 
-    if not ranking:
+    if not ranking.entries:
         await send_text_reply(bot, event, TextReply(text=f"MA {level} 暂无排行数据"))
         return
 
     lines = [f"MA {level} 全局排行（定数降序）", ""]
-    for i, e in enumerate(ranking[:20], 1):
+    for i, e in enumerate(ranking.entries[:20], 1):
         lines.append(
             f"[{i}] {e.song_title} · 定数 {e.community_constant} · "
             f"MA {e.official_level}"
