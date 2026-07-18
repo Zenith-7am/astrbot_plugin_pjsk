@@ -1,5 +1,6 @@
 """SQLite-backed repository implementations."""
 
+import asyncio
 from datetime import datetime, timezone
 
 import sqlite3
@@ -359,70 +360,75 @@ class SqliteScoreRepository:
 
     def __init__(self, conn: Connection) -> None:
         self._conn = conn
+        # Serialize writes on the shared connection — concurrent BEGIN
+        # on the same aiosqlite connection would fail with
+        # "cannot start a transaction within a transaction".
+        self._write_lock = asyncio.Lock()
 
     async def record_attempt(self, attempt: ScoreAttempt) -> ScoreAttempt:
-        await self._conn.execute("BEGIN")
-        try:
-            now = attempt.created_at.isoformat()
-            cursor = await self._conn.execute(
-                """INSERT INTO score_attempts
-                   (user_id, chart_id, perfect, great, good, bad, miss,
-                    accuracy, rating, status, image_sha256, source_gateway,
-                    ocr_run_id, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    attempt.user_id.value, attempt.chart_id,
-                    attempt.judgements.perfect, attempt.judgements.great,
-                    attempt.judgements.good, attempt.judgements.bad,
-                    attempt.judgements.miss,
-                    attempt.accuracy, attempt.rating, attempt.status.value,
-                    attempt.image_sha256, attempt.source_gateway,
-                    attempt.ocr_run_id, now,
-                ),
+        async with self._write_lock:
+            await self._conn.execute("BEGIN")
+            try:
+                now = attempt.created_at.isoformat()
+                cursor = await self._conn.execute(
+                    """INSERT INTO score_attempts
+                       (user_id, chart_id, perfect, great, good, bad, miss,
+                        accuracy, rating, status, image_sha256, source_gateway,
+                        ocr_run_id, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        attempt.user_id.value, attempt.chart_id,
+                        attempt.judgements.perfect, attempt.judgements.great,
+                        attempt.judgements.good, attempt.judgements.bad,
+                        attempt.judgements.miss,
+                        attempt.accuracy, attempt.rating, attempt.status.value,
+                        attempt.image_sha256, attempt.source_gateway,
+                        attempt.ocr_run_id, now,
+                    ),
+                )
+                attempt_id = cursor.lastrowid
+                if attempt_id is None:
+                    raise RuntimeError("INSERT did not return a row id")
+
+                # Atomic UPSERT — the WHERE clause prevents a lower rating
+                # from overwriting a higher one, and the whole operation is
+                # a single statement so there is no SELECT-then-write window.
+                await self._conn.execute(
+                    """INSERT INTO personal_bests
+                       (user_id, chart_id, best_attempt_id, accuracy,
+                        rating, status, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(user_id, chart_id) DO UPDATE SET
+                           best_attempt_id = excluded.best_attempt_id,
+                           accuracy = excluded.accuracy,
+                           rating = excluded.rating,
+                           status = excluded.status,
+                           updated_at = excluded.updated_at
+                       WHERE excluded.rating >= personal_bests.rating""",
+                    (
+                        attempt.user_id.value, attempt.chart_id, attempt_id,
+                        attempt.accuracy, attempt.rating, attempt.status.value, now,
+                    ),
+                )
+
+                await self._conn.commit()
+            except Exception:
+                await self._conn.rollback()
+                raise
+
+            return ScoreAttempt(
+                id=attempt_id,
+                user_id=attempt.user_id,
+                chart_id=attempt.chart_id,
+                judgements=attempt.judgements,
+                accuracy=attempt.accuracy,
+                rating=attempt.rating,
+                status=attempt.status,
+                image_sha256=attempt.image_sha256,
+                source_gateway=attempt.source_gateway,
+                ocr_run_id=attempt.ocr_run_id,
+                created_at=attempt.created_at,
             )
-            attempt_id = cursor.lastrowid
-            if attempt_id is None:
-                raise RuntimeError("INSERT did not return a row id")
-
-            # Atomic UPSERT — the WHERE clause prevents a lower rating
-            # from overwriting a higher one, and the whole operation is
-            # a single statement so there is no SELECT-then-write window.
-            await self._conn.execute(
-                """INSERT INTO personal_bests
-                   (user_id, chart_id, best_attempt_id, accuracy,
-                    rating, status, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(user_id, chart_id) DO UPDATE SET
-                       best_attempt_id = excluded.best_attempt_id,
-                       accuracy = excluded.accuracy,
-                       rating = excluded.rating,
-                       status = excluded.status,
-                       updated_at = excluded.updated_at
-                   WHERE excluded.rating >= personal_bests.rating""",
-                (
-                    attempt.user_id.value, attempt.chart_id, attempt_id,
-                    attempt.accuracy, attempt.rating, attempt.status.value, now,
-                ),
-            )
-
-            await self._conn.commit()
-        except Exception:
-            await self._conn.rollback()
-            raise
-
-        return ScoreAttempt(
-            id=attempt_id,
-            user_id=attempt.user_id,
-            chart_id=attempt.chart_id,
-            judgements=attempt.judgements,
-            accuracy=attempt.accuracy,
-            rating=attempt.rating,
-            status=attempt.status,
-            image_sha256=attempt.image_sha256,
-            source_gateway=attempt.source_gateway,
-            ocr_run_id=attempt.ocr_run_id,
-            created_at=attempt.created_at,
-        )
 
     async def get_personal_best(
         self, user_id: UserId, chart_id: int
@@ -466,34 +472,40 @@ class SqliteScoreRepository:
     async def get_b20(
         self, user_id: UserId, include_append: bool,
     ) -> list[ScoreAttempt]:
-        """Return top-20 FC/AP personal bests sorted by rating DESC.
+        """Return top-20 FC/AP personal bests, at most one entry per song.
 
-        When *include_append* is False, APPEND charts are excluded via
-        a JOIN filter.  Ties on rating are broken by chart_id ASC for
-        deterministic ordering.
+        When *include_append* is False, APPEND charts are excluded.
+        For songs with multiple charts in the B20 window, only the entry
+        with the highest rating is kept.  Ties on rating are broken by
+        chart_id ASC for deterministic ordering.
         """
-        if include_append:
-            query = """
-                SELECT sa.* FROM score_attempts sa
-                JOIN personal_bests pb ON pb.best_attempt_id = sa.id
-                WHERE pb.user_id = ?
-                  AND sa.status IN ('ap', 'fc')
-                ORDER BY sa.rating DESC, sa.chart_id ASC
-                LIMIT 20
-            """
-            params: list[object] = [user_id.value]
-        else:
-            query = """
-                SELECT sa.* FROM score_attempts sa
-                JOIN personal_bests pb ON pb.best_attempt_id = sa.id
-                JOIN charts c ON c.id = pb.chart_id
-                WHERE pb.user_id = ?
-                  AND sa.status IN ('ap', 'fc')
-                  AND c.difficulty != 'append'
-                ORDER BY sa.rating DESC, sa.chart_id ASC
-                LIMIT 20
-            """
-            params = [user_id.value]
+        # The subquery "best" groups personal bests by song_id, keeping
+        # the max rating per song.  The outer query joins against it so
+        # that at most one entry per song survives.
+        append_filter = "AND c.difficulty != 'append'" if not include_append else ""
+        append_filter_sub = "AND c2.difficulty != 'append'" if not include_append else ""
+
+        query = f"""
+            SELECT sa.* FROM score_attempts sa
+            JOIN personal_bests pb ON pb.best_attempt_id = sa.id
+            JOIN charts c ON c.id = pb.chart_id
+            JOIN (
+                SELECT c2.song_id, MAX(sa2.rating) AS max_rating
+                FROM score_attempts sa2
+                JOIN personal_bests pb2 ON pb2.best_attempt_id = sa2.id
+                JOIN charts c2 ON c2.id = pb2.chart_id
+                WHERE pb2.user_id = ?
+                  AND sa2.status IN ('ap', 'fc')
+                  {append_filter_sub}
+                GROUP BY c2.song_id
+            ) best ON c.song_id = best.song_id AND sa.rating = best.max_rating
+            WHERE pb.user_id = ?
+              AND sa.status IN ('ap', 'fc')
+              {append_filter}
+            ORDER BY sa.rating DESC, sa.chart_id ASC
+            LIMIT 20
+        """
+        params: list[object] = [user_id.value, user_id.value]
         rows = await self._conn.execute_fetchall(query, params)
         return [self._row_to_attempt(r) for r in rows]
 

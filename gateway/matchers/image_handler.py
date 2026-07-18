@@ -399,6 +399,7 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
                             text=f"已记录（原个人最佳: {old_pb_rating:.2f}）",
                         ),
                     )
+            return  # ← Image reply sent; do NOT fall through to text send below
         else:
             if readonly:
                 text = (
@@ -409,6 +410,7 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
             else:
                 text = _format_consensus_reply(result, old_pb_rating)
             await send_text_reply(bot, event, TextReply(text=text))
+            return  # ← Text fallback sent; do NOT fall through to duplicate text send
     elif decision == VisionRaceDecision.DISAGREEMENT:
         if readonly:
             text = _format_candidates_text(result)
@@ -423,6 +425,7 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
     else:
         text = "识别失败，请稍后重试"
 
+    # Non-consensus branches all produce text-only replies
     await send_text_reply(bot, event, TextReply(text=text))
 
 

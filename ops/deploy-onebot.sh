@@ -57,11 +57,16 @@ ssh "$VPS" bash -lc "
 
     cd \"\$RELEASE_DIR\"
 
-    # ── Venv ────────────────────────────────────────────────────────────
+    # ── Venv (non-editable — no .pth pointer to another release) ───────
     echo '=== Creating venv ==='
     python3 -m venv .venv
     .venv/bin/pip install -q --upgrade pip
-    .venv/bin/pip install -q -e '.[dev,render]'
+    .venv/bin/pip install -q '.[dev,render]'
+
+    # ── Release manifest ────────────────────────────────────────────
+    echo \"git_sha=${GIT_SHA}\" > .release-manifest.txt
+    echo \"release_id=${RELEASE_ID}\" >> .release-manifest.txt
+    echo \"created_at=\$(date -u +%Y-%m-%dT%H:%M:%SZ)\" >> .release-manifest.txt
 
     # ── Import check ────────────────────────────────────────────────────
     echo '=== Import check ==='
@@ -129,6 +134,10 @@ print(f\"Migrations applied to {db_path}\")
     fi
     echo \"current -> \$FINAL\"
     exec 9>&-
+
+    # Persist OLD_CURRENT into a shared file so the rollback SSH block
+    # (which runs in a separate session) can read it.
+    echo \"\$OLD_CURRENT\" > '${SHARED_DIR}/.prev-release'
 "
 
 # ── Step 3: Restart renderer first, then gateway ────────────────────────
@@ -152,33 +161,53 @@ ssh "$VPS" bash -lc "
     systemctl restart '${SERVICE_NAME}'
     sleep 3
 
-    # Health check: up to 3 retries, 5s timeout each
+    # Health check: up to 3 retries, validate json fields (not just HTTP 200)
     for i in 1 2 3; do
         echo \"Health attempt \$i/3 …\"
-        if curl -sf --max-time 5 http://127.0.0.1:8080/health > /dev/null; then
-            curl -s http://127.0.0.1:8080/health | python3 -m json.tool
-            echo '=== Deploy SUCCESS ==='
-            echo \"Release: ${RELEASE_ID}\"
-            echo \"Git SHA: ${GIT_SHA}\"
-            exit 0
+        RESP=\$(curl -sf --max-time 5 http://127.0.0.1:8080/health 2>/dev/null || echo '')
+        if [ -n \"\$RESP\" ]; then
+            echo \"\$RESP\" | python3 -m json.tool 2>/dev/null || echo \"\$RESP\"
+            # Verify critical fields are healthy
+            STATUS_OK=\$(echo \"\$RESP\" | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('status')=='ok' and d.get('database')=='ok' and d.get('runtime')=='ready' else 1)\" 2>/dev/null && echo 1 || echo 0)
+            if [ \"\$STATUS_OK\" = \"1\" ]; then
+                echo '=== Deploy SUCCESS ==='
+                echo \"Release: ${RELEASE_ID}\"
+                echo \"Git SHA: ${GIT_SHA}\"
+                exit 0
+            fi
         fi
         sleep 2
     done
 
     # ── ROLLBACK ────────────────────────────────────────────────────────
     echo '=== Health check FAILED — rolling back ==='
-    OLD_CURRENT=\$(readlink -f '${CURRENT_LINK}' 2>/dev/null || echo '')
 
-    # Find previous release
-    PREV=\$(ls -1d '${RELEASE_BASE}'/*/ 2>/dev/null | grep -v '${RELEASE_ID}' | sort -r | head -1 || echo '')
-    if [ -n \"\$PREV\" ]; then
-        ln -snf \"\$PREV\" '${CURRENT_LINK}'
-        echo \"Rolled back current -> \$PREV\"
+    # Read the previous release path saved during atomic switch
+    OLD_CURRENT=\$(cat '${SHARED_DIR}/.prev-release' 2>/dev/null || echo '')
+    if [ -n \"\$OLD_CURRENT\" ] && [ -d \"\$OLD_CURRENT\" ]; then
+        ln -snf \"\$OLD_CURRENT\" '${CURRENT_LINK}'
+        echo \"Rolled back current -> \$OLD_CURRENT\"
+    else
+        # Fallback: find latest release that isn't the failed one
+        PREV=\$(ls -1d '${RELEASE_BASE}'/*/ 2>/dev/null | grep -v '${RELEASE_ID}' | sort -r | head -1 || echo '')
+        if [ -n \"\$PREV\" ]; then
+            ln -snf \"\$PREV\" '${CURRENT_LINK}'
+            echo \"Rolled back current (fallback) -> \$PREV\"
+        else
+            echo 'FATAL: no previous release found for rollback'
+            exit 1
+        fi
     fi
 
+    # Restart BOTH renderer and gateway on rollback
+    systemctl restart '${RENDER_SERVICE}' || true
+    sleep 2
     systemctl restart '${SERVICE_NAME}'
     sleep 2
-    curl -s http://127.0.0.1:8080/health | python3 -m json.tool || true
+
+    echo '=== Post-rollback health ==='
+    curl -s http://127.0.0.1:3000/health || echo 'renderer health failed'
+    curl -s http://127.0.0.1:8080/health | python3 -m json.tool || echo 'gateway health failed'
     echo '=== Deploy FAILED — rolled back ==='
     exit 1
 "
