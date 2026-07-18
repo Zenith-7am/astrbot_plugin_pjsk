@@ -74,6 +74,12 @@ import render_service.main
 print(\"All imports OK\")
 '
 
+    # ── Systemd units ─────────────────────────────────────────────────
+    echo '=== Installing systemd units ==='
+    cp \"\$RELEASE_DIR/ops/pjsk-render.service\" /etc/systemd/system/pjsk-render.service
+    cp \"\$RELEASE_DIR/ops/pjsk-onebot.service\" /etc/systemd/system/pjsk-onebot.service
+    systemctl daemon-reload
+
     # ── Chart data import (first-install safe) ─────────────────────────
     echo '=== Chart data import ==='
     .venv/bin/python -c '

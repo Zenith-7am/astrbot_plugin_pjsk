@@ -1,0 +1,18 @@
+[Unit]
+Description=PJSK Render Service (FastAPI + Playwright)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/pjsk-astrbot/current
+ExecStart=/opt/pjsk-astrbot/current/.venv/bin/python3 -m uvicorn render_service.main:app --host 127.0.0.1 --port 3000
+Restart=on-failure
+RestartSec=5
+Environment="PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright"
+Environment="RENDER_MAX_CONCURRENT=4"
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

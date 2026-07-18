@@ -6,7 +6,7 @@ After=pjsk-render.service
 
 [Service]
 Type=simple
-User=pjsk
+User=root
 WorkingDirectory=/opt/pjsk-astrbot/current
 EnvironmentFile=/opt/pjsk-astrbot/shared/bot.env
 Environment=PJSK_DB_PATH=/opt/pjsk-astrbot/shared/data/pjsk.db
