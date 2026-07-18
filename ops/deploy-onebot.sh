@@ -206,8 +206,8 @@ ssh "$VPS" bash -lc "
         RESP=\$(curl -sf --max-time 5 http://127.0.0.1:8080/health 2>/dev/null || echo '')
         if [ -n \"\$RESP\" ]; then
             echo \"\$RESP\" | python3 -m json.tool 2>/dev/null || echo \"\$RESP\"
-            # Verify critical fields are healthy
-            STATUS_OK=\$(echo \"\$RESP\" | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('status')=='ok' and d.get('database')=='ok' and d.get('runtime')=='ready' else 1)\" 2>/dev/null && echo 1 || echo 0)
+            # Verify core health (OneBot may take 30s+ to reconnect after restart)
+            STATUS_OK=\$(echo \"\$RESP\" | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('database')=='ok' and d.get('runtime')=='ready' else 1)\" 2>/dev/null && echo 1 || echo 0)
             if [ \"\$STATUS_OK\" = \"1\" ]; then
                 echo '=== Deploy SUCCESS ==='
                 echo \"Release: ${RELEASE_ID}\"
