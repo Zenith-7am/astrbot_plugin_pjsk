@@ -10,6 +10,7 @@ from nonebot.adapters.onebot.v11 import Bot, MessageEvent
 from nonebot.rule import Rule
 
 from pjsk_core.application.replies import TextReply
+from pjsk_core.domain.scores import ScoreStatus
 from pjsk_core.domain.users import QqNumber
 from gateway.commands import (
     EmuCommand,
@@ -299,6 +300,58 @@ async def _handle_ocr_trigger(
 # ── B20 / Difficulty ranking ─────────────────────────────────────────────────
 
 
+def _build_b20_payload(
+    result: "B20Result",
+    jacket_map: dict[int, str],
+) -> dict[str, object]:
+    """Assemble the COMPLETE JS payload for b20.js.
+
+    Every field the JS renderer reads is explicitly assigned here —
+    nothing is silently dropped by an intermediate translation layer.
+    """
+    from pjsk_core.application.render_ocr_card import _get_acc_grade
+
+    songs: list[dict[str, object]] = []
+    for entry in result.entries:
+        ap = entry.status == ScoreStatus.AP
+        grade_label, grade_class = _get_acc_grade(entry.accuracy)
+        songs.append({
+            "jacket": jacket_map.get(entry.song_id),
+            "difficulty": entry.difficulty.value,
+            "level": entry.official_level,
+            "displayLevel": entry.official_level,
+            "title": entry.song_title,
+            "status": 2 if ap else 1,
+            "achievementRate": None if ap else entry.accuracy,
+            "power": entry.rating,
+            "gradeLabel": grade_label,
+            "gradeClass": grade_class,
+            "judges": {
+                "great": entry.judgements.great,
+                "good": entry.judgements.good,
+                "bad": entry.judgements.bad,
+                "miss": entry.judgements.miss,
+            },
+        })
+
+    return {
+        "b20": songs,
+        "sp": result.sp,
+        "b20Avg": result.b20_avg,
+        "fcBonus": result.fc_bonus,
+        "masterBonus": result.ap_bonus,
+        "playerClass": {
+            "name": result.player_class.name,
+            "icon": result.player_class.icon,
+            "stars": result.player_class.stars,
+            "fallbackColor": result.player_class.fallback_color,
+        },
+        "isAppendExcluded": result.append_excluded,
+        "currentPercentile": 0,
+        "displayRank": "",
+    }
+
+
 async def _handle_b20(
     bot: Bot, event: MessageEvent, msg: IncomingMessage,
 ) -> None:
@@ -333,21 +386,27 @@ async def _handle_b20(
         await send_text_reply(bot, event, TextReply(text="暂无 B20 成绩记录"))
         return
 
-    # Try render image → fall back to text
+    # ── Assemble complete JS payload → render image → fallback text ──
     png: bytes | None = None
     if runtime.renderer is not None:
         try:
             from pjsk_core.application.render_b20 import render_b20
+
+            # Resolve jacket HTTP URLs
+            song_ids = [e.song_id for e in b20_result.entries]
+            jacket_map: dict[int, str] = {}
+            if runtime.jacket_cache is not None:
+                for sid in song_ids:
+                    url = runtime.jacket_cache.get_jacket_file_url(sid)
+                    if url is not None:
+                        jacket_map[sid] = url
+
             _logger.info(
-                "B20 render attempt: renderer_present=true entry_count=%d jacket_cache_present=%s",
-                len(b20_result.entries),
-                runtime.jacket_cache is not None,
+                "B20 render: entries=%d jackets=%d/%d",
+                len(b20_result.entries), len(jacket_map), len(song_ids),
             )
-            png = await render_b20(
-                b20_result,
-                renderer=runtime.renderer,
-                jacket_cache=runtime.jacket_cache,
-            )
+            data = _build_b20_payload(b20_result, jacket_map)
+            png = await render_b20(data, renderer=runtime.renderer)
             _logger.info(
                 "B20 render result=%s png_bytes=%d",
                 "png" if png is not None else "none",

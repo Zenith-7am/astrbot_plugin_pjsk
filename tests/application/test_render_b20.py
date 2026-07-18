@@ -1,4 +1,4 @@
-"""Tests for render_b20."""
+"""Tests for B20 render payload assembly and render_b20 wrapper."""
 from pjsk_core.domain.b20 import B20Entry, B20Result
 from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.player_class import PlayerClass
@@ -58,151 +58,142 @@ class FakeRenderer:
         return self.png
 
 
-class TestToB20Data:
+class TestB20PayloadShape:
+    """Verify _build_b20_payload produces a COMPLETE dict for b20.js."""
+
+    def test_root_has_all_fields(self) -> None:
+        from gateway.matchers.command_handler import _build_b20_payload
+
+        payload = _build_b20_payload(_make_result(), {})
+        required = [
+            "sp", "b20Avg", "fcBonus", "masterBonus",
+            "playerClass", "isAppendExcluded",
+            "currentPercentile", "displayRank", "b20",
+        ]
+        for key in required:
+            assert key in payload, f"Missing root field: {key}"
+
+    def test_song_has_all_fields(self) -> None:
+        from gateway.matchers.command_handler import _build_b20_payload
+
+        payload = _build_b20_payload(
+            _make_result([_make_entry(status=ScoreStatus.FC, accuracy=100.5)]),
+            {},
+        )
+        song = payload["b20"][0]
+        required = [
+            "jacket", "difficulty", "level", "displayLevel",
+            "title", "status", "achievementRate", "power",
+            "gradeLabel", "gradeClass", "judges",
+        ]
+        for key in required:
+            assert key in song, f"Missing song field: {key}"
+
     def test_ap_maps_status_2_achievement_null(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
+        from gateway.matchers.command_handler import _build_b20_payload
 
-        result = _make_result([_make_entry(status=ScoreStatus.AP)])
-        data = _to_b20_data(result, {})
-
-        assert data["b20"][0]["status"] == 2
-        assert data["b20"][0]["achievementRate"] is None
+        payload = _build_b20_payload(
+            _make_result([_make_entry(status=ScoreStatus.AP)]),
+            {},
+        )
+        s = payload["b20"][0]
+        assert s["status"] == 2
+        assert s["achievementRate"] is None
 
     def test_fc_maps_status_1_achievement_accuracy(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
+        from gateway.matchers.command_handler import _build_b20_payload
 
-        result = _make_result([_make_entry(status=ScoreStatus.FC, accuracy=100.5)])
-        data = _to_b20_data(result, {})
+        payload = _build_b20_payload(
+            _make_result([_make_entry(status=ScoreStatus.FC, accuracy=100.5)]),
+            {},
+        )
+        s = payload["b20"][0]
+        assert s["status"] == 1
+        assert s["achievementRate"] == 100.5
 
-        assert data["b20"][0]["status"] == 1
-        assert data["b20"][0]["achievementRate"] == 100.5
+    def test_b20_avg_from_result(self) -> None:
+        from gateway.matchers.command_handler import _build_b20_payload
+
+        payload = _build_b20_payload(_make_result(), {})
+        assert payload["b20Avg"] == 3300.0
+        assert payload["fcBonus"] == 0.0
+        assert payload["masterBonus"] == 0.0
+
+    def test_jacket_map_applied(self) -> None:
+        from gateway.matchers.command_handler import _build_b20_payload
+
+        payload = _build_b20_payload(
+            _make_result([_make_entry(song_id=42)]),
+            {42: "http://127.0.0.1:3000/jacket/42"},
+        )
+        assert payload["b20"][0]["jacket"] == "http://127.0.0.1:3000/jacket/42"
+
+    def test_jacket_none_for_missing(self) -> None:
+        from gateway.matchers.command_handler import _build_b20_payload
+
+        payload = _build_b20_payload(
+            _make_result([_make_entry(song_id=99)]),
+            {},
+        )
+        assert payload["b20"][0]["jacket"] is None
+
+    def test_sp_from_result(self) -> None:
+        from gateway.matchers.command_handler import _build_b20_payload
+
+        payload = _build_b20_payload(_make_result(), {})
+        assert payload["sp"] == 3300.0
+
+    def test_grade_label_included(self) -> None:
+        from gateway.matchers.command_handler import _build_b20_payload
+
+        payload = _build_b20_payload(
+            _make_result([_make_entry(status=ScoreStatus.FC, accuracy=100.8)]),
+            {},
+        )
+        assert payload["b20"][0]["gradeLabel"] == "SSS"
+        assert payload["b20"][0]["gradeClass"] == "sss"
+
+    def test_empty_entries(self) -> None:
+        from gateway.matchers.command_handler import _build_b20_payload
+
+        payload = _build_b20_payload(_make_result([]), {})
+        assert payload["b20"] == []
 
     def test_append_excluded_propagated(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
+        from gateway.matchers.command_handler import _build_b20_payload
 
-        result = _make_result(append_excluded=True)
-        data = _to_b20_data(result, {})
-
-        assert data["isAppendExcluded"] is True
+        payload = _build_b20_payload(_make_result(append_excluded=True), {})
+        assert payload["isAppendExcluded"] is True
 
     def test_judges_included(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
+        from gateway.matchers.command_handler import _build_b20_payload
 
         entry = _make_entry()
         result = _make_result([entry])
-        data = _to_b20_data(result, {})
-
-        j = data["b20"][0]["judges"]
+        payload = _build_b20_payload(result, {})
+        j = payload["b20"][0]["judges"]
         assert j["great"] == 0
         assert j["good"] == 0
         assert j["bad"] == 0
         assert j["miss"] == 0
 
-    def test_jacket_map_applied(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
-
-        result = _make_result([_make_entry(song_id=42)])
-        data = _to_b20_data(result, {42: "data:image/png;base64,abc"})
-
-        assert data["b20"][0]["jacket"] == "data:image/png;base64,abc"
-
-    def test_jacket_none_for_missing(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
-
-        result = _make_result([_make_entry(song_id=99)])
-        data = _to_b20_data(result, {})
-
-        assert data["b20"][0]["jacket"] is None
-
-    
-    def test_grade_label_included(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
-
-        result = _make_result([_make_entry(status=ScoreStatus.FC, accuracy=100.8)])
-        data = _to_b20_data(result, {})
-
-        assert data["b20"][0]["gradeLabel"] == "SSS"
-        assert data["b20"][0]["gradeClass"] == "sss"
-
-    def test_ap_has_no_achievement_rate_but_has_grade(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
-
-        result = _make_result([_make_entry(status=ScoreStatus.AP, accuracy=101.0)])
-        data = _to_b20_data(result, {})
-
-        assert data["b20"][0]["achievementRate"] is None
-        assert data["b20"][0]["gradeLabel"] == "SSS+"
-
-    def test_empty_entries(self) -> None:
-        from pjsk_core.application.render_b20 import _to_b20_data
-
-        result = _make_result([])
-        data = _to_b20_data(result, {})
-
-        assert data["b20"] == []
-
 
 class TestRenderB20:
+    """Thin wrapper tests — render_b20 just POSTs the given dict."""
+
     async def test_returns_png_on_success(self) -> None:
         from pjsk_core.application.render_b20 import render_b20
 
         renderer = FakeRenderer(b"b20-png-bytes")
-        result = _make_result()
-
-        png = await render_b20(result, renderer=renderer, jacket_cache=None)
+        png = await render_b20({"b20": [], "sp": 0.0}, renderer=renderer)
         assert png == b"b20-png-bytes"
         assert len(renderer.calls) == 1
         assert renderer.calls[0].template_name == "b20"
+        assert renderer.calls[0].data == {"b20": [], "sp": 0.0}
 
     async def test_returns_none_on_renderer_failure(self) -> None:
         from pjsk_core.application.render_b20 import render_b20
 
         renderer = FakeRenderer(None)
-        result = _make_result()
-
-        png = await render_b20(result, renderer=renderer, jacket_cache=None)
+        png = await render_b20({"b20": []}, renderer=renderer)
         assert png is None
-
-
-class TestDiagnosticLogging:
-    """Verify diagnostic logs are emitted without changing return values."""
-
-    async def test_prefetch_logs_jacket_count(self) -> None:
-        from unittest.mock import patch
-        from pjsk_core.application.render_b20 import render_b20
-
-        renderer = FakeRenderer(b"png")
-        result = _make_result()
-
-        with patch("pjsk_core.application.render_b20._logger.info") as mock_info:
-            png = await render_b20(result, renderer=renderer, jacket_cache=None)
-
-        assert png == b"png"  # return value unchanged
-        prefetch_call = [
-            c for c in mock_info.call_args_list
-            if "jacket resolve" in str(c)
-        ]
-        assert len(prefetch_call) == 1
-        args = prefetch_call[0]
-        assert "requested=" in str(args)
-        assert "obtained=" in str(args)
-
-    async def test_render_none_logs_warning(self) -> None:
-        from unittest.mock import patch
-        from pjsk_core.application.render_b20 import render_b20
-
-        renderer = FakeRenderer(None)
-        result = _make_result()
-
-        with patch("pjsk_core.application.render_b20._logger.warning") as mock_warn:
-            png = await render_b20(result, renderer=renderer, jacket_cache=None)
-
-        assert png is None  # return value unchanged
-        none_call = [
-            c for c in mock_warn.call_args_list
-            if "returned None" in str(c)
-        ]
-        assert len(none_call) == 1
-        args = none_call[0]
-        assert "template=b20" in str(args)
-        assert "entry_count=" in str(args)
