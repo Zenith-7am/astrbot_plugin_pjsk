@@ -58,6 +58,13 @@ def _to_b20_data(result: B20Result, jacket_map: dict[int, str]) -> dict[str, obj
         "isAppendExcluded": result.append_excluded,
         "currentPercentile": 0,
         "displayRank": "",
+        "playerClass": {
+            "name": result.player_class.name,
+            "icon": result.player_class.icon,
+            "stars": result.player_class.stars,
+            "fallbackColor": result.player_class.fallback_color,
+        },
+        "sp": result.sp,
     }
 
 

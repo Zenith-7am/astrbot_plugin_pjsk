@@ -4,7 +4,7 @@ from pjsk_core.domain.charts import Difficulty
 from pjsk_core.domain.player_class import PlayerClass
 from pjsk_core.domain.scores import Judgements, ScoreStatus
 
-_FAKE_PLAYER_CLASS = PlayerClass(name="Master", icon="★3", stars=3, fallback_color="#8b5cf6")
+_FAKE_PLAYER_CLASS = PlayerClass(name="Master", icon="★3", stars=3, fallback_color="purple")
 
 
 def _make_entry(
