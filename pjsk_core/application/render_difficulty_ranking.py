@@ -13,10 +13,7 @@ from pjsk_core.ports.renderer import RenderPayload, Renderer
 
 if TYPE_CHECKING:
     from adapters.rendering.jacket_cache import JacketCache
-    from pjsk_core.domain.difficulty_ranking import (
-        DifficultyRankEntry,
-        DifficultyRanking,
-    )
+    from pjsk_core.domain.difficulty_ranking import DifficultyRanking
 
 _logger = logging.getLogger(__name__)
 
@@ -74,12 +71,12 @@ def _parse_constant(community_constant: str) -> float:
 def _to_ranking_data(
     ranking: DifficultyRanking,
     jacket_map: dict[int, str],
-) -> dict:
+) -> dict[str, object]:
     """Transform DifficultyRanking into the JSON structure for difficulty.js."""
     # Group entries by community_constant, preserving sort order
-    tiers: list[dict] = []
+    tiers: list[dict[str, object]] = []
     current_constant: str | None = None
-    current_songs: list[dict] = []
+    current_songs: list[dict[str, object]] = []
 
     for entry in ranking.entries:
         cc = entry.community_constant
@@ -93,7 +90,7 @@ def _to_ranking_data(
             current_songs = []
 
         status: int = 0
-        judges: dict | None = None
+        judges: dict[str, int] | None = None
         acc: float = 0.0
         power: float = 0.0
         if entry.personal_best is not None:

@@ -32,9 +32,9 @@ async def _prefetch_jackets(
         return {}
 
 
-def _to_b20_data(result: B20Result, jacket_map: dict[int, str]) -> dict:
+def _to_b20_data(result: B20Result, jacket_map: dict[int, str]) -> dict[str, object]:
     """Transform B20Result into the JSON structure expected by b20.js."""
-    songs: list[dict] = []
+    songs: list[dict[str, object]] = []
     for entry in result.entries:
         ap = entry.status == ScoreStatus.AP
         songs.append({

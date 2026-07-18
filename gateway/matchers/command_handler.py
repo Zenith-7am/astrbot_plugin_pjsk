@@ -298,13 +298,13 @@ async def _handle_ocr_trigger(
         )
 
 
-# ── B20 / Difficulty ranking — text replies for now (image rendering is follow-up) ─
+# ── B20 / Difficulty ranking ─────────────────────────────────────────────────
 
 
 async def _handle_b20(
     bot: Bot, event: MessageEvent, msg: IncomingMessage,
 ) -> None:
-    """Return B20 ranking."""
+    """Return B20 ranking (rendered image, fallback text)."""
     if _runtime is None:
         await send_text_reply(bot, event, TextReply(text="服务正在启动中，请稍后再试"))
         return
@@ -335,18 +335,38 @@ async def _handle_b20(
         await send_text_reply(bot, event, TextReply(text="暂无 B20 成绩记录"))
         return
 
-    lines = ["B20 排行", ""]
-    for i, e in enumerate(b20_result.entries[:20], 1):
-        lines.append(
-            f"[{i}] {e.song_title} · MA {e.official_level} · "
-            f"ACC {e.accuracy:.2f}% · Rating {e.rating:.2f}"
-        )
-    lines.append("")
-    lines.append(f"B20 平均: {b20_result.b20_avg:.2f}")
-    if b20_result.sp > 0:
-        lines.append(f"SEKAI POWER: {b20_result.sp:.2f}")
+    # Try render image → fall back to text
+    png: bytes | None = None
+    if runtime.renderer is not None:
+        try:
+            from pjsk_core.application.render_b20 import render_b20
+            png = await render_b20(
+                b20_result,
+                renderer=runtime.renderer,
+                jacket_cache=runtime.jacket_cache,
+            )
+        except Exception:
+            _logger.exception("B20 render failed, falling back to text")
 
-    await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
+    if png is not None:
+        from gateway.adapters.reply_sender import send_image_reply
+        from pjsk_core.application.replies import ImageReply
+        await send_image_reply(
+            bot, event,
+            ImageReply(image_bytes=png, mime_type="image/png"),
+        )
+    else:
+        lines = ["B20 排行", ""]
+        for i, e in enumerate(b20_result.entries[:20], 1):
+            lines.append(
+                f"[{i}] {e.song_title} · MA {e.official_level} · "
+                f"ACC {e.accuracy:.2f}% · Rating {e.rating:.2f}"
+            )
+        lines.append("")
+        lines.append(f"B20 平均: {b20_result.b20_avg:.2f}")
+        if b20_result.sp > 0:
+            lines.append(f"SEKAI POWER: {b20_result.sp:.2f}")
+        await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
 
 
 async def _handle_my_difficulty(
@@ -386,15 +406,37 @@ async def _handle_my_difficulty(
         await send_text_reply(bot, event, TextReply(text=f"MA {level} 暂无成绩"))
         return
 
-    lines = [f"个人 MA {level} 排行", ""]
-    for i, e in enumerate(ranking.entries[:20], 1):
-        status_str = e.status.value.upper() if e.status else "未游玩"
-        acc_str = f"ACC {e.accuracy:.2f}%" if e.accuracy is not None else ""
-        rating_str = f"Rating {e.rating:.2f}" if e.rating is not None else ""
-        parts = [f"[{i}] {e.song_title}", status_str, acc_str, rating_str]
-        lines.append(" · ".join(p for p in parts if p))
+    # Try render image → fall back to text
+    png: bytes | None = None
+    if runtime.renderer is not None:
+        try:
+            from pjsk_core.application.render_difficulty_ranking import (
+                render_difficulty_ranking,
+            )
+            png = await render_difficulty_ranking(
+                ranking,
+                renderer=runtime.renderer,
+                jacket_cache=runtime.jacket_cache,
+            )
+        except Exception:
+            _logger.exception("Difficulty ranking render failed, falling back to text")
 
-    await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
+    if png is not None:
+        from gateway.adapters.reply_sender import send_image_reply
+        from pjsk_core.application.replies import ImageReply
+        await send_image_reply(
+            bot, event,
+            ImageReply(image_bytes=png, mime_type="image/png"),
+        )
+    else:
+        lines = [f"个人 MA {level} 排行", ""]
+        for i, e in enumerate(ranking.entries[:20], 1):
+            status_str = e.status.value.upper() if e.status else "未游玩"
+            acc_str = f"ACC {e.accuracy:.2f}%" if e.accuracy is not None else ""
+            rating_str = f"Rating {e.rating:.2f}" if e.rating is not None else ""
+            parts = [f"[{i}] {e.song_title}", status_str, acc_str, rating_str]
+            lines.append(" · ".join(p for p in parts if p))
+        await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
 
 
 async def _handle_global_difficulty(
@@ -422,14 +464,36 @@ async def _handle_global_difficulty(
         await send_text_reply(bot, event, TextReply(text=f"MA {level} 暂无排行数据"))
         return
 
-    lines = [f"MA {level} 全局排行（定数降序）", ""]
-    for i, e in enumerate(ranking.entries[:20], 1):
-        lines.append(
-            f"[{i}] {e.song_title} · 定数 {e.community_constant} · "
-            f"MA {e.official_level}"
-        )
+    # Try render image → fall back to text
+    png: bytes | None = None
+    if runtime.renderer is not None:
+        try:
+            from pjsk_core.application.render_difficulty_ranking import (
+                render_difficulty_ranking,
+            )
+            png = await render_difficulty_ranking(
+                ranking,
+                renderer=runtime.renderer,
+                jacket_cache=runtime.jacket_cache,
+            )
+        except Exception:
+            _logger.exception("Global difficulty ranking render failed, falling back to text")
 
-    await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
+    if png is not None:
+        from gateway.adapters.reply_sender import send_image_reply
+        from pjsk_core.application.replies import ImageReply
+        await send_image_reply(
+            bot, event,
+            ImageReply(image_bytes=png, mime_type="image/png"),
+        )
+    else:
+        lines = [f"MA {level} 全局排行（定数降序）", ""]
+        for i, e in enumerate(ranking.entries[:20], 1):
+            lines.append(
+                f"[{i}] {e.song_title} · 定数 {e.community_constant} · "
+                f"MA {e.official_level}"
+            )
+        await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
 
 
 # ── Register ─────────────────────────────────────────────────────────────────
