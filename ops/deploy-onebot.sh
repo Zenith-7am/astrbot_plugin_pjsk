@@ -79,11 +79,42 @@ import render_service.main
 print(\"All imports OK\")
 '
 
-    # ── Systemd units ─────────────────────────────────────────────────
+    # ── Systemd units + cleanup old render service ─────────────────────
     echo '=== Installing systemd units ==='
     cp \"\$RELEASE_DIR/ops/pjsk-render.service\" /etc/systemd/system/pjsk-render.service
     cp \"\$RELEASE_DIR/ops/pjsk-onebot.service\" /etc/systemd/system/pjsk-onebot.service
     systemctl daemon-reload
+
+    # Prevent the old /opt/render_service/ from fighting for port 3000
+    if systemctl is-active render-service 2>/dev/null; then
+        systemctl stop render-service 2>/dev/null || true
+    fi
+    systemctl mask render-service 2>/dev/null || true
+
+    # ── DB permissions (must be 600 — production data) ──────────────────
+    DB_FILE='${SHARED_DIR}/data/pjsk.db'
+    if [ -f \"\$DB_FILE\" ]; then
+        chmod 600 \"\$DB_FILE\" || true
+        echo \"DB permissions set to 600\"
+    fi
+
+    # ── Install backup cron (daily, idempotent) ───────────────────────
+    BACKUP_SCRIPT='${RELEASE_BASE}/current/ops/backup-db.sh'
+    if ! crontab -l 2>/dev/null | grep -q 'backup-db'; then
+        (crontab -l 2>/dev/null || true; echo '17 3 * * * ${RELEASE_BASE}/\$(readlink ${CURRENT_LINK} | xargs basename)/ops/backup-db.sh') | crontab -
+        echo 'Backup cron installed (03:17 daily)'
+    fi
+
+    # ── Release retention: keep last 5, warn if >10 ────────────────────
+    RELEASE_COUNT=\$(ls -1d '${RELEASE_BASE}'/*/ 2>/dev/null | wc -l)
+    if [ \"\$RELEASE_COUNT\" -gt 10 ]; then
+        echo \"WARNING: \${RELEASE_COUNT} releases — consider manual cleanup\"
+        # Keep the 5 most recent; delete older ones
+        ls -1dt '${RELEASE_BASE}'/*/ 2>/dev/null | tail -n +6 | while read old; do
+            echo \"Removing old release: \$old\"
+            rm -rf \"\$old\"
+        done
+    fi
 
     # ── Chart data import (first-install safe) ─────────────────────────
     echo '=== Chart data import ==='
