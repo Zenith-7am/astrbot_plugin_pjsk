@@ -210,17 +210,33 @@ async def health() -> dict[str, object]:
 # ─── /jacket/{song_id} ───────────────────────────────────────────────────────
 # Serve cached jacket images so Chromium can load them via HTTP (file://
 # URLs are blocked in pages created with page.set_content()).
+#
+# Candidate paths MUST match _candidate_paths() in adapters/rendering/jacket_cache.py.
+# When they diverge, get_jacket_file_url() returns an HTTP URL that the render
+# service cannot serve → Chromium loads a broken image → b20.js crashes on drawImage().
 
 _JACKET_DIR = os.getenv("PJSK_JACKET_CACHE_DIR", "/opt/pjsk-astrbot/shared/cache/jackets")
-_JACKET_EXTENSIONS = (".webp", ".png", ".jpg")
+
+# Priority order matches _candidate_paths() in jacket_cache.py
+def _jacket_candidates(song_id: int) -> list[Path]:
+    """Return candidate file paths for *song_id* in priority order."""
+    padded = f"{song_id:03d}"
+    return [
+        Path(_JACKET_DIR) / f"{song_id}.webp",
+        Path(_JACKET_DIR) / f"{song_id}.png",
+        Path(_JACKET_DIR) / f"{song_id}.jpg",
+        Path(_JACKET_DIR) / f"{padded}.png",
+        Path(_JACKET_DIR) / f"jacket_s_{padded}.png",
+        Path(_JACKET_DIR) / f"{padded}.jpg",
+    ]
 
 
 @app.get("/jacket/{song_id}")
 async def serve_jacket(song_id: int) -> Response:
     """Serve a cached jacket image by song_id."""
-    for ext in _JACKET_EXTENSIONS:
-        path = Path(_JACKET_DIR) / f"{song_id}{ext}"
+    for path in _jacket_candidates(song_id):
         if path.is_file():
+            ext = path.suffix
             content_type = {
                 ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg",
             }.get(ext, "image/webp")
