@@ -18,18 +18,24 @@ if TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-async def _prefetch_jackets(
+def _resolve_jacket_urls(
     cache: JacketCache | None,
     song_ids: list[int],
 ) -> dict[int, str]:
-    """Prefetch jacket data URLs for *song_ids*. Returns {song_id: data_url}."""
+    """Resolve jacket ``file://`` URLs for *song_ids*.
+
+    Uses ``get_jacket_file_url()`` which returns ``file://`` paths that
+    Chromium can load directly from the filesystem — avoiding the OOM
+    risk of embedding multi-MB base64 data URLs in the render payload.
+    """
     if cache is None:
         return {}
-    try:
-        return await cache.prefetch_jackets(song_ids)
-    except Exception:
-        _logger.warning("Jacket prefetch failed for B20", exc_info=True)
-        return {}
+    result: dict[int, str] = {}
+    for sid in song_ids:
+        url = cache.get_jacket_file_url(sid)
+        if url is not None:
+            result[sid] = url
+    return result
 
 
 def _to_b20_data(result: B20Result, jacket_map: dict[int, str]) -> dict[str, object]:
@@ -81,9 +87,9 @@ async def render_b20(
 ) -> bytes | None:
     """Render a B20 ranking image. Returns PNG bytes or None on failure."""
     song_ids = [e.song_id for e in b20_result.entries]
-    jacket_map = await _prefetch_jackets(jacket_cache, song_ids)
+    jacket_map = _resolve_jacket_urls(jacket_cache, song_ids)
     _logger.info(
-        "B20 jacket prefetch: requested=%d obtained=%d",
+        "B20 jacket resolve: requested=%d obtained=%d",
         len(song_ids), len(jacket_map),
     )
 

@@ -180,7 +180,7 @@ class TestDiagnosticLogging:
         assert png == b"png"  # return value unchanged
         prefetch_call = [
             c for c in mock_info.call_args_list
-            if "jacket prefetch" in str(c)
+            if "jacket resolve" in str(c)
         ]
         assert len(prefetch_call) == 1
         args = prefetch_call[0]

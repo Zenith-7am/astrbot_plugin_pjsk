@@ -23,17 +23,19 @@ _DIFF_ABBREV: dict[str, str] = {
 }
 
 
-async def _prefetch_jackets(
+def _resolve_jacket_urls(
     cache: JacketCache | None,
     song_ids: list[int],
 ) -> dict[int, str]:
+    """Resolve jacket ``file://`` URLs for *song_ids* (no base64 in payload)."""
     if cache is None:
         return {}
-    try:
-        return await cache.prefetch_jackets(song_ids)
-    except Exception:
-        _logger.warning("Jacket prefetch failed for difficulty ranking", exc_info=True)
-        return {}
+    result: dict[int, str] = {}
+    for sid in song_ids:
+        url = cache.get_jacket_file_url(sid)
+        if url is not None:
+            result[sid] = url
+    return result
 
 
 def _to_ranking_data(
@@ -107,7 +109,7 @@ async def render_difficulty_ranking(
 ) -> bytes | None:
     """Render a difficulty ranking image. Returns PNG bytes or None on failure."""
     song_ids = [e.song_id for e in ranking.entries]
-    jacket_map = await _prefetch_jackets(jacket_cache, song_ids)
+    jacket_map = _resolve_jacket_urls(jacket_cache, song_ids)
 
     data = _to_ranking_data(ranking, jacket_map)
     payload = RenderPayload(template_name="difficulty", data=data)
