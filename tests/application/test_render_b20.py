@@ -114,6 +114,25 @@ class TestToB20Data:
 
         assert data["b20"][0]["jacket"] is None
 
+    
+    def test_grade_label_included(self) -> None:
+        from pjsk_core.application.render_b20 import _to_b20_data
+
+        result = _make_result([_make_entry(status=ScoreStatus.FC, accuracy=100.8)])
+        data = _to_b20_data(result, {})
+
+        assert data["b20"][0]["gradeLabel"] == "SSS"
+        assert data["b20"][0]["gradeClass"] == "sss"
+
+    def test_ap_has_no_achievement_rate_but_has_grade(self) -> None:
+        from pjsk_core.application.render_b20 import _to_b20_data
+
+        result = _make_result([_make_entry(status=ScoreStatus.AP, accuracy=101.0)])
+        data = _to_b20_data(result, {})
+
+        assert data["b20"][0]["achievementRate"] is None
+        assert data["b20"][0]["gradeLabel"] == "SSS+"
+
     def test_empty_entries(self) -> None:
         from pjsk_core.application.render_b20 import _to_b20_data
 

@@ -378,6 +378,15 @@ registerRenderFunction("b20", async function(data) {
       else if (achRate >= 90) { rankName = "C"; rankColor = "#10b981"; }
       else { rankName = "D"; rankColor = "#a855f7"; }
 
+      // Override with Python-computed grade (domain-consistent across all cards)
+      if (song.gradeLabel) {
+        rankName = song.gradeLabel;
+        isRainbowRank = song.gradeClass === "rainbow";
+        if (!isRainbowRank && song.gradeClass) {
+          rankColor = "#eab308";  // default gold for non-rainbow domain grades
+        }
+      }
+
       var achBarColor = "#9ca3af";
       var useAchGradient = false;
       if (achRate >= 101) useAchGradient = true;

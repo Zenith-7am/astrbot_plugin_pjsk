@@ -34,9 +34,12 @@ async def _prefetch_jackets(
 
 def _to_b20_data(result: B20Result, jacket_map: dict[int, str]) -> dict[str, object]:
     """Transform B20Result into the JSON structure expected by b20.js."""
+    from pjsk_core.application.render_ocr_card import _get_acc_grade
+
     songs: list[dict[str, object]] = []
     for entry in result.entries:
         ap = entry.status == ScoreStatus.AP
+        grade_label, grade_class = _get_acc_grade(entry.accuracy)
         songs.append({
             "jacket": jacket_map.get(entry.song_id),
             "achievementRate": None if ap else entry.accuracy,
@@ -46,6 +49,8 @@ def _to_b20_data(result: B20Result, jacket_map: dict[int, str]) -> dict[str, obj
             "level": entry.official_level,
             "title": entry.song_title,
             "power": entry.rating,
+            "gradeLabel": grade_label,
+            "gradeClass": grade_class,
             "judges": {
                 "great": entry.judgements.great,
                 "good": entry.judgements.good,
