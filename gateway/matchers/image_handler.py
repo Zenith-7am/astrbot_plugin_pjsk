@@ -376,49 +376,9 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
     # Format and reply
     decision = result.outcome.decision
     if decision in (VisionRaceDecision.CONSENSUS, VisionRaceDecision.DEGRADED_SINGLE):
-        # Try render image card → fall back to text
-        png: bytes | None = None
-        if (result.validated is not None
-                and result.validated.primary is not None
-                and runtime.renderer is not None
-                and result.score_attempt is not None):
-            try:
-                from pjsk_core.application.render_ocr_card import render_ocr_card
-
-                v = result.validated
-                obs = v.observation
-                chart = v.primary.chart
-                attempt = result.score_attempt
-
-                jacket_url: str | None = None
-                if runtime.jacket_cache is not None and chart is not None:
-                    jacket_url = await runtime.jacket_cache.get_jacket(
-                        chart.song_id,
-                    )
-
-                png = await render_ocr_card(
-                    song_id=chart.song_id if chart else 0,
-                    title_ja=obs.song_title or "",
-                    title_cn="",
-                    difficulty=obs.difficulty.value,
-                    level=chart.official_level if chart else obs.displayed_level,
-                    constant=chart.community_constant if chart else "",
-                    accuracy=attempt.accuracy,
-                    rating=attempt.rating,
-                    sp="—",
-                    perfect=obs.judgements.perfect,
-                    great=obs.judgements.great,
-                    good=obs.judgements.good,
-                    bad=obs.judgements.bad,
-                    miss=obs.judgements.miss,
-                    status=attempt.status.value,
-                    qq_id=msg.external_user_id,
-                    jacket_data_url=jacket_url,
-                    renderer=runtime.renderer,
-                )
-            except Exception:
-                _logger.exception("OCR card render failed, falling back to text")
-
+        png = await _try_render_ocr_card(
+            result, runtime, msg, old_pb_rating, readonly,
+        )
         if png is not None:
             from gateway.adapters.reply_sender import send_image_reply
             await send_image_reply(
@@ -481,6 +441,112 @@ def _format_consensus_reply(
             lines.append("")
             lines.append(f"已记录（原个人最佳: {old_pb_rating:.2f}）")
     return "\n".join(lines)
+
+
+async def _try_render_ocr_card(
+    result: RecognizeResult,
+    runtime: object,  # Runtime — avoid circular import
+    msg: object,      # IncomingMessage
+    old_pb_rating: float | None,
+    readonly: bool,
+) -> bytes | None:
+    """Try to render an OCR result card. Returns PNG bytes or None.
+
+    The ``validated.primary`` field may be None even when
+    ``score_attempt`` was saved (the two success checks are not the
+    same).  This function tries multiple data sources:
+
+    1. ``validated.primary.chart`` (preferred — has authoritative data)
+    2. ``score_attempt.chart_id`` → lookup via ``ChartRepository``
+    3. Fall back to ``OcrObservation`` fields
+
+    Returns None if rendering is impossible or fails.
+    """
+    from pjsk_runtime.runtime import Runtime
+    rt: Runtime = runtime  # type: ignore[assignment]
+
+    validated = result.validated
+    attempt = result.score_attempt
+
+    # Diagnostic log — which fields are present?
+    has_primary = validated is not None and validated.primary is not None
+    has_attempt = attempt is not None
+    has_renderer = rt.renderer is not None
+    _logger.info(
+        "ocr_render_gate validated=%s primary=%s attempt=%s renderer=%s",
+        validated is not None,
+        has_primary,
+        has_attempt,
+        has_renderer,
+    )
+
+    if not has_renderer or not has_attempt:
+        return None
+
+    assert attempt is not None  # type-narrowing
+
+    # ── Resolve chart / song metadata ──────────────────────────────────
+    obs = validated.observation if validated is not None else None
+    chart = validated.primary.chart if has_primary else None
+
+    if chart is None and attempt.chart_id > 0:
+        try:
+            chart = await rt.chart_repo.get_by_id(attempt.chart_id)
+        except Exception:
+            _logger.exception("Chart lookup failed for OCR render")
+
+    song_id = chart.song_id if chart else 0
+    # Try to get title from chart's song repo
+    title_ja = ""
+    if chart is not None:
+        try:
+            song = await rt.song_repo.get_by_id(chart.song_id)
+            title_ja = song.title_ja if song else ""
+        except Exception:
+            pass
+    if not title_ja and obs is not None:
+        title_ja = obs.song_title or ""
+
+    difficulty = chart.difficulty.value if chart else (obs.difficulty.value if obs else "unknown")
+    level = chart.official_level if chart else (obs.displayed_level if obs else 0)
+    constant = chart.community_constant if chart else ""
+
+    # ── Jacket ─────────────────────────────────────────────────────────
+    jacket_url: str | None = None
+    if song_id > 0 and rt.jacket_cache is not None:
+        try:
+            jacket_url = await rt.jacket_cache.get_jacket(song_id)
+        except Exception:
+            pass
+
+    # ── Build render payload ───────────────────────────────────────────
+    from pjsk_core.application.render_ocr_card import render_ocr_card
+
+    try:
+        png = await render_ocr_card(
+            song_id=song_id,
+            title_ja=title_ja,
+            title_cn="",
+            difficulty=difficulty,
+            level=level,
+            constant=constant,
+            accuracy=attempt.accuracy,
+            rating=attempt.rating,
+            sp="—",
+            perfect=attempt.judgements.perfect,
+            great=attempt.judgements.great,
+            good=attempt.judgements.good,
+            bad=attempt.judgements.bad,
+            miss=attempt.judgements.miss,
+            status=attempt.status.value,
+            qq_id=msg.external_user_id if hasattr(msg, "external_user_id") else "",
+            jacket_data_url=jacket_url,
+            renderer=rt.renderer,
+        )
+        return png
+    except Exception:
+        _logger.exception("OCR card render failed in _try_render_ocr_card")
+        return None
 
 
 async def _handle_disagreement(
