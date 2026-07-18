@@ -109,7 +109,7 @@ registerRenderFunction("difficulty", async function(data) {
     ctx.font = 'bold 18px "Outfit", sans-serif';
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText("▸ " + tier.constant.toFixed(1), badgeX + 10, badgeY + 4);
+        ctx.fillText("▸ " + (tier.constant_label || tier.constant.toFixed(1)), badgeX + 10, badgeY + 4);
 
     // Load jackets for this tier
     var tierJackets = await Promise.all(tierSongs.map(async function(song) {

@@ -36,38 +36,6 @@ async def _prefetch_jackets(
         return {}
 
 
-def _parse_constant(community_constant: str) -> float:
-    """Parse community_constant string (e.g. '32.5+') to a float."""
-    base = community_constant.rstrip("+-")
-    tag = community_constant[len(base):] if len(base) < len(community_constant) else ""
-
-    parts = base.split(".")
-    integer = int(parts[0]) if parts[0] else 0
-    decimal = parts[1] if len(parts) > 1 else "0"
-
-    if decimal == "5+" or decimal.startswith("5") and tag == "+":
-        frac = 0.55
-    elif decimal.startswith("5"):
-        frac = 0.5
-    elif decimal.startswith("6"):
-        frac = 0.6
-    elif decimal.startswith("7"):
-        frac = 0.7
-    elif decimal.startswith("8"):
-        frac = 0.8
-    elif decimal.startswith("9"):
-        frac = 0.9
-    else:
-        frac = float(f"0.{decimal}") if decimal else 0.0
-
-    if tag == "+":
-        frac += 0.05
-    elif tag == "-":
-        frac -= 0.05
-
-    return float(integer) + frac
-
-
 def _to_ranking_data(
     ranking: DifficultyRanking,
     jacket_map: dict[int, str],
@@ -83,7 +51,7 @@ def _to_ranking_data(
         if cc != current_constant:
             if current_songs:
                 tiers.append({
-                    "constant": _parse_constant(current_constant or "0.0"),
+                    "constant_label": current_constant or "0.0",
                     "songs": current_songs,
                 })
             current_constant = cc
@@ -118,7 +86,7 @@ def _to_ranking_data(
 
     if current_songs:
         tiers.append({
-            "constant": _parse_constant(current_constant or "0.0"),
+            "constant_label": current_constant or "0.0",
             "songs": current_songs,
         })
 

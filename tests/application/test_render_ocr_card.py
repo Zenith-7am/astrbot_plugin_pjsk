@@ -29,6 +29,7 @@ class TestRenderOcrCard:
             sp="12345.67",
             perfect=1200, great=0, good=0, bad=0, miss=0,
             status="ap",
+            qq_id="123",
             jacket_data_url=None,
             renderer=renderer,
         )
@@ -57,6 +58,7 @@ class TestRenderOcrCard:
             sp="12000.00",
             perfect=900, great=0, good=0, bad=0, miss=0,
             status="fc",
+            qq_id="123",
             jacket_data_url="data:image/png;base64,abc123",
             renderer=renderer,
         )
@@ -79,6 +81,7 @@ class TestRenderOcrCard:
             sp="—",
             perfect=800, great=100, good=50, bad=10, miss=5,
             status="clear",
+            qq_id="123",
             jacket_data_url="data:image/webp;base64,DEADBEEF",
             renderer=renderer,
         )
@@ -103,6 +106,7 @@ class TestRenderOcrCard:
             sp="—",
             perfect=800, great=100, good=50, bad=10, miss=5,
             status="clear",
+            qq_id="123",
             jacket_data_url=None,
             renderer=renderer,
         )
@@ -179,3 +183,111 @@ class TestRenderOcrCard:
         assert "grade-solid" in html
         assert "SS" in html
         assert "#4c80f0" in html
+
+    async def test_qq_id_appears_in_html(self) -> None:
+        from pjsk_core.application.render_ocr_card import render_ocr_card
+        renderer = FakeRenderer()
+        await render_ocr_card(
+            song_id=1, title_ja="Song", title_cn="",
+            difficulty="hard", level=18, constant="",
+            accuracy=95.0, rating=2000.0, sp="-",
+            perfect=800, great=100, good=50, bad=10, miss=5,
+            status="clear", qq_id="3949846671",
+            jacket_data_url=None, renderer=renderer,
+        )
+        html = renderer.calls[0].data["html"]
+        assert "@3949846671" in html
+
+    async def test_title_cn_renders_div(self) -> None:
+        from pjsk_core.application.render_ocr_card import render_ocr_card
+        renderer = FakeRenderer()
+        await render_ocr_card(
+            song_id=1, title_ja="Song", title_cn="ChineseTitle",
+            difficulty="hard", level=18, constant="",
+            accuracy=95.0, rating=2000.0, sp="-",
+            perfect=800, great=100, good=50, bad=10, miss=5,
+            status="clear", qq_id="123",
+            jacket_data_url=None, renderer=renderer,
+        )
+        html = renderer.calls[0].data["html"]
+        assert '<div class="title-cn">ChineseTitle</div>' in html
+
+    async def test_empty_title_cn_no_div(self) -> None:
+        from pjsk_core.application.render_ocr_card import render_ocr_card
+        renderer = FakeRenderer()
+        await render_ocr_card(
+            song_id=1, title_ja="Song", title_cn="",
+            difficulty="hard", level=18, constant="",
+            accuracy=95.0, rating=2000.0, sp="-",
+            perfect=800, great=100, good=50, bad=10, miss=5,
+            status="clear", qq_id="123",
+            jacket_data_url=None, renderer=renderer,
+        )
+        html = renderer.calls[0].data["html"]
+        assert '<div class="title-cn">' not in html
+
+    async def test_no_residual_mustache(self) -> None:
+        from pjsk_core.application.render_ocr_card import render_ocr_card
+        renderer = FakeRenderer()
+        await render_ocr_card(
+            song_id=1, title_ja="Song", title_cn="CN",
+            difficulty="hard", level=18, constant="32.5+",
+            accuracy=95.0, rating=2000.0, sp="-",
+            perfect=800, great=100, good=50, bad=10, miss=5,
+            status="clear", qq_id="12345",
+            jacket_data_url=None, renderer=renderer,
+        )
+        html = renderer.calls[0].data["html"]
+        assert "{{" not in html
+
+    async def test_malicious_title_escaped(self) -> None:
+        from pjsk_core.application.render_ocr_card import render_ocr_card
+        renderer = FakeRenderer()
+        malicious = "<script>alert(1)</script>"
+        await render_ocr_card(
+            song_id=1, title_ja=malicious, title_cn=malicious,
+            difficulty="master", level=32, constant="32.5",
+            accuracy=101.0, rating=3300.0, sp="-",
+            perfect=1200, great=0, good=0, bad=0, miss=0,
+            status="ap", qq_id="123",
+            jacket_data_url=None, renderer=renderer,
+        )
+        html = renderer.calls[0].data["html"]
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    async def test_img_onerror_escaped(self) -> None:
+        from pjsk_core.application.render_ocr_card import render_ocr_card
+        renderer = FakeRenderer()
+        malicious = "<img src=x onerror=alert(1)>"
+        await render_ocr_card(
+            song_id=1, title_ja=malicious, title_cn="",
+            difficulty="master", level=32, constant="32.5",
+            accuracy=101.0, rating=3300.0, sp="-",
+            perfect=1200, great=0, good=0, bad=0, miss=0,
+            status="ap", qq_id="123",
+            jacket_data_url=None, renderer=renderer,
+        )
+        html = renderer.calls[0].data["html"]
+        assert "&lt;img" in html
+
+    async def test_non_data_url_jacket_rejected(self) -> None:
+        from pjsk_core.application.render_ocr_card import render_ocr_card
+        renderer = FakeRenderer()
+        await render_ocr_card(
+            song_id=1, title_ja="Song", title_cn="",
+            difficulty="hard", level=18, constant="",
+            accuracy=95.0, rating=2000.0, sp="-",
+            perfect=800, great=100, good=50, bad=10, miss=5,
+            status="clear", qq_id="123",
+            jacket_data_url="https://evil.com/steal.png",
+            renderer=renderer,
+        )
+        html = renderer.calls[0].data["html"]
+        assert "jacket-placeholder" in html
+        assert "evil.com" not in html
+
+    def test_qq_id_is_escaped(self) -> None:
+        from pjsk_core.application.render_ocr_card import _esc
+        assert "&lt;" in _esc("<script>")
+        assert "&quot;" in _esc('"evil"')

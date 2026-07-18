@@ -257,6 +257,7 @@ async def _handle_ocr_trigger(
                     bad=obs.judgements.bad,
                     miss=obs.judgements.miss,
                     status=attempt.status.value,
+                    qq_id=msg.external_user_id,
                     jacket_data_url=jacket_url,
                     renderer=runtime.renderer,
                 )

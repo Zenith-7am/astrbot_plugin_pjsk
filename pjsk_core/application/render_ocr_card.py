@@ -5,7 +5,9 @@ Callers must degrade to text fallback on ``None`` return.
 """
 from __future__ import annotations
 
+import html as _html_module
 import logging
+import re
 from pathlib import Path
 
 from pjsk_core.ports.renderer import RenderPayload, Renderer
@@ -17,6 +19,9 @@ _TEMPLATE_PATH = (
     / "render_service" / "templates" / "ocr_card.html"
 )
 _TEMPLATE: str | None = None
+
+# Only data: URLs with base64 PNG/JPEG/WebP are allowed for jacket images.
+_JACKET_RE = re.compile(r"^data:image/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$")
 
 
 def _get_template() -> str:
@@ -53,6 +58,11 @@ _DIFF_CLASSES: dict[str, str] = {
 }
 
 
+def _esc(text: str) -> str:
+    """Escape text for safe HTML insertion. Quotes are escaped too."""
+    return _html_module.escape(text, quote=True)
+
+
 def _get_acc_grade(accuracy: float) -> tuple[str, str]:
     """Return (grade_label, css_class) for the given accuracy."""
     for threshold, label, css_class in _ACC_GRADES:
@@ -66,13 +76,13 @@ def _build_grade_html(label: str, css_class: str) -> str:
     if css_class == "rainbow":
         return (
             '<div class="grade-badge">'
-            f'<div class="grade-rainbow">{label}</div>'
+            f'<div class="grade-rainbow">{_esc(label)}</div>'
             '</div>'
         )
     bg = _GRADE_BG_COLORS.get(css_class, "#f43f5e")
     return (
         '<div class="grade-badge">'
-        f'<div class="grade-solid" style="background:{bg}">{label}</div>'
+        f'<div class="grade-solid" style="background:{_esc(bg)}">{_esc(label)}</div>'
         '</div>'
     )
 
@@ -85,6 +95,28 @@ def _build_status_html(status: str) -> str:
         return '<span class="badge badge-fc">FULL COMBO</span>'
     else:
         return '<span class="badge badge-clear">CLEAR</span>'
+
+
+def _build_jacket_html(jacket_data_url: str | None) -> str:
+    """Build jacket img HTML, validating the data URL format."""
+    if not jacket_data_url:
+        return '<div class="jacket-placeholder">&#9834;</div>'
+    if not _JACKET_RE.match(jacket_data_url):
+        _logger.warning("Rejected non-data-URL jacket: %.60s...", jacket_data_url)
+        return '<div class="jacket-placeholder">&#9834;</div>'
+    escaped_url = _esc(jacket_data_url)
+    return (
+        '<div class="jacket">'
+        f'<img src="{escaped_url}" alt="jacket" />'
+        '</div>'
+    )
+
+
+def _build_title_cn_html(title_cn: str) -> str:
+    """Build the Chinese title div, or empty string if no title."""
+    if not title_cn.strip():
+        return ""
+    return f'<div class="title-cn">{_esc(title_cn.strip())}</div>'
 
 
 # ── Main render function ─────────────────────────────────────────────────
@@ -107,12 +139,14 @@ async def render_ocr_card(
     bad: int,
     miss: int,
     status: str,
+    qq_id: str,
     jacket_data_url: str | None,
     renderer: Renderer,
 ) -> bytes | None:
     """Render OCR result card via the render service. Returns PNG bytes or None.
 
     Falls back to ``None`` on any render failure — callers must degrade to text.
+    All user-provided text fields are HTML-escaped for security.
     """
     template = _get_template()
 
@@ -120,37 +154,30 @@ async def render_ocr_card(
     diff_label = difficulty.upper()
     grade_label, acc_class = _get_acc_grade(accuracy)
 
-    # Jacket HTML
-    if jacket_data_url:
-        jacket_html = (
-            '<div class="jacket">'
-            f'<img src="{jacket_data_url}" alt="jacket" />'
-            '</div>'
-        )
-    else:
-        jacket_html = '<div class="jacket-placeholder">&#9834;</div>'
-
+    jacket_html = _build_jacket_html(jacket_data_url)
     status_html = _build_status_html(status)
     grade_html = _build_grade_html(grade_label, acc_class)
+    title_cn_html = _build_title_cn_html(title_cn)
 
-    # Template variable substitution
+    # Template variable substitution — all user text escaped
     html = template
     replacements: dict[str, str] = {
-        "{{title_ja}}": title_ja,
-        "{{title_cn}}": title_cn or "",
-        "{{diff_class}}": diff_class,
-        "{{diff_label}}": diff_label,
-        "{{level}}": str(level),
-        "{{constant}}": constant,
-        "{{perfect}}": f"{perfect:,}",
-        "{{great}}": f"{great:,}",
-        "{{good}}": f"{good:,}",
-        "{{bad}}": f"{bad:,}",
-        "{{miss}}": f"{miss:,}",
-        "{{rating}}": f"{rating:.1f}",
-        "{{accuracy}}": f"{accuracy:.4f}%",
-        "{{acc_class}}": acc_class,
-        "{{sp}}": sp,
+        "{{qq_id}}": _esc(qq_id),
+        "{{title_ja}}": _esc(title_ja),
+        "{{title_cn_html}}": title_cn_html,
+        "{{diff_class}}": _esc(diff_class),
+        "{{diff_label}}": _esc(diff_label),
+        "{{level}}": _esc(str(level)),
+        "{{constant}}": _esc(constant),
+        "{{perfect}}": _esc(f"{perfect:,}"),
+        "{{great}}": _esc(f"{great:,}"),
+        "{{good}}": _esc(f"{good:,}"),
+        "{{bad}}": _esc(f"{bad:,}"),
+        "{{miss}}": _esc(f"{miss:,}"),
+        "{{rating}}": _esc(f"{rating:.1f}"),
+        "{{accuracy}}": _esc(f"{accuracy:.4f}%"),
+        "{{acc_class}}": _esc(acc_class),
+        "{{sp}}": _esc(sp),
         "{{jacket_html}}": jacket_html,
         "{{status_badge_html}}": status_html,
         "{{grade_badge_html}}": grade_html,

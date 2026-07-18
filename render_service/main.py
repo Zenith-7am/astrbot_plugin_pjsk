@@ -243,7 +243,7 @@ async def render_html(request: Request) -> Response:
                 viewport={"width": width, "height": height},
             )
             page = await context.new_page()
-            await page.set_content(html, wait_until="networkidle", timeout=15000)
+            await page.set_content(html, wait_until="load", timeout=15000)
 
             png = await page.screenshot(
                 clip={"x": 0, "y": 0, "width": width, "height": height},
