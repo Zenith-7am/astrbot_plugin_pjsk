@@ -157,7 +157,7 @@ def set_image_runtime(runtime: object) -> None:
 
 def _diff_label(difficulty: object) -> str:
     from pjsk_core.domain.charts import Difficulty
-    labels = {
+    labels: dict[object, str] = {
         Difficulty.EASY: "EASY", Difficulty.NORMAL: "NORMAL",
         Difficulty.HARD: "HARD", Difficulty.EXPERT: "EXPERT",
         Difficulty.MASTER: "MASTER", Difficulty.APPEND: "APPEND",
@@ -167,7 +167,7 @@ def _diff_label(difficulty: object) -> str:
 
 def _status_label(status: object) -> str:
     from pjsk_core.domain.scores import ScoreStatus
-    labels = {
+    labels: dict[object, str] = {
         ScoreStatus.AP: "AP", ScoreStatus.FC: "FC",
         ScoreStatus.CLEAR: "CLEAR",
     }
@@ -302,11 +302,11 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
             await send_text_reply(bot, event, TextReply(text=error))
             return
         group_id = str(getattr(event, "group_id", "0"))
-        qq = msg.external_user_id
-        _pending_store.put(group_id, qq, image_data)
+        qq_str = msg.external_user_id
+        _pending_store.put(group_id, qq_str, image_data)
         _logger.info(
             "image stored: group=%s qq=%s size=%d",
-            group_id, qq, len(image_data),
+            group_id, qq_str, len(image_data),
         )
         # Silent storage — user triggers OCR later with .emu
         return
@@ -488,10 +488,15 @@ async def _try_render_ocr_card(
         return None
 
     assert attempt is not None  # type-narrowing
+    assert rt.renderer is not None  # type-narrowing (guarded by has_renderer above)
 
     # ── Resolve chart / song metadata ──────────────────────────────────
     obs = validated.observation if validated is not None else None
-    chart = validated.primary.chart if has_primary else None
+    chart = (
+        validated.primary.chart  # type: ignore[union-attr]
+        if has_primary
+        else None
+    )
 
     if chart is None and attempt.chart_id > 0:
         try:

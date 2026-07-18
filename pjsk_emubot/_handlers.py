@@ -132,10 +132,11 @@ async def _handle_image(
 
     user = await rt.user_repo.get_or_create(ctx.qq_number)
 
-    if not rt.rate_limiter.check(user.id):
-        _LOGGER.info("[PJSK] _handle_image: user %s rate limited", user.id.value)
-        return PluginErrorCode.USER_RATE_LIMITED, None
-    rt.rate_limiter.mark(user.id)
+    if rt.rate_limiter is not None:
+        if not rt.rate_limiter.check(user.id):
+            _LOGGER.info("[PJSK] _handle_image: user %s rate limited", user.id.value)
+            return PluginErrorCode.USER_RATE_LIMITED, None
+        rt.rate_limiter.mark(user.id)
 
     if rt.recognize_score is None:
         _LOGGER.info("[PJSK] _handle_image: recognize_score is None — no engines configured")
@@ -238,9 +239,10 @@ async def _handle_buffered_image(
         return PluginErrorCode.QQ_OFFICIAL_NEEDS_BIND, None
     qq = mapper.extract_qq(event)
     user = await rt.user_repo.get_or_create(qq)
-    if not rt.rate_limiter.check(user.id):
-        return PluginErrorCode.USER_RATE_LIMITED, None
-    rt.rate_limiter.mark(user.id)
+    if rt.rate_limiter is not None:
+        if not rt.rate_limiter.check(user.id):
+            return PluginErrorCode.USER_RATE_LIMITED, None
+        rt.rate_limiter.mark(user.id)
     if rt.recognize_score is None:
         return PluginErrorCode.ALL_ENGINES_DOWN, None
     gateway = EventMapper._gateway_name(event.get_platform_id())

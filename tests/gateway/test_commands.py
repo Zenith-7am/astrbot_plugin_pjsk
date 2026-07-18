@@ -2,7 +2,6 @@
 import pytest
 from gateway.commands import (
     EmuCommand,
-    ParsedTrigger,
     parse_emu_command,
     parse_trigger,
     build_help_text,

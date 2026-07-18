@@ -165,7 +165,7 @@ class PjskPlugin(Star):  # type: ignore[misc]
             logger.info("[PJSK] on_message: (unable to enumerate components)")
 
         # ── 2. Group chat: @Bot without image → consume buffer / arm ─
-        if group_chat and has_at and img_count == 0:
+        if group_chat and has_at and img_count == 0 and rt.image_buffer is not None:
             buffered = rt.image_buffer.consume(
                 platform_id, group_id, sender_qq, within_seconds=15.0,
             )
@@ -178,7 +178,7 @@ class PjskPlugin(Star):  # type: ignore[misc]
                     yield event.plain_result(reply_text)
                     event.stop_event()
                 return
-            if not _text_beyond_components(event):
+            if not _text_beyond_components(event) and rt.image_buffer is not None:
                 rt.image_buffer.arm(platform_id, group_id, sender_qq)
                 event.stop_event()
                 return
@@ -246,7 +246,7 @@ class PjskPlugin(Star):  # type: ignore[misc]
             return
 
         # 5c. No @Bot — check arm or cache
-        if not has_at and img_count >= 1:
+        if not has_at and img_count >= 1 and rt.image_buffer is not None:
             if img_count == 1:
                 armed = rt.image_buffer.consume_arm(
                     platform_id, group_id, sender_qq, within_seconds=15.0,
