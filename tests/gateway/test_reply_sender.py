@@ -1,36 +1,40 @@
-"""Tests for gateway.adapters.reply_sender."""
-import pytest
-from pjsk_core.application.replies import TextReply
-from gateway.adapters.reply_sender import send_text_reply
+"""Tests for gateway reply sender."""
+import base64
+from unittest.mock import AsyncMock, MagicMock
+
+from pjsk_core.application.replies import ImageReply
 
 
-class FakeBot:
-    """Minimal stand-in for nonebot.adapters.onebot.v11.Bot."""
-    def __init__(self) -> None:
-        self.sent_messages: list[dict] = []
+class TestSendImageReply:
+    async def test_sends_image_segment(self) -> None:
+        from gateway.adapters.reply_sender import send_image_reply
 
-    async def send(self, event: object, message: object, **kwargs: object) -> None:
-        self.sent_messages.append({
-            "event": event,
-            "message": message,
-            "kwargs": kwargs,
-        })
+        bot = MagicMock()
+        bot.send = AsyncMock()
+        event = MagicMock()
+        reply = ImageReply(
+            image_bytes=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100,
+            mime_type="image/png",
+        )
 
+        await send_image_reply(bot, event, reply)
 
-class TestSendTextReply:
-    @pytest.mark.anyio
-    async def test_sends_text_segment(self) -> None:
-        bot = FakeBot()
-        event = object()
-        await send_text_reply(bot, event, TextReply(text="hello world"))
-        assert len(bot.sent_messages) == 1
-        sent = bot.sent_messages[0]
-        assert sent["message"].type == "text"
-        assert sent["message"].data["text"] == "hello world"
+        bot.send.assert_called_once()
+        seg = bot.send.call_args[0][1]
+        assert seg.type == "image"
+        assert seg.data["file"].startswith("base64://")
 
-    @pytest.mark.anyio
-    async def test_empty_text_not_sent(self) -> None:
-        bot = FakeBot()
-        event = object()
-        await send_text_reply(bot, event, TextReply(text=""))
-        assert len(bot.sent_messages) == 0
+    async def test_base64_encoding(self) -> None:
+        from gateway.adapters.reply_sender import send_image_reply
+
+        bot = MagicMock()
+        bot.send = AsyncMock()
+        event = MagicMock()
+        test_data = b"test-image-bytes"
+        reply = ImageReply(image_bytes=test_data, mime_type="image/png")
+
+        await send_image_reply(bot, event, reply)
+
+        seg = bot.send.call_args[0][1]
+        expected_b64 = base64.b64encode(test_data).decode()
+        assert seg.data["file"] == f"base64://{expected_b64}"
