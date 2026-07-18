@@ -1,4 +1,4 @@
-"""Tests for render_difficulty_ranking."""
+"""Tests for difficulty ranking payload assembly and render wrapper."""
 from datetime import datetime, timezone
 
 from pjsk_core.domain.charts import Difficulty
@@ -67,9 +67,11 @@ class FakeRenderer:
         return self.png
 
 
-class TestToRankingData:
+class TestRankingPayloadShape:
+    """Verify _build_ranking_payload produces a COMPLETE dict for difficulty.js."""
+
     def test_personal_mode_title(self) -> None:
-        from pjsk_core.application.render_difficulty_ranking import _to_ranking_data
+        from gateway.matchers.command_handler import _build_ranking_payload
 
         ranking = DifficultyRanking(
             difficulty=Difficulty.MASTER,
@@ -77,12 +79,12 @@ class TestToRankingData:
             mode="personal",
             entries=(),
         )
-        data = _to_ranking_data(ranking, {})
+        data = _build_ranking_payload(ranking, {})
         assert data["title"] == "MA 31"
         assert data["mode"] == "personal"
 
     def test_global_mode_title(self) -> None:
-        from pjsk_core.application.render_difficulty_ranking import _to_ranking_data
+        from gateway.matchers.command_handler import _build_ranking_payload
 
         ranking = DifficultyRanking(
             difficulty=Difficulty.EXPERT,
@@ -90,12 +92,12 @@ class TestToRankingData:
             mode="global",
             entries=(),
         )
-        data = _to_ranking_data(ranking, {})
+        data = _build_ranking_payload(ranking, {})
         assert data["title"] == "EX 28"
         assert data["mode"] == "global"
 
     def test_tiers_grouped_by_constant(self) -> None:
-        from pjsk_core.application.render_difficulty_ranking import _to_ranking_data
+        from gateway.matchers.command_handler import _build_ranking_payload
 
         e1 = _make_entry(song_id=1, constant="32.5")
         e2 = _make_entry(song_id=2, constant="32.5")
@@ -104,88 +106,111 @@ class TestToRankingData:
             difficulty=Difficulty.MASTER, official_level=32,
             mode="personal", entries=(e1, e2, e3),
         )
-        data = _to_ranking_data(ranking, {})
-        # First two share same constant → one tier with 2 songs
+        data = _build_ranking_payload(ranking, {})
         assert len(data["tiers"]) == 2
         assert len(data["tiers"][0]["songs"]) == 2
 
     def test_unplayed_chart_status_zero(self) -> None:
-        from pjsk_core.application.render_difficulty_ranking import _to_ranking_data
+        from gateway.matchers.command_handler import _build_ranking_payload
 
         e = _make_entry(song_id=1, played=False)
         ranking = DifficultyRanking(
             difficulty=Difficulty.MASTER, official_level=32,
             mode="personal", entries=(e,),
         )
-        data = _to_ranking_data(ranking, {})
+        data = _build_ranking_payload(ranking, {})
         assert data["tiers"][0]["songs"][0]["status"] == 0
         assert data["tiers"][0]["songs"][0]["judges"] is None
 
     def test_ap_chart_status_two(self) -> None:
-        from pjsk_core.application.render_difficulty_ranking import _to_ranking_data
+        from gateway.matchers.command_handler import _build_ranking_payload
 
         e = _make_entry(song_id=1, status=ScoreStatus.AP)
         ranking = DifficultyRanking(
             difficulty=Difficulty.MASTER, official_level=32,
             mode="personal", entries=(e,),
         )
-        data = _to_ranking_data(ranking, {})
+        data = _build_ranking_payload(ranking, {})
         assert data["tiers"][0]["songs"][0]["status"] == 2
 
     def test_fc_chart_status_one(self) -> None:
-        from pjsk_core.application.render_difficulty_ranking import _to_ranking_data
+        from gateway.matchers.command_handler import _build_ranking_payload
 
         e = _make_entry(song_id=1, status=ScoreStatus.FC)
         ranking = DifficultyRanking(
             difficulty=Difficulty.MASTER, official_level=32,
             mode="personal", entries=(e,),
         )
-        data = _to_ranking_data(ranking, {})
+        data = _build_ranking_payload(ranking, {})
         assert data["tiers"][0]["songs"][0]["status"] == 1
 
     def test_clear_chart_status_zero(self) -> None:
-        from pjsk_core.application.render_difficulty_ranking import _to_ranking_data
+        from gateway.matchers.command_handler import _build_ranking_payload
 
         e = _make_entry(song_id=1, status=ScoreStatus.CLEAR, accuracy=95.0, rating=2900.0)
         ranking = DifficultyRanking(
             difficulty=Difficulty.MASTER, official_level=32,
             mode="personal", entries=(e,),
         )
-        data = _to_ranking_data(ranking, {})
+        data = _build_ranking_payload(ranking, {})
         assert data["tiers"][0]["songs"][0]["status"] == 0
 
     def test_jacket_map_applied(self) -> None:
-        from pjsk_core.application.render_difficulty_ranking import _to_ranking_data
+        from gateway.matchers.command_handler import _build_ranking_payload
 
         e = _make_entry(song_id=42)
         ranking = DifficultyRanking(
             difficulty=Difficulty.MASTER, official_level=32,
             mode="personal", entries=(e,),
         )
-        data = _to_ranking_data(ranking, {42: "data:image/png;base64,abc"})
-        assert data["tiers"][0]["songs"][0]["jacket"] == "data:image/png;base64,abc"
+        data = _build_ranking_payload(ranking, {42: "http://127.0.0.1:3000/jacket/42"})
+        assert data["tiers"][0]["songs"][0]["jacket"] == "http://127.0.0.1:3000/jacket/42"
+
+    def test_root_has_all_fields(self) -> None:
+        from gateway.matchers.command_handler import _build_ranking_payload
+
+        ranking = DifficultyRanking(
+            difficulty=Difficulty.MASTER, official_level=31,
+            mode="personal", entries=(),
+        )
+        data = _build_ranking_payload(ranking, {})
+        for key in ("mode", "title", "tiers"):
+            assert key in data, f"Missing root field: {key}"
+
+    def test_song_has_all_fields(self) -> None:
+        from gateway.matchers.command_handler import _build_ranking_payload
+
+        ranking = DifficultyRanking(
+            difficulty=Difficulty.MASTER, official_level=32,
+            mode="personal", entries=(_make_entry(played=True),),
+        )
+        data = _build_ranking_payload(ranking, {})
+        song = data["tiers"][0]["songs"][0]
+        for key in ("jacket", "status", "judges", "accuracy", "power"):
+            assert key in song, f"Missing song field: {key}"
 
 
 class TestRenderDifficultyRanking:
+    """Thin wrapper tests — render_difficulty_ranking just POSTs the given dict."""
+
     async def test_returns_png_on_success(self) -> None:
         from pjsk_core.application.render_difficulty_ranking import render_difficulty_ranking
 
         renderer = FakeRenderer(b"ranking-png")
-        ranking = DifficultyRanking(
-            difficulty=Difficulty.MASTER, official_level=31,
-            mode="personal", entries=(_make_entry(),),
+        png = await render_difficulty_ranking(
+            {"mode": "personal", "title": "MA 31", "tiers": []},
+            renderer=renderer,
         )
-        png = await render_difficulty_ranking(ranking, renderer=renderer, jacket_cache=None)
         assert png == b"ranking-png"
         assert renderer.calls[0].template_name == "difficulty"
+        assert renderer.calls[0].data == {"mode": "personal", "title": "MA 31", "tiers": []}
 
     async def test_returns_none_on_renderer_failure(self) -> None:
         from pjsk_core.application.render_difficulty_ranking import render_difficulty_ranking
 
         renderer = FakeRenderer(None)
-        ranking = DifficultyRanking(
-            difficulty=Difficulty.MASTER, official_level=31,
-            mode="personal", entries=(),
+        png = await render_difficulty_ranking(
+            {"mode": "global", "title": "EX 28", "tiers": []},
+            renderer=renderer,
         )
-        png = await render_difficulty_ranking(ranking, renderer=renderer, jacket_cache=None)
         assert png is None

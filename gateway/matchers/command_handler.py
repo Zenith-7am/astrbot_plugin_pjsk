@@ -352,6 +352,75 @@ def _build_b20_payload(
     }
 
 
+def _build_ranking_payload(
+    ranking: "DifficultyRanking",
+    jacket_map: dict[int, str],
+) -> dict[str, object]:
+    """Assemble the COMPLETE JS payload for difficulty.js.
+
+    Every field the JS renderer reads is explicitly assigned here.
+    """
+    _DIFF_ABBREV: dict[str, str] = {
+        "master": "MA", "expert": "EX", "append": "APD",
+        "hard": "HD", "normal": "NM", "easy": "EZ",
+    }
+
+    tiers: list[dict[str, object]] = []
+    current_constant: str | None = None
+    current_songs: list[dict[str, object]] = []
+
+    for entry in ranking.entries:
+        if entry.community_constant != current_constant:
+            if current_songs:
+                tiers.append({
+                    "constant_label": current_constant or "0.0",
+                    "songs": current_songs,
+                })
+            current_constant = entry.community_constant
+            current_songs = []
+
+        status: int = 0
+        judges: dict[str, int] | None = None
+        acc: float = 0.0
+        power: float = 0.0
+        if entry.personal_best is not None:
+            pb = entry.personal_best
+            if pb.status == ScoreStatus.AP:
+                status = 2
+            elif pb.status == ScoreStatus.FC:
+                status = 1
+            judges = {
+                "great": pb.judgements.great,
+                "good": pb.judgements.good,
+                "bad": pb.judgements.bad,
+                "miss": pb.judgements.miss,
+            }
+            acc = pb.accuracy
+            power = pb.rating
+
+        current_songs.append({
+            "jacket": jacket_map.get(entry.song_id),
+            "status": status,
+            "judges": judges,
+            "accuracy": acc,
+            "power": power,
+        })
+
+    if current_songs:
+        tiers.append({
+            "constant_label": current_constant or "0.0",
+            "songs": current_songs,
+        })
+
+    abbrev = _DIFF_ABBREV.get(ranking.difficulty.value, ranking.difficulty.value.upper())
+
+    return {
+        "mode": ranking.mode,
+        "title": f"{abbrev} {ranking.official_level}",
+        "tiers": tiers,
+    }
+
+
 async def _handle_b20(
     bot: Bot, event: MessageEvent, msg: IncomingMessage,
 ) -> None:
@@ -473,18 +542,25 @@ async def _handle_my_difficulty(
         await send_text_reply(bot, event, TextReply(text=f"MA {level} 暂无成绩"))
         return
 
-    # Try render image → fall back to text
+    # ── Assemble JS payload → render image → fallback text ──
     png: bytes | None = None
     if runtime.renderer is not None:
         try:
             from pjsk_core.application.render_difficulty_ranking import (
                 render_difficulty_ranking,
             )
-            png = await render_difficulty_ranking(
-                ranking,
-                renderer=runtime.renderer,
-                jacket_cache=runtime.jacket_cache,
-            )
+
+            # Resolve jacket HTTP URLs
+            song_ids = [e.song_id for e in ranking.entries]
+            jacket_map: dict[int, str] = {}
+            if runtime.jacket_cache is not None:
+                for sid in song_ids:
+                    url = runtime.jacket_cache.get_jacket_file_url(sid)
+                    if url is not None:
+                        jacket_map[sid] = url
+
+            data = _build_ranking_payload(ranking, jacket_map)
+            png = await render_difficulty_ranking(data, renderer=runtime.renderer)
         except Exception:
             _logger.exception("Difficulty ranking render failed, falling back to text")
 
@@ -531,18 +607,25 @@ async def _handle_global_difficulty(
         await send_text_reply(bot, event, TextReply(text=f"MA {level} 暂无排行数据"))
         return
 
-    # Try render image → fall back to text
+    # ── Assemble JS payload → render image → fallback text ──
     png: bytes | None = None
     if runtime.renderer is not None:
         try:
             from pjsk_core.application.render_difficulty_ranking import (
                 render_difficulty_ranking,
             )
-            png = await render_difficulty_ranking(
-                ranking,
-                renderer=runtime.renderer,
-                jacket_cache=runtime.jacket_cache,
-            )
+
+            # Resolve jacket HTTP URLs
+            song_ids = [e.song_id for e in ranking.entries]
+            jacket_map: dict[int, str] = {}
+            if runtime.jacket_cache is not None:
+                for sid in song_ids:
+                    url = runtime.jacket_cache.get_jacket_file_url(sid)
+                    if url is not None:
+                        jacket_map[sid] = url
+
+            data = _build_ranking_payload(ranking, jacket_map)
+            png = await render_difficulty_ranking(data, renderer=runtime.renderer)
         except Exception:
             _logger.exception("Global difficulty ranking render failed, falling back to text")
 
