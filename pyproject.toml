@@ -29,10 +29,19 @@ render = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["pjsk_core", "pjsk_core.*", "adapters", "adapters.*", "pjsk_emubot", "pjsk_emubot.*", "gateway", "gateway.*"]
+include = [
+    "pjsk_core", "pjsk_core.*",
+    "pjsk_runtime", "pjsk_runtime.*",
+    "adapters", "adapters.*",
+    "pjsk_emubot", "pjsk_emubot.*",
+    "gateway", "gateway.*",
+    "render_service", "render_service.*",
+    "tools", "tools.*",
+]
 
 [tool.setuptools.package-data]
 "adapters.database.migrations" = ["*.sql"]
+render_service = ["templates/**", "functions/**"]
 # chart_data JSON files are external deployment data imported at deploy-time via
 # tools/import_chart_data.py, per the spec's "Git truth source, SQLite runtime
 # copy" design.  They are NOT included in the wheel — the deploy pipeline copies

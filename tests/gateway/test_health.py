@@ -1,5 +1,5 @@
 """Tests for gateway.health."""
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -12,9 +12,11 @@ class _FakeRuntime:
     def __init__(self, status_value: str = "ready") -> None:
         from pjsk_runtime.runtime import RuntimeStatus
         self.status = RuntimeStatus(status_value)
-        self.db_conn = MagicMock()
-        self.chart_db_conn = MagicMock()
-        self.score_db_conn = MagicMock()
+        self.db_conn = AsyncMock()
+        self.db_conn.execute_fetchall = AsyncMock(return_value=[{"ok": 1}])
+        self.chart_db_conn = AsyncMock()
+        self.chart_db_conn.execute_fetchall = AsyncMock(return_value=[{"ok": 1}])
+        self.score_db_conn = AsyncMock()
         self.close = AsyncMock()
 
 

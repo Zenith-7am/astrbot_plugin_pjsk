@@ -35,7 +35,7 @@ class TestRunMigrations:
 
     async def test_records_migration_version(self, temp_db: Path) -> None:
         version = await run_migrations(temp_db)
-        assert version == 6
+        assert version == 7
         conn = sqlite3.connect(str(temp_db))
         row = conn.execute("SELECT version FROM schema_version").fetchone()
         conn.close()
@@ -44,13 +44,13 @@ class TestRunMigrations:
     async def test_idempotent_second_run(self, temp_db: Path) -> None:
         await run_migrations(temp_db)
         version = await run_migrations(temp_db)
-        assert version == 6  # already applied, no change
+        assert version == 7  # already applied, no change
 
     async def test_empty_db_returns_zero(self, tmp_path: Path) -> None:
         db = tmp_path / "empty.db"
         db.touch()
         version = await run_migrations(db)
-        assert version == 6  # migrations applied on empty db
+        assert version == 7  # migrations applied on empty db
 
     async def test_rollback_on_failed_migration(self, tmp_path: Path) -> None:
         """Mid-migration failure must roll back completely — no partial DDL,
@@ -101,7 +101,7 @@ class TestRunMigrations:
 
         # First run: apply all
         v1 = await run_migrations(db, migrations_dir=test_dir)
-        assert v1 == 6
+        assert v1 == 7
 
         # Tamper with the already-applied migration file
         mig_file = test_dir / "001_initial_schema.sql"
@@ -131,7 +131,7 @@ class TestRunMigrations:
 
         # Apply all
         v1 = await run_migrations(db, migrations_dir=test_dir)
-        assert v1 == 6
+        assert v1 == 7
 
         # Delete the file
         mig_file = test_dir / "001_initial_schema.sql"

@@ -25,10 +25,15 @@ def set_runtime(runtime: Any) -> None:
     _runtime = runtime
 
 
-def build_health(bot_count: int = 0) -> dict[str, Any]:
+def build_health(
+    bot_count: int = 0,
+    database_ok: bool | None = None,
+) -> dict[str, Any]:
     """Build health response.
 
     bot_count: 0=disconnected, >0=connected.
+    database_ok: result of a live ``SELECT 1`` probe.  ``None`` means
+        the probe was skipped (no connection available to test).
     """
     uptime = time.monotonic() - _START_TIME
     connected = bot_count > 0
@@ -47,11 +52,13 @@ def build_health(bot_count: int = 0) -> dict[str, Any]:
         except Exception:
             runtime_status = "error"
 
-    # ── Database ─────────────────────────────────────────────────────────
-    database_status = "unknown"
-    if _runtime is not None:
+    # ── Database (live probe takes precedence over connection existence) ──
+    if database_ok is True:
+        database_status = "ok"
+    elif database_ok is False:
+        database_status = "error"
+    elif _runtime is not None:
         try:
-            # Check if we have db connections that are still alive
             conns = [
                 c for c in (
                     getattr(_runtime, "db_conn", None),
@@ -60,10 +67,11 @@ def build_health(bot_count: int = 0) -> dict[str, Any]:
                 )
                 if c is not None
             ]
-            if conns:
-                database_status = "ok" if runtime_status == "ready" else runtime_status
+            database_status = "ok" if conns else "unknown"
         except Exception:
             database_status = "error"
+    else:
+        database_status = "unknown"
 
     # ── Overall status ───────────────────────────────────────────────────
     if not connected:
@@ -99,4 +107,19 @@ def register_health_route(app: FastAPI) -> None:
         except ValueError:
             # NoneBot not initialized (test environments)
             bot_count = 0
-        return build_health(bot_count=bot_count)
+
+        # Live database probe — a real SELECT 1, not just "connection exists"
+        database_ok: bool | None = None
+        if _runtime is not None:
+            conn = getattr(_runtime, "db_conn", None)
+            if conn is not None:
+                try:
+                    import asyncio
+                    row = await asyncio.wait_for(
+                        conn.execute_fetchall("SELECT 1 AS ok"), timeout=3.0,
+                    )
+                    database_ok = len(row) > 0 and row[0]["ok"] == 1
+                except Exception:
+                    database_ok = False
+
+        return build_health(bot_count=bot_count, database_ok=database_ok)

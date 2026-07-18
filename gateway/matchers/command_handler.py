@@ -25,6 +25,18 @@ from gateway.matchers.image_handler import get_pending_store
 
 _logger = logging.getLogger(__name__)
 
+
+def _mask_id(raw: str) -> str:
+    """Return a privacy-safe version of a QQ number or group ID.
+
+    Keeps the first 2 and last 2 characters; replaces the middle with ``…``.
+    Short ids (≤4 chars) are fully masked.
+    """
+    if len(raw) <= 4:
+        return "*" * len(raw)
+    return raw[:2] + "…" + raw[-2:]
+
+
 # Injected by bootstrap after Runtime assembly.
 _runtime: object | None = None
 
@@ -211,7 +223,7 @@ async def _handle_ocr_trigger(
     readonly = os.environ.get("PJSK_OCR_READONLY") == "1"
     _logger.info(
         "pending OCR: group=%s qq=%s size=%d readonly=%s",
-        group_id, qq, len(image_data), readonly,
+        _mask_id(group_id), _mask_id(str(qq)), len(image_data), readonly,
     )
 
     try:
