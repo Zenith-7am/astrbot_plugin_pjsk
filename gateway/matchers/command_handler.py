@@ -356,10 +356,20 @@ async def _handle_b20(
     if runtime.renderer is not None:
         try:
             from pjsk_core.application.render_b20 import render_b20
+            _logger.info(
+                "B20 render attempt: renderer_present=true entry_count=%d jacket_cache_present=%s",
+                len(b20_result.entries),
+                runtime.jacket_cache is not None,
+            )
             png = await render_b20(
                 b20_result,
                 renderer=runtime.renderer,
                 jacket_cache=runtime.jacket_cache,
+            )
+            _logger.info(
+                "B20 render result=%s png_bytes=%d",
+                "png" if png is not None else "none",
+                len(png) if png is not None else 0,
             )
         except Exception:
             _logger.exception("B20 render failed, falling back to text")

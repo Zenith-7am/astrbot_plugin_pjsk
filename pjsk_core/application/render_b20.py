@@ -82,6 +82,10 @@ async def render_b20(
     """Render a B20 ranking image. Returns PNG bytes or None on failure."""
     song_ids = [e.song_id for e in b20_result.entries]
     jacket_map = await _prefetch_jackets(jacket_cache, song_ids)
+    _logger.info(
+        "B20 jacket prefetch: requested=%d obtained=%d",
+        len(song_ids), len(jacket_map),
+    )
 
     data = _to_b20_data(b20_result, jacket_map)
     payload = RenderPayload(template_name="b20", data=data)
@@ -89,7 +93,10 @@ async def render_b20(
     try:
         png = await renderer.render(payload)
         if png is None:
-            _logger.warning("Render service returned None for B20")
+            _logger.warning(
+                "B20 render returned None: template=b20 entry_count=%d jacket_count=%d",
+                len(b20_result.entries), len(jacket_map),
+            )
         return png
     except Exception:
         _logger.warning("B20 render failed", exc_info=True)

@@ -43,7 +43,15 @@ class HttpRenderer:
 
     async def render(self, payload: RenderPayload) -> bytes | None:
         """POST *payload* to the render service, return PNG bytes or None."""
+        from urllib.parse import urlparse
         url = f"{self._base_url}/render/{payload.template_name}"
+        parsed = urlparse(url)
+        logger.info(
+            "Render request: template=%s host=%s path=%s",
+            payload.template_name,
+            parsed.hostname or "unknown",
+            parsed.path,
+        )
         try:
             if self._client is not None:
                 resp = await self._client.post(
@@ -51,30 +59,56 @@ class HttpRenderer:
                 )
                 if resp.status_code != 200:
                     logger.warning(
-                        "Render service returned %d for %s",
-                        resp.status_code,
+                        "Render response: template=%s status=%d content_type=%s bytes=%d",
                         payload.template_name,
+                        resp.status_code,
+                        resp.headers.get("content-type", "unknown"),
+                        len(resp.content),
                     )
                     return None
-                return await resp.aread()
+                body = await resp.aread()
+                logger.info(
+                    "Render response: template=%s status=%d content_type=%s bytes=%d",
+                    payload.template_name,
+                    resp.status_code,
+                    resp.headers.get("content-type", "unknown"),
+                    len(body),
+                )
+                return body
             else:
                 async with httpx.AsyncClient(timeout=self._timeout) as client:
                     resp = await client.post(url, json=payload.data)
                     if resp.status_code != 200:
                         logger.warning(
-                            "Render service returned %d for %s",
-                            resp.status_code,
+                            "Render response: template=%s status=%d content_type=%s bytes=%d",
                             payload.template_name,
+                            resp.status_code,
+                            resp.headers.get("content-type", "unknown"),
+                            len(resp.content),
                         )
                         return None
-                    return await resp.aread()
+                    body = await resp.aread()
+                    logger.info(
+                        "Render response: template=%s status=%d content_type=%s bytes=%d",
+                        payload.template_name,
+                        resp.status_code,
+                        resp.headers.get("content-type", "unknown"),
+                        len(body),
+                    )
+                    return body
         except httpx.TimeoutException:
-            logger.warning("Render service timeout for %s", payload.template_name)
-            return None
-        except Exception:
             logger.warning(
-                "Render service unreachable for %s",
+                "Render timeout: template=%s timeout=%s",
                 payload.template_name,
+                self._timeout,
+            )
+            return None
+        except Exception as e:
+            logger.warning(
+                "Render failed: template=%s error_type=%s message=%s",
+                payload.template_name,
+                type(e).__name__,
+                str(e),
                 exc_info=True,
             )
             return None

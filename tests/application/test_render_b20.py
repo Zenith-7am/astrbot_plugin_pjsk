@@ -162,3 +162,47 @@ class TestRenderB20:
 
         png = await render_b20(result, renderer=renderer, jacket_cache=None)
         assert png is None
+
+
+class TestDiagnosticLogging:
+    """Verify diagnostic logs are emitted without changing return values."""
+
+    async def test_prefetch_logs_jacket_count(self) -> None:
+        from unittest.mock import patch
+        from pjsk_core.application.render_b20 import render_b20
+
+        renderer = FakeRenderer(b"png")
+        result = _make_result()
+
+        with patch("pjsk_core.application.render_b20._logger.info") as mock_info:
+            png = await render_b20(result, renderer=renderer, jacket_cache=None)
+
+        assert png == b"png"  # return value unchanged
+        prefetch_call = [
+            c for c in mock_info.call_args_list
+            if "jacket prefetch" in str(c)
+        ]
+        assert len(prefetch_call) == 1
+        args = prefetch_call[0]
+        assert "requested=" in str(args)
+        assert "obtained=" in str(args)
+
+    async def test_render_none_logs_warning(self) -> None:
+        from unittest.mock import patch
+        from pjsk_core.application.render_b20 import render_b20
+
+        renderer = FakeRenderer(None)
+        result = _make_result()
+
+        with patch("pjsk_core.application.render_b20._logger.warning") as mock_warn:
+            png = await render_b20(result, renderer=renderer, jacket_cache=None)
+
+        assert png is None  # return value unchanged
+        none_call = [
+            c for c in mock_warn.call_args_list
+            if "returned None" in str(c)
+        ]
+        assert len(none_call) == 1
+        args = none_call[0]
+        assert "template=b20" in str(args)
+        assert "entry_count=" in str(args)
