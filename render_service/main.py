@@ -196,6 +196,27 @@ async def health() -> dict[str, object]:
     }
 
 
+# ─── /jacket/{song_id} ───────────────────────────────────────────────────────
+# Serve cached jacket images so Chromium can load them via HTTP (file://
+# URLs are blocked in pages created with page.set_content()).
+
+_JACKET_DIR = os.getenv("PJSK_JACKET_CACHE_DIR", "/opt/pjsk-astrbot/shared/cache/jackets")
+_JACKET_EXTENSIONS = (".webp", ".png", ".jpg")
+
+
+@app.get("/jacket/{song_id}")
+async def serve_jacket(song_id: int) -> Response:
+    """Serve a cached jacket image by song_id."""
+    for ext in _JACKET_EXTENSIONS:
+        path = Path(_JACKET_DIR) / f"{song_id}{ext}"
+        if path.is_file():
+            content_type = {
+                ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg",
+            }.get(ext, "image/webp")
+            return Response(content=path.read_bytes(), media_type=content_type)
+    raise HTTPException(status_code=404, detail=f"jacket not found: {song_id}")
+
+
 # ─── /render/html ─────────────────────────────────────────────────────────────
 # Must be registered BEFORE /render/{name} so FastAPI matches the literal
 # route first — otherwise "html" is captured as {name}.

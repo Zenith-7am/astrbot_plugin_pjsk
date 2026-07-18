@@ -165,19 +165,18 @@ class JacketCache:
         return None
 
     def get_jacket_file_url(self, song_id: int) -> str | None:
-        """Return a ``file://`` URL to the cached jacket if it exists on disk.
+        """Return an HTTP URL for the cached jacket, served by the render service.
 
-        Unlike ``get_jacket()`` / ``prefetch_jackets()``, this does NOT
-        read the file into memory — it returns a URL that the render
-        service's Chromium can load directly from the filesystem.  This
-        avoids embedding multi-MB base64 payloads in render requests.
+        The render service exposes ``GET /jacket/{song_id}`` which reads
+        the file from this cache directory and returns it.  Chromium loads
+        jackets via HTTP — avoiding both base64 bloat and the ``file://``
+        security restriction in ``page.set_content()``.
         """
         if self.cache_disabled:
             return None
-        from pathlib import Path as _Path
         for candidate in _candidate_paths(self.cache_dir, song_id):
             if os.path.isfile(candidate):
-                return _Path(candidate).as_uri()
+                return f"http://127.0.0.1:3000/jacket/{song_id}"
         return None
 
     async def prefetch_jackets(self, song_ids: list[int]) -> dict[int, str]:
