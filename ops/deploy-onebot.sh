@@ -116,7 +116,32 @@ print(\"All imports OK\")
         done
     fi
 
-    # ── Chart data import (first-install safe) ─────────────────────────
+    # ── Preflight on temp port (BEFORE migrations — keep DB untouched on failure)
+    echo '=== Preflight (port ${PREFLIGHT_PORT}) ==='
+    .venv/bin/python -m uvicorn render_service.main:app \
+        --host 127.0.0.1 --port ${PREFLIGHT_PORT} &
+    RENDER_PID=\$!
+
+    # Chrome warm-up can take 10+ seconds on first launch — retry up to 5 times
+    for attempt in 1 2 3 4 5; do
+        sleep 3
+        if curl -sf --max-time 5 http://127.0.0.1:${PREFLIGHT_PORT}/health > /dev/null; then
+            echo \"Preflight health OK (attempt \$attempt)\"
+            break
+        fi
+        echo \"Preflight attempt \$attempt/5 … retrying\"
+    done
+
+    if ! curl -sf --max-time 5 http://127.0.0.1:${PREFLIGHT_PORT}/health > /dev/null; then
+        echo 'ERROR: render preflight health failed after 5 attempts'
+        kill \$RENDER_PID 2>/dev/null || true
+        exit 1
+    fi
+    kill \$RENDER_PID 2>/dev/null || true
+    sleep 1
+    echo 'Preflight OK'
+
+    # ── Chart data import + migrations (only after preflight passes) ─────
     echo '=== Chart data import ==='
     .venv/bin/python -c '
 from adapters.database.migrator import run_migrations
@@ -128,23 +153,6 @@ db_path = Path(os.environ.get(\"PJSK_DB_PATH\", \"${SHARED_DIR}/data/pjsk.db\"))
 asyncio.run(run_migrations(db_path))
 print(f\"Migrations applied to {db_path}\")
 '
-
-    # ── Preflight on temp port ─────────────────────────────────────────
-    echo '=== Preflight (port ${PREFLIGHT_PORT}) ==='
-    .venv/bin/python -m uvicorn render_service.main:app \
-        --host 127.0.0.1 --port ${PREFLIGHT_PORT} &
-    RENDER_PID=\$!
-    sleep 3
-
-    # Verify render service health
-    curl -sf http://127.0.0.1:${PREFLIGHT_PORT}/health || {
-        echo 'ERROR: render preflight health failed'
-        kill \$RENDER_PID 2>/dev/null || true
-        exit 1
-    }
-    kill \$RENDER_PID 2>/dev/null || true
-    sleep 1
-    echo 'Preflight OK'
 
     # ── Switch current atomically ──────────────────────────────────────
     echo '=== Atomic switch ==='
