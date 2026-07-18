@@ -196,6 +196,80 @@ async def health() -> dict[str, object]:
     }
 
 
+# ─── /render/html ─────────────────────────────────────────────────────────────
+# Must be registered BEFORE /render/{name} so FastAPI matches the literal
+# route first — otherwise "html" is captured as {name}.
+
+
+@app.post("/render/html")
+async def render_html(request: Request) -> Response:
+    """Render an arbitrary HTML string and return a PNG screenshot.
+
+    Accepts JSON: ``{"html": "<!DOCTYPE html>…", "width": 960, "height": 600}``.
+    A fresh Page + Context is created per request (isolated from other renders).
+    The semaphore caps concurrent rendering.
+    """
+    import re as _re
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid JSON body") from None
+
+    html: str | None = body.get("html")
+    if not html or not isinstance(html, str):
+        raise HTTPException(status_code=400, detail="missing or invalid 'html' field")
+    width: int = body.get("width", 960)
+    height: int = body.get("height", 600)
+    if not isinstance(width, int) or not isinstance(height, int) or width < 1 or height < 1:
+        raise HTTPException(status_code=400, detail="invalid width/height")
+
+    # Strip <script> tags (defence-in-depth — service is localhost-only)
+    html = _re.sub(
+        r"<script[^>]*>.*?</script>", "", html,
+        flags=_re.DOTALL | _re.IGNORECASE,
+    )
+
+    if not await _ensure_browser():
+        raise HTTPException(status_code=503, detail="browser unavailable")
+
+    assert _browser is not None
+
+    async with _render_sem:
+        context: Optional[BrowserContext] = None
+        page: Optional[Page] = None
+        try:
+            context = await _browser.new_context(
+                viewport={"width": width, "height": height},
+            )
+            page = await context.new_page()
+            await page.set_content(html, wait_until="networkidle", timeout=15000)
+
+            png = await page.screenshot(
+                clip={"x": 0, "y": 0, "width": width, "height": height},
+                type="png",
+            )
+            return Response(content=png, media_type="image/png")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"render failed: {str(e)[:300]}",
+            ) from e
+        finally:
+            if page:
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+            if context:
+                try:
+                    await context.close()
+                except Exception:
+                    pass
+
+
 # ─── /render/{name} ──────────────────────────────────────────────────────────
 
 

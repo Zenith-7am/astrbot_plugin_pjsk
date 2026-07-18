@@ -195,3 +195,88 @@ class TestModuleImport:
         from render_service.main import app
         assert app is not None
         assert app.title == "PJSK Render Service"
+
+
+class TestHtmlRenderEndpoint:
+    """Tests for POST /render/html."""
+
+    def test_missing_html_returns_400(self) -> None:
+        import render_service.main as svc
+
+        svc._browser = _make_browser()
+        svc._browser_restart_attempted = False
+
+        with patch.object(svc, "_ensure_browser", AsyncMock(return_value=True)):
+            client = TestClient(svc.app)
+            response = client.post("/render/html", json={"width": 960, "height": 600})
+            assert response.status_code == 400
+
+    def test_invalid_json_returns_400(self) -> None:
+        import render_service.main as svc
+
+        svc._browser = _make_browser()
+        svc._browser_restart_attempted = False
+
+        with patch.object(svc, "_ensure_browser", AsyncMock(return_value=True)):
+            client = TestClient(svc.app)
+            response = client.post("/render/html", content=b"not-json")
+            assert response.status_code == 400
+
+    def test_successful_render_returns_png(self) -> None:
+        import render_service.main as svc
+
+        page = _make_page()
+        ctx = _make_context(page)
+        browser = _make_browser(ctx)
+        svc._browser = browser
+        svc._browser_restart_attempted = False
+
+        with patch.object(svc, "_ensure_browser", AsyncMock(return_value=True)):
+            client = TestClient(svc.app)
+            response = client.post(
+                "/render/html",
+                json={"html": "<h1>Hello</h1>", "width": 200, "height": 100},
+            )
+            assert response.status_code == 200
+            assert response.headers["content-type"] == "image/png"
+            assert response.content == b"fake-png-data"
+            page.screenshot.assert_called_once()
+
+    def test_script_tags_are_stripped(self) -> None:
+        import render_service.main as svc
+
+        page = _make_page()
+        ctx = _make_context(page)
+        browser = _make_browser(ctx)
+        svc._browser = browser
+        svc._browser_restart_attempted = False
+
+        with patch.object(svc, "_ensure_browser", AsyncMock(return_value=True)):
+            client = TestClient(svc.app)
+            response = client.post(
+                "/render/html",
+                json={
+                    "html": "<html><head><script>alert('xss')</script></head><body>safe</body></html>",
+                    "width": 100, "height": 100,
+                },
+            )
+            assert response.status_code == 200
+            # Verify the script was stripped from what set_content received
+            call_arg = page.set_content.call_args[0][0]
+            assert "<script>" not in call_arg
+            assert "alert" not in call_arg
+            assert "safe" in call_arg
+
+    def test_browser_unavailable_returns_503(self) -> None:
+        import render_service.main as svc
+
+        svc._browser = _make_browser()
+        svc._browser_restart_attempted = False
+
+        with patch.object(svc, "_ensure_browser", AsyncMock(return_value=False)):
+            client = TestClient(svc.app)
+            response = client.post(
+                "/render/html",
+                json={"html": "<h1>Hi</h1>", "width": 100, "height": 100},
+            )
+            assert response.status_code == 503
