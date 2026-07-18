@@ -43,11 +43,26 @@ _CANDIDATE_ONLY = re.compile(r"^\d{1,2}$")
 
 
 async def _group_emu_trigger(event: MessageEvent) -> bool:
-    """Group: only messages starting with .emu or .emu trigger."""
+    """Group: .emu/. prefix, OR @Bot + known bare command (注册/register/b20/etc.)."""
     if event.message_type != "group":
         return False
     text = event.get_plaintext().strip()
-    return bool(_EMU_PREFIX.match(text))
+    # .emu / 。emu prefix always triggers
+    if _EMU_PREFIX.match(text):
+        return True
+    # @Bot with a known bare command — strip leading @xxx mentions
+    if event.is_tome():
+        # Remove @Bot mention(s) from the text and try bare parsing
+        cleaned = text
+        for seg in event.message:
+            if seg.type == "at" and seg.data.get("qq") == str(event.self_id):
+                cleaned = cleaned.replace(
+                    f"[CQ:at,qq={event.self_id}]", "", 1,
+                )
+        cleaned = cleaned.strip()
+        if cleaned:
+            return parse_trigger(cleaned, is_group=False) is not None
+    return False
 
 
 async def _private_cmd_trigger(event: MessageEvent) -> bool:

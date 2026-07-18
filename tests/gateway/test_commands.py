@@ -43,16 +43,14 @@ class TestParseEmuCommand:
 class TestHelpText:
     def test_help_lists_implemented_commands(self) -> None:
         text = build_help_text()
-        assert "/emu help" in text
-        assert "/emu status" in text
-        assert "/emu register" in text
-        # Not yet implemented
-        assert "bind" not in text
-        assert "b20" not in text
+        assert "帮助" in text or "/emu help" in text
+        assert "状态" in text or "/emu status" in text
+        assert "注册" in text
+        assert "b20" in text
 
     def test_help_is_reasonable_length(self) -> None:
         text = build_help_text()
-        assert 30 < len(text) < 500
+        assert 50 < len(text) < 800
 
 
 class TestStatusText:
@@ -126,6 +124,34 @@ class TestParseTriggerPrivate:
         assert parse_trigger(text, is_group=False) is None
 
 
+
+    # ── Register (new bare command) ──────────────────────────────────────
+
+    @pytest.mark.parametrize("text", [
+        "register",
+        "注册",
+        "reg",
+    ])
+    def test_register_bare(self, text: str) -> None:
+        result = parse_trigger(text, is_group=False)
+        assert result is not None
+        assert result.command == EmuCommand.REGISTER
+
+    def test_register_via_dot_emu_private(self) -> None:
+        result = parse_trigger(".emu register", is_group=False)
+        assert result is not None
+        assert result.command == EmuCommand.REGISTER
+
+    def test_register_via_dot_emu_group(self) -> None:
+        result = parse_trigger(".emu register", is_group=True)
+        assert result is not None
+        assert result.command == EmuCommand.REGISTER
+
+    def test_register_via_slash_emu_with_args(self) -> None:
+        result = parse_trigger("/emu register my_game_id", is_group=False)
+        assert result is not None
+        assert result.command == EmuCommand.REGISTER
+
 class TestParseTriggerGroup:
     """Group chat: .emu / 。emu prefix required."""
 
@@ -167,15 +193,12 @@ class TestParseTriggerGroup:
         assert result.level == 30
 
     @pytest.mark.parametrize("text", [
-        "b20",                # no prefix → rejected
-        "查b20",
-        "我的ma31",
-        "难度排行ma31",
-        "/emu register",
         "hello",
         "",
     ])
     def test_no_prefix_rejected(self, text: str) -> None:
+        """Group: non-command text returns None (filtering by .emu prefix
+        is done at the trigger-rule level, NOT in parse_trigger)."""
         assert parse_trigger(text, is_group=True) is None
 
     def test_emu_prefix_but_garbage(self) -> None:

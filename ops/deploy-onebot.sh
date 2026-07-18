@@ -36,13 +36,9 @@ echo "=== Deploying $RELEASE_ID (git $GIT_SHA) ==="
 # ── Step 1: Build and upload release tarball ────────────────────────────
 TARBALL="/tmp/pjsk-release-${RELEASE_ID}.tar.gz"
 cd "$REPO_ROOT"
-tar czf "$TARBALL" \
-    --exclude='.venv' --exclude='.git' --exclude='__pycache__' \
-    --exclude='*.pyc' --exclude='.pytest_cache' --exclude='.worktrees' \
-    --exclude='node_modules' --exclude='data' \
-    --exclude='artifacts' --exclude='.mypy_cache' --exclude='.ruff_cache' \
-    --exclude='.superpowers' --exclude='*.egg-info' \
-    .
+# Use git archive to guarantee only tracked files are included.
+# Untracked files (artifacts, temp scripts, .venv, etc.) are never packaged.
+git archive --format=tar.gz --output="$TARBALL" HEAD
 echo "=== Tarball: $(du -h "$TARBALL" | cut -f1) ==="
 
 echo "=== Uploading to VPS ==="
@@ -129,7 +125,21 @@ print(f\"Migrations applied to {db_path}\")
     exec 9>&-
 "
 
-# ── Step 3: Restart service and health check ────────────────────────────
+# ── Step 3: Restart renderer first, then gateway ────────────────────────
+RENDER_SERVICE="pjsk-render.service"
+echo "=== Restarting $RENDER_SERVICE ==="
+ssh "$VPS" bash -lc "
+    set -euo pipefail
+    systemctl restart '${RENDER_SERVICE}'
+    sleep 3
+    # Verify renderer health before restarting gateway
+    if ! curl -sf --max-time 5 http://127.0.0.1:3000/health > /dev/null; then
+        echo 'ERROR: renderer health check failed — aborting deploy'
+        exit 1
+    fi
+    echo 'Renderer OK'
+"
+
 echo "=== Restarting $SERVICE_NAME ==="
 ssh "$VPS" bash -lc "
     set -euo pipefail

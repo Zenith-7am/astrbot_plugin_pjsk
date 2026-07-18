@@ -323,11 +323,15 @@ async def assemble_plugin_runtime(
         toggle_append = ToggleAppend(users=user_repo)
         register_user = RegisterUser(users=user_repo)
 
-        # Renderer is optional — set to None until render service is deployed
+        # Renderer — env var takes priority over config.yml
         from pjsk_core.ports.renderer import Renderer
         renderer: Renderer | None = None
 
-        render_service_url = cfg.get("render_service_url", "").strip()
+        render_service_url = os.environ.get(
+            "PJSK_RENDER_SERVICE_URL", "",
+        ).strip()
+        if not render_service_url:
+            render_service_url = cfg.get("render_service_url", "").strip()
         if render_service_url:
             try:
                 from adapters.rendering.renderer_adapter import HttpRenderer

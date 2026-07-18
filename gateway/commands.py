@@ -43,30 +43,48 @@ class ParsedTrigger:
 
 _STRIP_EMU_PREFIX = re.compile(r"^[.。]emu(?:\s+|$)")
 _B20 = re.compile(r"^(?:b20|查b20)$", re.IGNORECASE)
+_REGISTER = re.compile(r"^(?:reg(?:ister)?|注册)$", re.IGNORECASE)
 _MY_DIFF = re.compile(r"^我的ma(\d+)$")
 _GLOBAL_DIFF = re.compile(r"^难度排行ma(\d+)$")
 
 
-def parse_emu_command(text: str) -> EmuCommand | None:
-    """Parse '/emu <subcommand>'. Returns None if not an /emu command.
+def _strip_emu_prefix(text: str) -> str | None:
+    """If *text* starts with .emu / 。emu, return the remainder. Else None."""
+    m = _STRIP_EMU_PREFIX.match(text)
+    if not m:
+        return None
+    return _STRIP_EMU_PREFIX.sub("", text).strip()
 
-    Requires '/emu' followed by end-of-string or whitespace —
-    '/emulator' returns None (prefix collision defence).
+
+def parse_emu_command(text: str) -> EmuCommand | None:
+    """Parse '/emu <subcommand>'.  Also accepts '.emu <subcommand>' for
+    backward compatibility with users who type the dot prefix.
+
+    Requires '/emu' or '.emu' followed by end-of-string or whitespace —
+    '/emulator' and '.emulator' return None (prefix collision defence).
     """
     stripped = text.strip()
-    if not stripped.startswith("/emu"):
+
+    # Accept both /emu and .emu as prefix
+    if stripped.startswith("/emu"):
+        body = stripped[4:]
+    elif stripped.startswith(".emu") or stripped.startswith("。emu"):
+        body = stripped[4:]
+    else:
         return None
-    # "/emu" with nothing after, or "/emu<non-space>" like "/emulator" → None
-    if len(stripped) == 4:
+
+    # "/emu" / ".emu" with nothing after → UNKNOWN (catch by OCR trigger)
+    if not body:
         return EmuCommand.UNKNOWN
-    if stripped[4] != " ":
-        return None  # "/emulator" or "/emuxyz"
-    arg = stripped[5:].strip()
+    # "/emulator" or "/emuxyz" → not our command
+    if body[0] != " ":
+        return None
+    arg = body[1:].strip()
     if arg in ("help",):
         return EmuCommand.HELP
     if arg in ("status",):
         return EmuCommand.STATUS
-    if arg in ("register",):
+    if arg == "register" or arg.startswith("register "):
         return EmuCommand.REGISTER
     return EmuCommand.UNKNOWN
 
@@ -74,8 +92,11 @@ def parse_emu_command(text: str) -> EmuCommand | None:
 def parse_trigger(text: str, *, is_group: bool) -> ParsedTrigger | None:
     """Parse a non-image text message into a command trigger.
 
-    Private chat: no prefix needed for B20 / difficulty commands.
-    Group chat: ``.emu`` or ``。emu`` prefix required.
+    **Private chat**: bare commands (b20, register, 注册 …) or
+    ``.emu <cmd>`` / ``/emu <cmd>`` prefixes.
+
+    **Group chat**: ``.emu`` / ``。emu`` prefix required; after stripping,
+    bare commands (b20, register, 注册, 我的maXX, 难度排行maXX) are recognised.
 
     Returns None if the message does not match any command.
     """
@@ -83,34 +104,34 @@ def parse_trigger(text: str, *, is_group: bool) -> ParsedTrigger | None:
     if not text:
         return None
 
-    # Group: strip ".emu"/"。emu" prefix
-    if is_group:
-        if not _STRIP_EMU_PREFIX.match(text):
-            return None
-        text = _STRIP_EMU_PREFIX.sub("", text).strip()
+    # Strip ".emu"/"。emu" prefix in BOTH private and group
+    remainder = _strip_emu_prefix(text)
+    if remainder is not None:
+        text = remainder
         # ".emu" / "。emu" with no arguments → OCR trigger
         if not text:
             return ParsedTrigger(EmuCommand.OCR_TRIGGER)
 
-    # B20
+    # ── Bare commands (work everywhere) ──────────────────────────────────
+
     if _B20.match(text):
         return ParsedTrigger(EmuCommand.B20)
 
-    # 我的maXX
+    if _REGISTER.match(text):
+        return ParsedTrigger(EmuCommand.REGISTER)
+
     m = _MY_DIFF.match(text)
     if m:
         return ParsedTrigger(EmuCommand.MY_DIFFICULTY, level=int(m.group(1)))
 
-    # 难度排行maXX
     m = _GLOBAL_DIFF.match(text)
     if m:
         return ParsedTrigger(EmuCommand.GLOBAL_DIFFICULTY, level=int(m.group(1)))
 
-    # Legacy /emu commands (private chat only)
-    if not is_group:
-        legacy = parse_emu_command(text)
-        if legacy is not None and legacy != EmuCommand.UNKNOWN:
-            return ParsedTrigger(legacy)
+    # ── Legacy /emu and .emu commands ─────────────────────────────────────
+    legacy = parse_emu_command(text)
+    if legacy is not None and legacy != EmuCommand.UNKNOWN:
+        return ParsedTrigger(legacy)
 
     return None
 
@@ -120,9 +141,21 @@ def parse_trigger(text: str, *, is_group: bool) -> ParsedTrigger | None:
 _HELP = (
     "PJSK Emu Bot\n"
     "\n"
-    "/emu help              显示此帮助\n"
-    "/emu status            查看运行状态\n"
-    "/emu register          注册账号\n"
+    "私聊命令（直接发送）:\n"
+    "  注册 / register         注册账号\n"
+    "  b20                     查询 B20 排行\n"
+    "  我的ma31                 个人 MA 31 排行\n"
+    "  难度排行ma31              全局 MA 31 排行\n"
+    "\n"
+    "群聊命令（.emu 前缀）:\n"
+    "  .emu                    识别刚才发的截图\n"
+    "  .emu register           注册账号\n"
+    "  .emu b20                查询 B20 排行\n"
+    "  .emu 我的ma31            个人 MA 31 排行\n"
+    "  .emu 难度排行ma31         全局 MA 31 排行\n"
+    "\n"
+    "帮助 /help /emu help\n"
+    "状态 /emu status"
 )
 
 

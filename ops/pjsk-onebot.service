@@ -1,8 +1,8 @@
 [Unit]
 Description=PJSK OneBot Gateway (NoneBot 2 + OneBot v11)
 After=network.target
-Wants=pjsk-renderer.service
-After=pjsk-renderer.service
+Wants=pjsk-render.service
+After=pjsk-render.service
 
 [Service]
 Type=simple
@@ -11,6 +11,9 @@ WorkingDirectory=/opt/pjsk-astrbot/current
 EnvironmentFile=/opt/pjsk-astrbot/shared/bot.env
 Environment=PJSK_DB_PATH=/opt/pjsk-astrbot/shared/data/pjsk.db
 Environment=PJSK_JACKET_CACHE_DIR=/opt/pjsk-astrbot/shared/cache/jackets
+Environment=PJSK_RENDER_SERVICE_URL=http://127.0.0.1:3000
+Environment=PJSK_PENDING_IMAGE_TTL_SECONDS=120
+Environment=PJSK_JACKET_CDN_FALLBACK=1
 ExecStart=/opt/pjsk-astrbot/current/.venv/bin/python gateway/bot.py
 Restart=on-failure
 RestartSec=5
