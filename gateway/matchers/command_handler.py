@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import TYPE_CHECKING
 
 import nonebot
 from nonebot import on_message
@@ -12,6 +13,10 @@ from nonebot.rule import Rule
 from pjsk_core.application.replies import TextReply
 from pjsk_core.domain.scores import ScoreStatus
 from pjsk_core.domain.users import QqNumber
+
+if TYPE_CHECKING:
+    from pjsk_core.domain.b20 import B20Result
+    from pjsk_core.domain.difficulty_ranking import DifficultyRanking
 from gateway.commands import (
     EmuCommand,
     ParsedTrigger,
