@@ -221,26 +221,81 @@ async def _handle_ocr_trigger(
     decision = result.outcome.decision
 
     if decision in (VisionRaceDecision.CONSENSUS, VisionRaceDecision.DEGRADED_SINGLE):
-        if readonly:
-            text = (
-                _format_readonly_result(result)
-                if result.validated is not None
-                else "识别完成但无法解析结果"
+        # Try render image card → fall back to text
+        png: bytes | None = None
+        if (result.validated is not None
+                and result.validated.primary is not None
+                and runtime.renderer is not None
+                and result.score_attempt is not None):
+            try:
+                from pjsk_core.application.render_ocr_card import render_ocr_card
+
+                v = result.validated
+                obs = v.observation
+                chart = v.primary.chart
+                attempt = result.score_attempt
+
+                jacket_url: str | None = None
+                if runtime.jacket_cache is not None and chart is not None:
+                    jacket_url = await runtime.jacket_cache.get_jacket(
+                        chart.song_id,
+                    )
+
+                png = await render_ocr_card(
+                    song_id=chart.song_id if chart else 0,
+                    title_ja=obs.song_title or "",
+                    title_cn="",
+                    difficulty=obs.difficulty.value,
+                    level=chart.official_level if chart else obs.displayed_level,
+                    constant=chart.community_constant if chart else "",
+                    accuracy=attempt.accuracy,
+                    rating=attempt.rating,
+                    sp="—",
+                    perfect=obs.judgements.perfect,
+                    great=obs.judgements.great,
+                    good=obs.judgements.good,
+                    bad=obs.judgements.bad,
+                    miss=obs.judgements.miss,
+                    status=attempt.status.value,
+                    jacket_data_url=jacket_url,
+                    renderer=runtime.renderer,
+                )
+            except Exception:
+                _logger.exception("OCR card render failed, falling back to text")
+
+        if png is not None:
+            from gateway.adapters.reply_sender import send_image_reply
+            from pjsk_core.application.replies import ImageReply
+            await send_image_reply(
+                bot, event,
+                ImageReply(image_bytes=png, mime_type="image/png"),
             )
         else:
-            text = _format_consensus_reply(result, None)
+            if readonly:
+                text = (
+                    _format_readonly_result(result)
+                    if result.validated is not None
+                    else "识别完成但无法解析结果"
+                )
+            else:
+                text = _format_consensus_reply(result, None)
+            await send_text_reply(bot, event, TextReply(text=text))
     elif decision == VisionRaceDecision.DISAGREEMENT:
         if readonly:
             text = _format_candidates_text(result)
         else:
             from gateway.matchers.image_handler import _handle_disagreement
             text = await _handle_disagreement(result, user, msg, runtime)
+        await send_text_reply(bot, event, TextReply(text=text))
     elif decision == VisionRaceDecision.ALL_FAILED:
-        text = "所有识别模型均失败，请稍后重试"
+        await send_text_reply(
+            bot, event,
+            TextReply(text="所有识别模型均失败，请稍后重试"),
+        )
     else:
-        text = "识别失败，请稍后重试"
-
-    await send_text_reply(bot, event, TextReply(text=text))
+        await send_text_reply(
+            bot, event, TextReply(text="识别失败，请稍后重试"),
+        )
 
 
 # ── B20 / Difficulty ranking — text replies for now (image rendering is follow-up) ─

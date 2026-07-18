@@ -1,7 +1,4 @@
 """Tests for render_ocr_card."""
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
 
 
 class FakeRenderer:

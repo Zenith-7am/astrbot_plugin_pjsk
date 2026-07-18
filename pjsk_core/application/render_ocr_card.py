@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from pjsk_core.ports.renderer import RenderPayload, Renderer
 
