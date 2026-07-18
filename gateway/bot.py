@@ -82,16 +82,16 @@ async def _startup() -> None:
     )
     # ── Release identity — print paths so operators can verify all modules
     #     belong to the SAME release directory (no mixed-code deployment).
-    nonebot.logger.info("[PJSK] git_sha=%s project_root=%s", _GIT_SHA, _project_root)
-    nonebot.logger.info("[PJSK] gateway.__file__ = %s", __file__)
+        nonebot.logger.info(f"[PJSK] git_sha={_GIT_SHA} project_root={_project_root}")
+    nonebot.logger.info(f"[PJSK] gateway.__file__ = {__file__}")
     try:
         import pjsk_core
-        nonebot.logger.info("[PJSK] pjsk_core.__file__ = %s", pjsk_core.__file__)
+        nonebot.logger.info(f"[PJSK] pjsk_core.__file__ = {pjsk_core.__file__}")
     except Exception:
         nonebot.logger.warning("[PJSK] pjsk_core path unavailable")
     try:
         import pjsk_runtime
-        nonebot.logger.info("[PJSK] pjsk_runtime.__file__ = %s", pjsk_runtime.__file__)
+        nonebot.logger.info(f"[PJSK] pjsk_runtime.__file__ = {pjsk_runtime.__file__}")
     except Exception:
         nonebot.logger.warning("[PJSK] pjsk_runtime path unavailable")
     # ── Bootstrap ────────────────────────────────────────────────────────
