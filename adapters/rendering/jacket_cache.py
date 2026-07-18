@@ -179,6 +179,26 @@ class JacketCache:
                 return f"http://127.0.0.1:3000/jacket/{song_id}"
         return None
 
+    async def ensure_jacket_file_url(self, song_id: int) -> str | None:
+        """Ensure jacket is cached on disk, return HTTP file URL.
+
+        Checks local cache first; on miss and ``cdn_fallback=True``,
+        downloads from CDN and saves to disk.  Returns the HTTP URL
+        (served by the render service) or ``None``.
+        """
+        if self.cache_disabled:
+            return None
+        # Check if already cached
+        url = self.get_jacket_file_url(song_id)
+        if url is not None:
+            return url
+        # Try CDN download (writes to disk on success)
+        if self.cdn_fallback:
+            async with _FETCH_SEM:
+                await self._fetch_from_cdn(song_id)
+        # Return file URL if now cached, or None
+        return self.get_jacket_file_url(song_id)
+
     async def prefetch_jackets(self, song_ids: list[int]) -> dict[int, str]:
         """Download multiple jackets concurrently.
 

@@ -471,7 +471,7 @@ async def _handle_b20(
             jacket_map: dict[int, str] = {}
             if runtime.jacket_cache is not None:
                 for sid in song_ids:
-                    url = runtime.jacket_cache.get_jacket_file_url(sid)
+                    url = await runtime.jacket_cache.ensure_jacket_file_url(sid)
                     if url is not None:
                         jacket_map[sid] = url
 
@@ -560,7 +560,7 @@ async def _handle_my_difficulty(
             jacket_map: dict[int, str] = {}
             if runtime.jacket_cache is not None:
                 for sid in song_ids:
-                    url = runtime.jacket_cache.get_jacket_file_url(sid)
+                    url = await runtime.jacket_cache.ensure_jacket_file_url(sid)
                     if url is not None:
                         jacket_map[sid] = url
 
@@ -625,7 +625,7 @@ async def _handle_global_difficulty(
             jacket_map: dict[int, str] = {}
             if runtime.jacket_cache is not None:
                 for sid in song_ids:
-                    url = runtime.jacket_cache.get_jacket_file_url(sid)
+                    url = await runtime.jacket_cache.ensure_jacket_file_url(sid)
                     if url is not None:
                         jacket_map[sid] = url
 
