@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .card {
+    width: 960px; height: 600px;
+    background: linear-gradient(to bottom right, #bae6e8, #e2d4ea, #f5e6f0);
+    border-radius: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+    position: relative;
+  }
+  .inner {
+    padding: 36px 46px;
+    display: flex; gap: 42px; align-items: center;
+  }
+  .left-col { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; position: relative; justify-content: center; }
+  .jacket {
+    width: 300px; height: 300px; border-radius: 20px; overflow: hidden;
+    box-shadow: 0 7px 28px rgba(0,0,0,0.12);
+  }
+  .jacket img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .jacket-placeholder {
+    width: 300px; height: 300px; border-radius: 20px;
+    background: linear-gradient(145deg, #667eea, #764ba2, #f093fb);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 112px; color: rgba(255,255,255,0.7);
+  }
+  .judges {
+    width: 300px; margin-top: 18px;
+    border-radius: 18px; padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.25);
+    font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+    font-size: 21px; font-weight: 700; line-height: 1.6;
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .judge-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 14px; border-radius: 7px;
+  }
+  .j-p  { background: linear-gradient(90deg, rgba(255,215,0,0.18), rgba(255,185,0,0.08)); color: #b8860b; }
+  .j-gr { background: linear-gradient(90deg, rgba(41,182,246,0.15), rgba(41,182,246,0.05)); color: #0277bd; }
+  .j-gd { background: linear-gradient(90deg, rgba(102,187,106,0.15), rgba(102,187,106,0.05)); color: #388e3c; }
+  .j-bd { background: linear-gradient(90deg, rgba(158,158,158,0.12), rgba(158,158,158,0.04)); color: #616161; }
+  .j-ms { background: linear-gradient(90deg, rgba(239,83,80,0.15), rgba(239,83,80,0.05)); color: #c62828; }
+
+  .right-col { flex: 1; height: 440px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+  .title-area {}
+  .title-ja { font-size: 40px; font-weight: 900; color: #0f172a; line-height: 1.25; text-shadow: 0 2px 5px rgba(255,255,255,0.35); }
+  .title-cn { font-size: 20px; color: #475569; font-weight: 500; margin-top: 2px; }
+  .badge-row { display: flex; align-items: center; gap: 8px; }
+  .badge {
+    display: inline-flex; align-items: center; padding: 7px 18px;
+    border-radius: 10px; font-size: 20px; font-weight: 700; white-space: nowrap;
+    font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+  }
+  .badge-diff { color: #fff; }
+  .badge-diff.master { background: rgba(168,85,247,0.92); }
+  .badge-diff.expert { background: rgba(238,69,101,0.92); }
+  .badge-diff.append { background: rgba(157,148,254,0.92); }
+  .badge-diff.hard   { background: rgba(251,146,60,0.92); }
+  .badge-diff.normal { background: rgba(96,165,250,0.92); }
+  .badge-diff.easy   { background: rgba(74,222,128,0.92); }
+  .badge-lvl { color: #fff; }
+  .badge-lvl.master { background: rgba(168,85,247,0.92); }
+  .badge-lvl.expert { background: rgba(238,69,101,0.92); }
+  .badge-lvl.append { background: rgba(157,148,254,0.92); }
+  .badge-lvl.hard   { background: rgba(251,146,60,0.92); }
+  .badge-lvl.normal { background: rgba(96,165,250,0.92); }
+  .badge-lvl.easy   { background: rgba(74,222,128,0.92); }
+  .badge-cst { background: rgba(6,182,212,0.85); color: #fff; }
+  .badge-ap  { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1c1917; font-weight: 900; padding: 7px 20px; box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
+  .badge-fc  { background: linear-gradient(135deg, #4ade80, #22c55e); color: #1c1917; font-weight: 900; padding: 7px 20px; box-shadow: 0 4px 12px rgba(34,197,94,0.35); }
+  .badge-clear { background: rgba(156,163,175,0.7); color: #fff; font-weight: 700; padding: 7px 20px; }
+
+  .grade-badge {
+    position: absolute; top: -10px; left: -10px;
+    transform: rotate(10deg); transform-origin: top left;
+    z-index: 10;
+  }
+  .grade-badge div {
+    padding: 7px 24px; font-size: 26px; font-weight: 900; letter-spacing: 3px;
+    border-radius: 0 14px 0 14px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    color: #1c1917;
+  }
+  .grade-rainbow { background: linear-gradient(90deg, #ff7ab8, #ffbf70, #e0e048, #59eb7e, #5eb2ff, #b170eb, #ff7ab8); }
+  .grade-solid { color: #fff; }
+
+  .sep { height: 2px; background: linear-gradient(90deg, rgba(0,0,0,0.08), rgba(0,0,0,0.03), transparent); }
+  .label { font-size: 18px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+  .val-rating {
+    font-size: 78px; font-weight: 900; line-height: 1.05; letter-spacing: -2px;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 40%, #d97706 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .val-acc {
+    font-size: 46px; font-weight: 900; line-height: 1.1;
+  }
+  .val-acc.rainbow {
+    background: linear-gradient(90deg, #ff7ab8, #ffbf70, #e0e048, #59eb7e, #5eb2ff, #b170eb, #ff7ab8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .val-acc.sss-plus  { color: #df57f4; } .val-acc.sss  { color: #b270f0; }
+  .val-acc.ss-plus   { color: #9a69ee; } .val-acc.ss   { color: #4c80f0; }
+  .val-acc.s-plus    { color: #32b0d0; } .val-acc.s    { color: #1fb384; }
+  .val-acc.a         { color: #7ebc26; } .val-acc.b    { color: #e4a827; }
+  .val-acc.c         { color: #fa8029; } .val-acc.d    { color: #f43f5e; }
+
+  .val-ab { font-size: 42px; font-weight: 900; line-height: 1.1; }
+  .val-a {
+    background: linear-gradient(135deg, #93c5fd 0%, #3b82f6 40%, #1e3a5f 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .val-b { color: #374151; }
+  .val-b.waiting { color: #9ca3af; }
+  .ab-row { display: flex; gap: 64px; }
+  .rating-section {}
+
+  .at-qq {
+    position: absolute; top: 25px; right: 28px;
+    font-size: 28px; font-weight: 500; color: #475569;
+    font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+    text-align: right; width: 280px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+</style>
+</head>
+<body style="display:flex;align-items:center;justify-content:center;width:960px;height:600px;margin:0;">
+
+<div class="card">
+  <div class="at-qq">@{{qq_id}}</div>
+
+  <div class="inner">
+    <!-- LEFT: Jacket + Judges -->
+    <div class="left-col">
+      {{jacket_html}}
+      {{grade_badge_html}}
+      <div class="judges">
+        <div class="judge-row j-p"><span>PERFECT</span><span>{{perfect}}</span></div>
+        <div class="judge-row j-gr"><span>GREAT</span><span>{{great}}</span></div>
+        <div class="judge-row j-gd"><span>GOOD</span><span>{{good}}</span></div>
+        <div class="judge-row j-bd"><span>BAD</span><span>{{bad}}</span></div>
+        <div class="judge-row j-ms"><span>MISS</span><span>{{miss}}</span></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Info -->
+    <div class="right-col">
+      <div class="title-area">
+        <div class="title-ja">{{title_ja}}</div>
+        {{title_cn_html}}
+      </div>
+      <div class="badge-row">
+        <span class="badge badge-diff {{diff_class}}">{{diff_label}}</span>
+        <span class="badge badge-lvl {{diff_class}}">{{level}}</span>
+        <span class="badge badge-cst">{{constant}}</span>
+        {{status_badge_html}}
+      </div>
+      <div class="sep"></div>
+      <div class="rating-section">
+        <div class="label">Rating</div>
+        <div class="val-rating">{{rating}}</div>
+      </div>
+      <div>
+        <div class="label">达成率</div>
+        <div class="val-acc {{acc_class}}">{{accuracy}}%</div>
+      </div>
+      <div class="ab-row">
+        <div>
+          <div class="label">SEKAI POWER</div>
+          <div class="val-ab val-b">{{sp}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
