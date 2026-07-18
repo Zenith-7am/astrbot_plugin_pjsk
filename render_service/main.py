@@ -9,6 +9,17 @@ pre-computed by Python — JS only draws.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Ensure the project root is first in sys.path so render_service modules
+# are imported from this release directory, not from site-packages.
+# Without this, ``pip install`` copies into site-packages take precedence
+# and the render service may load stale JS/template files on deploy.
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
 import asyncio
 import json
 import logging
