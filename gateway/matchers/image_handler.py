@@ -528,6 +528,26 @@ async def _try_render_ocr_card(
         except Exception:
             pass
 
+    # ── Compute SP (B20 average) via existing QueryB20 use case ────────
+    # Called AFTER score is saved, so the result includes the just-inserted
+    # attempt. Falls back to "—" on any failure.
+    sp_value = "—"
+    try:
+        if rt.query_b20 is not None:
+            b20_result = await rt.query_b20.query(attempt.user_id)
+            sp_value = f"{b20_result.b20_avg:.1f}" if b20_result.entries else "0.0"
+    except Exception:
+        _logger.warning("Failed to query B20 for OCR card SP", exc_info=True)
+
+    # ── Lookup Chinese song title ──────────────────────────────────────
+    title_cn = ""
+    if chart is not None:
+        try:
+            song = await rt.song_repo.get_by_id(chart.song_id)
+            title_cn = song.title_cn if song and song.title_cn else ""
+        except Exception:
+            pass
+
     # ── Build render payload ───────────────────────────────────────────
     from pjsk_core.application.render_ocr_card import render_ocr_card
 
@@ -535,13 +555,13 @@ async def _try_render_ocr_card(
         png = await render_ocr_card(
             song_id=song_id,
             title_ja=title_ja,
-            title_cn="",
+            title_cn=title_cn,
             difficulty=difficulty,
             level=level,
             constant=constant,
             accuracy=attempt.accuracy,
             rating=attempt.rating,
-            sp="—",
+            sp=sp_value,
             perfect=attempt.judgements.perfect,
             great=attempt.judgements.great,
             good=attempt.judgements.good,
