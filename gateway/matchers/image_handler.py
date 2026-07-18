@@ -376,6 +376,7 @@ async def _handle_image(bot: Bot, event: MessageEvent) -> None:
     # Format and reply
     decision = result.outcome.decision
     if decision in (VisionRaceDecision.CONSENSUS, VisionRaceDecision.DEGRADED_SINGLE):
+        _logger.info("OCR private: calling _try_render_ocr_card decision=%s", decision.value)
         png = await _try_render_ocr_card(
             result, runtime, msg, old_pb_rating, readonly,
         )

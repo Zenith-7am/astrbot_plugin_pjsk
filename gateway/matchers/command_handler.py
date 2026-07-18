@@ -236,10 +236,18 @@ async def _handle_ocr_trigger(
     decision = result.outcome.decision
 
     if decision in (VisionRaceDecision.CONSENSUS, VisionRaceDecision.DEGRADED_SINGLE):
-        from gateway.matchers.image_handler import _try_render_ocr_card
-        png = await _try_render_ocr_card(
-            result, runtime, msg, None, readonly,
-        )
+        try:
+            from gateway.matchers.image_handler import _try_render_ocr_card
+        except ImportError:
+            _logger.exception("Cannot import _try_render_ocr_card")
+            _try_render_ocr_card = None  # type: ignore[assignment]
+
+        if _try_render_ocr_card is not None:
+            png = await _try_render_ocr_card(
+                result, runtime, msg, None, readonly,
+            )
+        else:
+            png = None
 
         if png is not None:
             from gateway.adapters.reply_sender import send_image_reply
