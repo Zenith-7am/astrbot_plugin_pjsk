@@ -82,7 +82,7 @@ async def _startup() -> None:
     )
     # ── Release identity — print paths so operators can verify all modules
     #     belong to the SAME release directory (no mixed-code deployment).
-        nonebot.logger.info(f"[PJSK] git_sha={_GIT_SHA} project_root={_project_root}")
+    nonebot.logger.info(f"[PJSK] git_sha={_GIT_SHA} project_root={_project_root}")
     nonebot.logger.info(f"[PJSK] gateway.__file__ = {__file__}")
     try:
         import pjsk_core
