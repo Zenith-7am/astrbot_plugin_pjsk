@@ -139,6 +139,11 @@ def parse_trigger(text: str, *, is_group: bool) -> ParsedTrigger | None:
         cmd = EmuCommand.MY_DIFFICULTY if is_personal else EmuCommand.GLOBAL_DIFFICULTY
         return ParsedTrigger(cmd, level=int(level_str), difficulty=diff)
 
+    if text in ("help", "帮助"):
+        return ParsedTrigger(EmuCommand.HELP)
+    if text in ("status", "状态"):
+        return ParsedTrigger(EmuCommand.STATUS)
+
     # ── Legacy /emu and .emu commands ─────────────────────────────────────
     legacy = parse_emu_command(text)
     if legacy is not None and legacy != EmuCommand.UNKNOWN:
