@@ -162,6 +162,12 @@ async def _dispatch(
         await _handle_global_difficulty(bot, event, msg, parsed.level, parsed.difficulty)
     elif cmd == EmuCommand.REGISTER:
         await _handle_register(bot, event, msg)
+    elif cmd == EmuCommand.APPEND_ON:
+        await _handle_append_toggle(bot, event, msg, excluded=False)
+    elif cmd == EmuCommand.APPEND_OFF:
+        await _handle_append_toggle(bot, event, msg, excluded=True)
+    elif cmd == EmuCommand.APPEND_STATUS:
+        await _handle_append_status(bot, event, msg)
     elif cmd == EmuCommand.HELP:
         png = load_help_png()
         if png is not None:
@@ -710,3 +716,91 @@ async def _handle_register(
             bot, event,
             TextReply(text="注册失败，请稍后重试"),
         )
+
+
+# ── Append toggle ──────────────────────────────────────────────────────────────
+
+
+async def _handle_append_toggle(
+    bot: Bot, event: MessageEvent, msg: IncomingMessage, *, excluded: bool,
+) -> None:
+    """Set the user's APPEND exclusion preference.
+
+    ``append on`` → excluded=False (APPEND is INCLUDED, user opted in).
+    ``append off`` → excluded=True (APPEND is EXCLUDED, the default).
+    """
+    if _runtime is None:
+        await send_text_reply(bot, event, TextReply(text="服务正在启动中，请稍后再试"))
+        return
+
+    from pjsk_runtime.runtime import Runtime
+    runtime: Runtime = _runtime  # type: ignore[assignment]
+
+    if runtime.toggle_append is None:
+        await send_text_reply(bot, event, TextReply(text="设置暂不可用"))
+        return
+
+    qq = QqNumber(msg.external_user_id)
+    try:
+        user = await runtime.user_repo.get_by_qq(qq)
+    except Exception:
+        _logger.exception("User lookup in append toggle")
+        await send_text_reply(bot, event, TextReply(text="服务异常"))
+        return
+
+    if user is None:
+        await send_text_reply(bot, event, TextReply(text="请先使用 /emu register 注册"))
+        return
+
+    try:
+        await runtime.toggle_append.set(user.id, excluded)
+    except Exception:
+        _logger.exception("Append toggle failed")
+        await send_text_reply(bot, event, TextReply(text="设置失败，请稍后重试"))
+        return
+
+    status_text = "已排除（默认）" if excluded else "已包含"
+    await send_text_reply(
+        bot, event,
+        TextReply(text=f"APPEND {status_text}"),
+    )
+
+
+async def _handle_append_status(
+    bot: Bot, event: MessageEvent, msg: IncomingMessage,
+) -> None:
+    """Query the user's current APPEND exclusion preference."""
+    if _runtime is None:
+        await send_text_reply(bot, event, TextReply(text="服务正在启动中，请稍后再试"))
+        return
+
+    from pjsk_runtime.runtime import Runtime
+    runtime: Runtime = _runtime  # type: ignore[assignment]
+
+    if runtime.toggle_append is None:
+        await send_text_reply(bot, event, TextReply(text="设置暂不可用"))
+        return
+
+    qq = QqNumber(msg.external_user_id)
+    try:
+        user = await runtime.user_repo.get_by_qq(qq)
+    except Exception:
+        _logger.exception("User lookup in append status")
+        await send_text_reply(bot, event, TextReply(text="服务异常"))
+        return
+
+    if user is None:
+        await send_text_reply(bot, event, TextReply(text="请先使用 /emu register 注册"))
+        return
+
+    try:
+        excluded = await runtime.toggle_append.get(user.id)
+    except Exception:
+        _logger.exception("Append status query failed")
+        await send_text_reply(bot, event, TextReply(text="查询失败，请稍后重试"))
+        return
+
+    await send_text_reply(
+        bot, event,
+        TextReply(text=f"APPEND 当前{'已排除（默认）' if excluded else '已包含'}"),
+    )

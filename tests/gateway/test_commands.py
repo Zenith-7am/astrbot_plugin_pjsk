@@ -49,7 +49,7 @@ class TestHelpText:
 
     def test_help_is_reasonable_length(self) -> None:
         text = build_help_text()
-        assert 50 < len(text) < 800
+        assert 50 < len(text) < 900
 
 
 class TestStatusText:
