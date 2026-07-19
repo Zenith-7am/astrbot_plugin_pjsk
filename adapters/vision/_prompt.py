@@ -15,7 +15,8 @@ Look at this screenshot and extract the following EXACTLY as displayed:
 1. **Song title** — the Japanese song name shown directly above or near the difficulty badge.
    The title is a proper song name: usually 2–6 kanji, kanji+kana mix, or occasionally
    English/katakana (e.g. 幾望の月, 烈火の炎, SAN値直葬, ジャックポットサッドガール).
-   It is NOT a single katakana word and NOT one of these UI labels:
+   It is NOT a single katakana word and NOT one of these UI labels
+   (responses with these as song_title will be rejected):
    スコア, リザルト, 楽曲, クリア, クリア済み, FULL COMBO, ALL PERFECT,
    PERFECT, GREAT, GOOD, BAD, MISS, COMBO, 判定, 達成率, 順位, 難易度
 

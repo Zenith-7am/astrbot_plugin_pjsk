@@ -269,6 +269,19 @@ class TestSharedUtilities:
                 "test",
             )
 
+    def test_parse_ocr_json_ui_label_rejected(self) -> None:
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="UI label"):
+            _parse_ocr_json(
+                json.dumps({"song_title": "スコア", "difficulty": "MASTER",
+                 "level": 33, "perfect": 1821, "great": 0,
+                 "good": 0, "bad": 0, "miss": 0}),
+                "test",
+            )
+
     def test_encode_base64_is_shared(self) -> None:
         """_encode_base64 must be the same function across all adapters."""
         from adapters.vision._shared import _encode_base64 as shared_fn

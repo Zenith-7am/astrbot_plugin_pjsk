@@ -31,6 +31,28 @@ _DIFF_MAP: dict[str, Difficulty] = {
 
 _FENCED_JSON_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
 
+_REJECTED_SONG_TITLES: frozenset[str] = frozenset({
+    # UI labels that models sometimes misread as the song title.
+    # These are NEVER valid song names — reject them immediately.
+    "スコア",    # "Score" — result screen header
+    "リザルト",   # "Result" — result screen tab
+    "楽曲",      # "Song" — UI section label
+    "クリア",    # "Clear" — clear status label
+    "クリア済み", # "Cleared"
+    "FULL COMBO",
+    "ALL PERFECT",
+    "PERFECT",
+    "GREAT",
+    "GOOD",
+    "BAD",
+    "MISS",
+    "COMBO",
+    "判定",      # "Judgement" — judgement section header
+    "達成率",    # "Accuracy rate"
+    "順位",      # "Rank"
+    "難易度",    # "Difficulty" — difficulty label
+})
+
 
 def _extract_json(text: str) -> str:
     """Return the JSON substring from *text*.
@@ -87,6 +109,10 @@ def _parse_ocr_json(json_text: str, engine_id: str) -> OcrObservation:
     song_title = str(parsed.get("song_title", "")).strip()
     if not song_title:
         raise VisionResponseError("song_title is missing or empty")
+    if song_title in _REJECTED_SONG_TITLES:
+        raise VisionResponseError(
+            f"song_title is a UI label, not a song name: {song_title!r}"
+        )
 
     # difficulty — required, must be a known enum value
     difficulty_str = str(parsed.get("difficulty", "")).upper()
