@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, NamedTuple
 
 import httpx
 from nonebot import on_message
@@ -211,26 +211,110 @@ def _format_readonly_result(result: RecognizeResult) -> str:
     return "\n".join(lines)
 
 
-def _format_candidates_text(result: RecognizeResult) -> str:
-    """Format disagreement candidates as text for user review."""
-    if not result.candidates_for_user:
+class _CandidateEntry(NamedTuple):
+    """Resolved display data for one OCR candidate."""
+    song_title: str       # resolved from chart/song
+    difficulty: str       # e.g. "MA"
+    level: int
+    constant: str         # e.g. "30.2+"
+    confidence: float     # title similarity 0–1
+    note_distance: int
+    model_support: int
+    note_count: int       # from chart, 0 if unresolved
+    chart_id: int | None
+
+
+def _format_candidates_text(
+    result: RecognizeResult,
+    *,
+    chart_details: dict[int, tuple[str, str, int, str, int]] | None = None,
+) -> str:
+    """Format disagreement candidates as a dual-rank pick list.
+
+    **Rank 1 — 歌名匹配最佳** (by title similarity, max 5).
+    **Rank 2 — Note总数最接近** (by note-distance, max 5, excludes rank‑1).
+    Unified numbering across both ranks.
+    """
+    candidates = list(result.candidates_for_user)
+    if not candidates:
         return "多模型识别不一致，请重新发送截图"
 
-    lines = ["多模型识别不一致，候选结果：", ""]
-    for i, c in enumerate(result.candidates_for_user, 1):
-        obs = c.observation
-        j = obs.judgements
-        lines.append(
-            f"[{i}] {obs.song_title} · "
-            f"{_diff_label(obs.difficulty)} {obs.displayed_level} · "
-            f"P:{j.perfect} G:{j.great} Go:{j.good} B:{j.bad} M:{j.miss}"
-        )
-        if c.matched_chart_id is not None:
-            lines[-1] += f" · 定数(chart#{c.matched_chart_id})"
-        lines[-1] += f" · 模型支持:{c.model_support}"
+    details = chart_details or {}
 
-    lines.append("")
-    lines.append("候选确认功能将在后续版本开放")
+    # OCR total note count
+    obs0 = candidates[0].observation
+    ocr_total = sum([
+        obs0.judgements.perfect, obs0.judgements.great,
+        obs0.judgements.good, obs0.judgements.bad, obs0.judgements.miss,
+    ])
+
+    # ── Build entries ────────────────────────────────────────────────────
+    entries: list[_CandidateEntry] = []
+    for c in candidates:
+        cd = details.get(c.matched_chart_id) if c.matched_chart_id else None
+        if cd is not None:
+            song_title, diff_str, level, constant, note_count = cd
+        else:
+            obs = c.observation
+            song_title = obs.song_title
+            diff_str = _diff_label(obs.difficulty)
+            level = obs.displayed_level
+            constant = "?"
+            note_count = 0
+        entries.append(_CandidateEntry(
+            song_title=song_title, difficulty=diff_str, level=level,
+            constant=constant, confidence=c.title_similarity,
+            note_distance=c.note_distance, model_support=c.model_support,
+            note_count=note_count, chart_id=c.matched_chart_id,
+        ))
+
+    # ── Rank 1: 歌名匹配最佳 ─────────────────────────────────────────────
+    rank1 = sorted(entries, key=lambda e: -e.confidence)[:5]
+    rank1_keys = {(e.difficulty, e.level, e.chart_id) for e in rank1}
+
+    # ── Rank 2: Note总数最接近 (exclude rank‑1) ──────────────────────────
+    rank2 = sorted(
+        [e for e in entries if (e.difficulty, e.level, e.chart_id) not in rank1_keys],
+        key=lambda e: e.note_distance,
+    )[:5]
+
+    # ── Merge with unified numbering ─────────────────────────────────────
+    all_items: list[tuple[str, _CandidateEntry]] = []
+    for e in rank1:
+        all_items.append(("match", e))
+    for e in rank2:
+        all_items.append(("note", e))
+
+    lines = ["⚠️ 多模型识别不一致，请回复数字选择（30s）：", ""]
+
+    if rank1:
+        lines.append("▎歌名匹配最佳")
+    for idx, (kind, e) in enumerate(all_items):
+        if kind == "note" and idx > 0 and all_items[idx - 1][0] == "match":
+            lines.append("")
+            lines.append(f"▎Note总数最接近 (OCR: {ocr_total})")
+        num = idx + 1
+        diff_info = f"{e.difficulty} {e.level}"
+        if e.constant != "?":
+            diff_info += f" 定数{e.constant}"
+        models = f" 模型×{e.model_support}"
+        if kind == "match":
+            lines.append(
+                f"  {num}. {e.song_title} [{diff_info}] "
+                f"({e.confidence * 100:.1f}%){models}"
+            )
+        else:
+            if e.note_count:
+                lines.append(
+                    f"  {num}. {e.song_title} [{diff_info}] "
+                    f"({e.note_count} notes, 差{e.note_distance}){models}"
+                )
+            else:
+                lines.append(
+                    f"  {num}. {e.song_title} [{diff_info}] "
+                    f"(OCR:{ocr_total} notes){models}"
+                )
+
     return "\n".join(lines)
 
 
@@ -581,15 +665,47 @@ async def _try_render_ocr_card(
 async def _handle_disagreement(
     result: RecognizeResult, user: User, msg: IncomingMessage, runtime: object,
 ) -> str:
-    """Store candidates and return a pick list."""
+    """Store candidates and return a dual-rank pick-list for user selection."""
     from pjsk_runtime.runtime import Runtime
     rt: Runtime = runtime  # type: ignore[assignment]
 
     if not result.candidates_for_user or result.candidate_set_id is None:
         return "多模型识别不一致，请重新发送截图"
 
+    # ── Resolve chart + song details for rich display ────────────────────
+    # chart_id → (song_title, difficulty_label, official_level, constant, note_count)
+    chart_details: dict[int, tuple[str, str, int, str, int]] = {}
+    if rt.chart_repo is not None:
+        for c in result.candidates_for_user:
+            cid = c.matched_chart_id
+            if cid is None or cid in chart_details:
+                continue
+            try:
+                chart = await rt.chart_repo.get_by_id(cid)
+            except Exception:
+                _logger.warning("Chart lookup failed for chart_id=%d", cid)
+                continue
+            if chart is None:
+                continue
+            # Resolve song title
+            song_title = f"chart#{cid}"
+            if rt.song_repo is not None:
+                try:
+                    song = await rt.song_repo.get_by_id(chart.song_id)  # type: ignore[arg-type]
+                    if song is not None:
+                        song_title = song.title_cn or song.title_ja or song_title
+                except Exception:
+                    pass
+            chart_details[cid] = (
+                song_title,
+                _diff_label(chart.difficulty),
+                chart.official_level,
+                chart.community_constant,
+                chart.note_count,
+            )
+
     cid = result.candidate_set_id
-    display = _format_candidates_text(result)
+    display = _format_candidates_text(result, chart_details=chart_details)
 
     # Store pending candidate reference
     conv_id = msg.group_id if msg.group_id else f"private_{msg.external_user_id}"
