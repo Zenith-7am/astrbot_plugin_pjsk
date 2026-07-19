@@ -1,5 +1,6 @@
 """Score status, judgement counts, score attempt domain types, and pure rules."""
 
+import math
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -56,8 +57,14 @@ class ScoreAttempt:
     def __post_init__(self) -> None:
         if self.created_at.tzinfo is None:
             raise ValueError("created_at must be timezone-aware")
-        if self.accuracy < 0:
-            raise ValueError(f"accuracy must be non-negative, got: {self.accuracy}")
+        if not math.isfinite(self.accuracy):
+            raise ValueError("accuracy must be finite")
+        if not (0.0 <= self.accuracy <= 101.0):
+            raise ValueError(
+                f"accuracy must be between 0 and 101, got: {self.accuracy}"
+            )
+        if not math.isfinite(self.rating):
+            raise ValueError("rating must be finite")
         if self.rating < 0:
             raise ValueError(f"rating must be non-negative, got: {self.rating}")
 

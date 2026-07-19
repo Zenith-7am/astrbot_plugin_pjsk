@@ -149,6 +149,121 @@ class TestScoreAttempt:
         with pytest.raises(Exception):
             attempt.accuracy = 99.0  # type: ignore[misc]
 
+    # ── Finite / range guards ──────────────────────────────────────────
+
+    @pytest.mark.parametrize(
+        "accuracy",
+        [float("nan"), float("inf"), -float("inf")],
+        ids=["nan", "+inf", "-inf"],
+    )
+    def test_non_finite_accuracy_raises(self, accuracy: float) -> None:
+        now = datetime.now(timezone.utc)
+        with pytest.raises(ValueError, match="accuracy must be finite"):
+            ScoreAttempt(
+                id=None,
+                user_id=UserId(1),
+                chart_id=1,
+                judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
+                accuracy=accuracy,
+                rating=3000.0,
+                status=ScoreStatus.CLEAR,
+                image_sha256="abc",
+                source_gateway="astrbot",
+                ocr_run_id=None,
+                created_at=now,
+            )
+
+    def test_accuracy_above_101_raises(self) -> None:
+        now = datetime.now(timezone.utc)
+        with pytest.raises(ValueError, match="accuracy must be between 0 and 101"):
+            ScoreAttempt(
+                id=None,
+                user_id=UserId(1),
+                chart_id=1,
+                judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
+                accuracy=101.0001,
+                rating=3000.0,
+                status=ScoreStatus.CLEAR,
+                image_sha256="abc",
+                source_gateway="astrbot",
+                ocr_run_id=None,
+                created_at=now,
+            )
+
+    def test_accuracy_101_valid(self) -> None:
+        """101.0 (AP) is the maximum valid accuracy."""
+        now = datetime.now(timezone.utc)
+        attempt = ScoreAttempt(
+            id=None,
+            user_id=UserId(1),
+            chart_id=1,
+            judgements=Judgements(perfect=1000, great=0, good=0, bad=0, miss=0),
+            accuracy=101.0,
+            rating=3500.0,
+            status=ScoreStatus.AP,
+            image_sha256="abc",
+            source_gateway="astrbot",
+            ocr_run_id=None,
+            created_at=now,
+        )
+        assert attempt.accuracy == 101.0
+
+    def test_negative_accuracy_raises(self) -> None:
+        now = datetime.now(timezone.utc)
+        with pytest.raises(ValueError, match="accuracy must be between 0 and 101"):
+            ScoreAttempt(
+                id=None,
+                user_id=UserId(1),
+                chart_id=1,
+                judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
+                accuracy=-0.1,
+                rating=3000.0,
+                status=ScoreStatus.CLEAR,
+                image_sha256="abc",
+                source_gateway="astrbot",
+                ocr_run_id=None,
+                created_at=now,
+            )
+
+    @pytest.mark.parametrize(
+        "rating",
+        [float("nan"), float("inf"), -float("inf")],
+        ids=["nan", "+inf", "-inf"],
+    )
+    def test_non_finite_rating_raises(self, rating: float) -> None:
+        now = datetime.now(timezone.utc)
+        with pytest.raises(ValueError, match="rating must be finite"):
+            ScoreAttempt(
+                id=None,
+                user_id=UserId(1),
+                chart_id=1,
+                judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
+                accuracy=99.0,
+                rating=rating,
+                status=ScoreStatus.CLEAR,
+                image_sha256="abc",
+                source_gateway="astrbot",
+                ocr_run_id=None,
+                created_at=now,
+            )
+
+    def test_negative_rating_raises(self) -> None:
+        now = datetime.now(timezone.utc)
+        with pytest.raises(ValueError, match="rating must be non-negative"):
+            ScoreAttempt(
+                id=None,
+                user_id=UserId(1),
+                chart_id=1,
+                judgements=Judgements(perfect=1, great=0, good=0, bad=0, miss=0),
+                accuracy=99.0,
+                rating=-1.0,
+                status=ScoreStatus.CLEAR,
+                image_sha256="abc",
+                source_gateway="astrbot",
+                ocr_run_id=None,
+                created_at=now,
+            )
+
 
 # ── Accuracy and status rules (aligned with old emu-bot fixtures) ──────
 

@@ -17,6 +17,29 @@ class OcrObservation:
     engine: str
     elapsed_ms: int
 
+    def __post_init__(self) -> None:
+        if not self.song_title.strip():
+            raise ValueError("song_title must not be empty")
+        if self.displayed_level <= 0:
+            raise ValueError(
+                f"displayed_level must be positive, got: {self.displayed_level}"
+            )
+        total = (
+            self.judgements.perfect
+            + self.judgements.great
+            + self.judgements.good
+            + self.judgements.bad
+            + self.judgements.miss
+        )
+        if total <= 0:
+            raise ValueError("total judgements must be positive")
+        if not self.engine.strip():
+            raise ValueError("engine must not be empty")
+        if self.elapsed_ms < 0:
+            raise ValueError(
+                f"elapsed_ms must not be negative, got: {self.elapsed_ms}"
+            )
+
 
 @dataclass(frozen=True)
 class ValidatedObservation:

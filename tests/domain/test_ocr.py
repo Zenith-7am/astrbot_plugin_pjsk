@@ -72,6 +72,107 @@ class TestOcrObservation:
         with pytest.raises(Exception):
             obs.song_title = "Changed"  # type: ignore[misc]
 
+    # ── Validation guards ──────────────────────────────────────────────
+
+    def test_empty_song_title_raises(self) -> None:
+        with pytest.raises(ValueError, match="song_title must not be empty"):
+            OcrObservation(
+                song_title="",
+                difficulty=Difficulty.EXPERT,
+                displayed_level=25,
+                judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
+                engine="gemini",
+                elapsed_ms=100,
+            )
+
+    def test_whitespace_song_title_raises(self) -> None:
+        with pytest.raises(ValueError, match="song_title must not be empty"):
+            OcrObservation(
+                song_title="   ",
+                difficulty=Difficulty.EXPERT,
+                displayed_level=25,
+                judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
+                engine="gemini",
+                elapsed_ms=100,
+            )
+
+    def test_zero_displayed_level_raises(self) -> None:
+        with pytest.raises(ValueError, match="displayed_level must be positive"):
+            OcrObservation(
+                song_title="Test",
+                difficulty=Difficulty.EXPERT,
+                displayed_level=0,
+                judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
+                engine="gemini",
+                elapsed_ms=100,
+            )
+
+    def test_negative_displayed_level_raises(self) -> None:
+        with pytest.raises(ValueError, match="displayed_level must be positive"):
+            OcrObservation(
+                song_title="Test",
+                difficulty=Difficulty.EXPERT,
+                displayed_level=-1,
+                judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
+                engine="gemini",
+                elapsed_ms=100,
+            )
+
+    def test_all_zero_judgements_raises(self) -> None:
+        with pytest.raises(ValueError, match="total judgements must be positive"):
+            OcrObservation(
+                song_title="Test",
+                difficulty=Difficulty.EXPERT,
+                displayed_level=25,
+                judgements=Judgements(perfect=0, great=0, good=0, bad=0, miss=0),
+                engine="gemini",
+                elapsed_ms=100,
+            )
+
+    def test_empty_engine_raises(self) -> None:
+        with pytest.raises(ValueError, match="engine must not be empty"):
+            OcrObservation(
+                song_title="Test",
+                difficulty=Difficulty.EXPERT,
+                displayed_level=25,
+                judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
+                engine="",
+                elapsed_ms=100,
+            )
+
+    def test_whitespace_engine_raises(self) -> None:
+        with pytest.raises(ValueError, match="engine must not be empty"):
+            OcrObservation(
+                song_title="Test",
+                difficulty=Difficulty.EXPERT,
+                displayed_level=25,
+                judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
+                engine="   ",
+                elapsed_ms=100,
+            )
+
+    def test_negative_elapsed_ms_raises(self) -> None:
+        with pytest.raises(ValueError, match="elapsed_ms must not be negative"):
+            OcrObservation(
+                song_title="Test",
+                difficulty=Difficulty.EXPERT,
+                displayed_level=25,
+                judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
+                engine="gemini",
+                elapsed_ms=-1,
+            )
+
+    def test_zero_elapsed_ms_valid(self) -> None:
+        obs = OcrObservation(
+            song_title="Test",
+            difficulty=Difficulty.EXPERT,
+            displayed_level=25,
+            judgements=Judgements(perfect=800, great=0, good=0, bad=0, miss=0),
+            engine="gemini",
+            elapsed_ms=0,
+        )
+        assert obs.elapsed_ms == 0
+
 
 class TestObservationsAgree:
     def test_identical_observations_agree(self) -> None:
