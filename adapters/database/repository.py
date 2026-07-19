@@ -472,16 +472,20 @@ class SqliteScoreRepository:
     async def get_b20(
         self, user_id: UserId, include_append: bool,
     ) -> list[ScoreAttempt]:
-        """Return top-20 FC/AP personal bests, at most one entry per song.
+        """Return top-20 FC/AP personal bests, at most one entry per song
+        per difficulty group.
 
-        When *include_append* is False, APPEND charts are excluded.
-        For songs with multiple charts in the B20 window, only the entry
-        with the highest rating is kept.  Ties on rating are broken by
-        chart_id ASC for deterministic ordering.
+        When *include_append* is False, APPEND charts are excluded entirely.
+        APPEND charts get their own dedup group (chart_id), so a song's
+        MA and APD can both appear.  Non-APPEND difficulties share one
+        dedup group (0), so only the highest-rating non-APPEND entry per
+        song survives.  Ties on rating are broken by chart_id ASC.
         """
-        # The subquery "best" groups personal bests by song_id, keeping
-        # the max rating per song.  The outer query joins against it so
-        # that at most one entry per song survives.
+        # Dedup key: non-APPEND → 0 (share a group, MA/EXP/HD etc. compete),
+        # APPEND → chart_id (own group, never competes with non-APPEND).
+        # This lets a song appear twice only when both its MA and APD
+        # qualify for B20 — which is exactly what the append_excluded
+        # setting is for.
         append_filter = "AND c.difficulty != 'append'" if not include_append else ""
         append_filter_sub = "AND c2.difficulty != 'append'" if not include_append else ""
 
@@ -490,15 +494,21 @@ class SqliteScoreRepository:
             JOIN personal_bests pb ON pb.best_attempt_id = sa.id
             JOIN charts c ON c.id = pb.chart_id
             JOIN (
-                SELECT c2.song_id, MAX(sa2.rating) AS max_rating
+                SELECT
+                    c2.song_id,
+                    MAX(sa2.rating) AS max_rating,
+                    CASE WHEN c2.difficulty = 'append' THEN c2.id ELSE 0 END AS dedup_key
                 FROM score_attempts sa2
                 JOIN personal_bests pb2 ON pb2.best_attempt_id = sa2.id
                 JOIN charts c2 ON c2.id = pb2.chart_id
                 WHERE pb2.user_id = ?
                   AND sa2.status IN ('ap', 'fc')
                   {append_filter_sub}
-                GROUP BY c2.song_id
-            ) best ON c.song_id = best.song_id AND sa.rating = best.max_rating
+                GROUP BY c2.song_id,
+                    CASE WHEN c2.difficulty = 'append' THEN c2.id ELSE 0 END
+            ) best ON c.song_id = best.song_id
+                AND sa.rating = best.max_rating
+                AND (CASE WHEN c.difficulty = 'append' THEN c.id ELSE 0 END) = best.dedup_key
             WHERE pb.user_id = ?
               AND sa.status IN ('ap', 'fc')
               {append_filter}
