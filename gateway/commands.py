@@ -29,6 +29,9 @@ class EmuCommand(Enum):
     MY_DIFFICULTY = "my_difficulty"          # "我的ma31"
     GLOBAL_DIFFICULTY = "global_difficulty"  # "难度排行ma31"
     OCR_TRIGGER = "ocr_trigger"              # ".emu" no args (group only)
+    APPEND_ON = "append_on"
+    APPEND_OFF = "append_off"
+    APPEND_STATUS = "append_status"
     UNKNOWN = "unknown"
 
 
@@ -49,6 +52,7 @@ _REGISTER = re.compile(r"^(?:reg(?:ister)?|注册)$", re.IGNORECASE)
 # e.g. "我的ma31" → difficulty="ma", level=31
 # e.g. "我的ex28" → difficulty="ex", level=28
 _DIFF_CAPTURE = re.compile(r"^(?:我的|难度排行)(ma|ex|apd|hd|nm|ez)(\d+)$")
+_APPEND_CMD = re.compile(r"^append\s+(on|off|status)$", re.IGNORECASE)
 
 # Abbreviation → Difficulty enum value
 _DIFF_ABBREV_MAP: dict[str, str] = {
@@ -138,6 +142,16 @@ def parse_trigger(text: str, *, is_group: bool) -> ParsedTrigger | None:
         is_personal = text.startswith("我的")
         cmd = EmuCommand.MY_DIFFICULTY if is_personal else EmuCommand.GLOBAL_DIFFICULTY
         return ParsedTrigger(cmd, level=int(level_str), difficulty=diff)
+
+    m = _APPEND_CMD.match(text)
+    if m:
+        sub = m.group(1).lower()
+        if sub == "on":
+            return ParsedTrigger(EmuCommand.APPEND_ON)
+        elif sub == "off":
+            return ParsedTrigger(EmuCommand.APPEND_OFF)
+        else:
+            return ParsedTrigger(EmuCommand.APPEND_STATUS)
 
     if text in ("help", "帮助"):
         return ParsedTrigger(EmuCommand.HELP)

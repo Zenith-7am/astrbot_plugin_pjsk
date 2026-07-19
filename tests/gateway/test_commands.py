@@ -205,3 +205,44 @@ class TestParseTriggerGroup:
         result = parse_trigger(".emu xyz", is_group=True)
         # Does not match B20, MY_DIFF, GLOBAL_DIFF, or legacy /emu
         assert result is None
+
+
+class TestParseTriggerAppend:
+    """append on/off/status commands — bare (private) and .emu prefixed."""
+
+    @pytest.mark.parametrize("text, cmd", [
+        ("append on", EmuCommand.APPEND_ON),
+        ("append off", EmuCommand.APPEND_OFF),
+        ("append status", EmuCommand.APPEND_STATUS),
+        ("APPEND ON", EmuCommand.APPEND_ON),
+        ("APPEND OFF", EmuCommand.APPEND_OFF),
+    ])
+    def test_append_bare_private(self, text: str, cmd: EmuCommand) -> None:
+        result = parse_trigger(text, is_group=False)
+        assert result is not None
+        assert result.command == cmd
+
+    @pytest.mark.parametrize("text, cmd", [
+        (".emu append on", EmuCommand.APPEND_ON),
+        (".emu append off", EmuCommand.APPEND_OFF),
+        (".emu append status", EmuCommand.APPEND_STATUS),
+        ("。emu append on", EmuCommand.APPEND_ON),
+    ])
+    def test_append_with_emu_prefix_group(self, text: str, cmd: EmuCommand) -> None:
+        result = parse_trigger(text, is_group=True)
+        assert result is not None
+        assert result.command == cmd
+
+    def test_append_with_emu_prefix_private(self) -> None:
+        result = parse_trigger(".emu append on", is_group=False)
+        assert result is not None
+        assert result.command == EmuCommand.APPEND_ON
+
+    @pytest.mark.parametrize("text", [
+        "append",
+        "append enable",
+        "append xyz",
+        "appendon",
+    ])
+    def test_invalid_append_rejected(self, text: str) -> None:
+        assert parse_trigger(text, is_group=False) is None
