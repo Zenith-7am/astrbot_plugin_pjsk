@@ -164,6 +164,90 @@ async def db() -> Connection:
         "VALUES (1, 4, 4, 99.0, 27.0, 'clear', ?)",
         (NOW,),
     )
+    # ── Same-song MA+APD (song 5, chart 5/6) ────────────────────────────
+    # Chart 5 (master 31, song 5): FC, rating 33.0
+    # Chart 6 (append 32, song 5): AP, rating 35.0
+    await conn.execute(
+        "INSERT INTO songs (id, title_ja) VALUES (5, 'SameSong')"
+    )
+    await conn.execute(
+        "INSERT INTO charts (id, song_id, difficulty, official_level, "
+        "community_constant, note_count, chart_data_version) "
+        "VALUES (5, 5, 'master', 31, '31.0', 1000, 'v1')"
+    )
+    await conn.execute(
+        "INSERT INTO charts (id, song_id, difficulty, official_level, "
+        "community_constant, note_count, chart_data_version) "
+        "VALUES (6, 5, 'append', 32, '32.0', 1200, 'v1')"
+    )
+    await conn.execute(
+        "INSERT INTO score_attempts (id, user_id, chart_id, perfect, great, "
+        "good, bad, miss, accuracy, rating, status, image_sha256, "
+        "source_gateway, created_at) "
+        "VALUES (5, 1, 5, 1000, 0, 0, 0, 0, 99.5, 33.0, 'fc', 'sha', 'test', ?)",
+        (NOW,),
+    )
+    await conn.execute(
+        "INSERT INTO personal_bests (user_id, chart_id, best_attempt_id, "
+        "accuracy, rating, status, updated_at) "
+        "VALUES (1, 5, 5, 99.5, 33.0, 'fc', ?)",
+        (NOW,),
+    )
+    await conn.execute(
+        "INSERT INTO score_attempts (id, user_id, chart_id, perfect, great, "
+        "good, bad, miss, accuracy, rating, status, image_sha256, "
+        "source_gateway, created_at) "
+        "VALUES (6, 1, 6, 1200, 0, 0, 0, 0, 101.0, 35.0, 'ap', 'sha', 'test', ?)",
+        (NOW,),
+    )
+    await conn.execute(
+        "INSERT INTO personal_bests (user_id, chart_id, best_attempt_id, "
+        "accuracy, rating, status, updated_at) "
+        "VALUES (1, 6, 6, 101.0, 35.0, 'ap', ?)",
+        (NOW,),
+    )
+    # ── Same-song MA+EXP (song 6, chart 7/8) ────────────────────────────
+    # Chart 7 (master 30, song 6): FC, rating 30.0
+    # Chart 8 (expert 28, song 6): FC, rating 29.0
+    await conn.execute(
+        "INSERT INTO songs (id, title_ja) VALUES (6, 'MultiDiff')"
+    )
+    await conn.execute(
+        "INSERT INTO charts (id, song_id, difficulty, official_level, "
+        "community_constant, note_count, chart_data_version) "
+        "VALUES (7, 6, 'master', 30, '30.0', 900, 'v1')"
+    )
+    await conn.execute(
+        "INSERT INTO charts (id, song_id, difficulty, official_level, "
+        "community_constant, note_count, chart_data_version) "
+        "VALUES (8, 6, 'expert', 28, '28.0', 800, 'v1')"
+    )
+    await conn.execute(
+        "INSERT INTO score_attempts (id, user_id, chart_id, perfect, great, "
+        "good, bad, miss, accuracy, rating, status, image_sha256, "
+        "source_gateway, created_at) "
+        "VALUES (7, 1, 7, 900, 0, 0, 0, 0, 99.0, 30.0, 'fc', 'sha', 'test', ?)",
+        (NOW,),
+    )
+    await conn.execute(
+        "INSERT INTO personal_bests (user_id, chart_id, best_attempt_id, "
+        "accuracy, rating, status, updated_at) "
+        "VALUES (1, 7, 7, 99.0, 30.0, 'fc', ?)",
+        (NOW,),
+    )
+    await conn.execute(
+        "INSERT INTO score_attempts (id, user_id, chart_id, perfect, great, "
+        "good, bad, miss, accuracy, rating, status, image_sha256, "
+        "source_gateway, created_at) "
+        "VALUES (8, 1, 8, 800, 0, 0, 0, 0, 98.0, 29.0, 'fc', 'sha', 'test', ?)",
+        (NOW,),
+    )
+    await conn.execute(
+        "INSERT INTO personal_bests (user_id, chart_id, best_attempt_id, "
+        "accuracy, rating, status, updated_at) "
+        "VALUES (1, 8, 8, 98.0, 29.0, 'fc', ?)",
+        (NOW,),
+    )
     await conn.commit()
     return conn
 
@@ -218,6 +302,26 @@ class TestGetB20:
         """User with no scores returns empty list."""
         rows = await repo.get_b20(UserId(999), include_append=True)
         assert rows == []
+
+    async def test_same_song_master_and_append_both_appear(
+        self, repo: SqliteScoreRepository,
+    ) -> None:
+        """Same song MA(FC,33.0) and APD(AP,35.0) both appear in B20
+        when include_append=True. They must NOT be deduped into one entry."""
+        rows = await repo.get_b20(UserId(1), include_append=True)
+        chart_ids = {r.chart_id for r in rows}
+        assert 5 in chart_ids   # MA of SameSong
+        assert 6 in chart_ids   # APD of SameSong
+
+    async def test_same_song_master_expert_still_deduped(
+        self, repo: SqliteScoreRepository,
+    ) -> None:
+        """Same song MA(FC,30.0) and EXP(FC,29.0): only MA appears.
+        Non-APPEND difficulties still deduplicate by song_id."""
+        rows = await repo.get_b20(UserId(1), include_append=True)
+        chart_ids = {r.chart_id for r in rows}
+        assert 7 in chart_ids   # MA of MultiDiff (rating 30.0 > 29.0)
+        assert 8 not in chart_ids  # EXP should be deduped out
 
 
 class TestListPersonalBestsForDifficulty:
