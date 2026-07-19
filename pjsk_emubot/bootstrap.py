@@ -153,6 +153,7 @@ async def assemble_plugin_runtime(
     chart_conn: aiosqlite.Connection | None = None
     score_conn: aiosqlite.Connection | None = None
     http_client: httpx.AsyncClient | None = None
+    render_client: httpx.AsyncClient | None = None
     runtime: Runtime | None = None
 
     db_path = _resolve_db_path()
@@ -335,10 +336,16 @@ async def assemble_plugin_runtime(
         if render_service_url:
             try:
                 from adapters.rendering.renderer_adapter import HttpRenderer
+                # Create a dedicated client WITHOUT proxy for localhost render
+                # service.  The shared http_client routes through
+                # GEMINI_FORWARD_PROXY which cannot reach 127.0.0.1.
+                render_client = httpx.AsyncClient(
+                    timeout=float(cfg.get("render_timeout_seconds", 30)),
+                )
                 renderer = HttpRenderer(
                     base_url=render_service_url,
                     timeout=float(cfg.get("render_timeout_seconds", 30)),
-                    client=http_client,
+                    client=render_client,
                 )
                 _logger.info("HttpRenderer wired to %s", render_service_url)
             except Exception:
@@ -442,6 +449,8 @@ async def assemble_plugin_runtime(
             await runtime.close()
         if http_client is not None:
             await http_client.aclose()
+        if render_client is not None:
+            await render_client.aclose()
         for conn in (user_conn, chart_conn, score_conn):
             if conn is not None:
                 await conn.close()
