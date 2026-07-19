@@ -37,6 +37,7 @@ class ParsedTrigger:
     """Result of parsing a user message as a command trigger."""
     command: EmuCommand
     level: int | None = None  # difficulty level for MY_DIFFICULTY / GLOBAL_DIFFICULTY
+    difficulty: str | None = None  # "master"/"expert"/"append"/"hard"/"normal"/"easy"
 
 
 # ── Regex patterns ───────────────────────────────────────────────────────────
@@ -44,8 +45,16 @@ class ParsedTrigger:
 _STRIP_EMU_PREFIX = re.compile(r"^[.。]emu(?:\s+|$)")
 _B20 = re.compile(r"^(?:b20|查b20)$", re.IGNORECASE)
 _REGISTER = re.compile(r"^(?:reg(?:ister)?|注册)$", re.IGNORECASE)
-_MY_DIFF = re.compile(r"^我的ma(\d+)$")
-_GLOBAL_DIFF = re.compile(r"^难度排行ma(\d+)$")
+# Capture: <prefix><abbrev><level>
+# e.g. "我的ma31" → difficulty="ma", level=31
+# e.g. "我的ex28" → difficulty="ex", level=28
+_DIFF_CAPTURE = re.compile(r"^(?:我的|难度排行)(ma|ex|apd|hd|nm|ez)(\d+)$")
+
+# Abbreviation → Difficulty enum value
+_DIFF_ABBREV_MAP: dict[str, str] = {
+    "ez": "easy", "nm": "normal", "hd": "hard",
+    "ex": "expert", "ma": "master", "apd": "append",
+}
 
 
 def _strip_emu_prefix(text: str) -> str | None:
@@ -120,13 +129,15 @@ def parse_trigger(text: str, *, is_group: bool) -> ParsedTrigger | None:
     if _REGISTER.match(text):
         return ParsedTrigger(EmuCommand.REGISTER)
 
-    m = _MY_DIFF.match(text)
+    m = _DIFF_CAPTURE.match(text)
     if m:
-        return ParsedTrigger(EmuCommand.MY_DIFFICULTY, level=int(m.group(1)))
-
-    m = _GLOBAL_DIFF.match(text)
-    if m:
-        return ParsedTrigger(EmuCommand.GLOBAL_DIFFICULTY, level=int(m.group(1)))
+        abbrev, level_str = m.group(1), m.group(2)
+        diff = _DIFF_ABBREV_MAP.get(abbrev)
+        if diff is None:
+            return None
+        is_personal = text.startswith("我的")
+        cmd = EmuCommand.MY_DIFFICULTY if is_personal else EmuCommand.GLOBAL_DIFFICULTY
+        return ParsedTrigger(cmd, level=int(level_str), difficulty=diff)
 
     # ── Legacy /emu and .emu commands ─────────────────────────────────────
     legacy = parse_emu_command(text)
@@ -145,14 +156,17 @@ _HELP = (
     "  注册 / register         注册账号\n"
     "  b20                     查询 B20 排行\n"
     "  我的ma31                 个人 MA 31 排行\n"
-    "  难度排行ma31              全局 MA 31 排行\n"
+    "  难度排行ex28              全局 EX 28 排行\n"
+    "\n"
+    "难度排行缩写: ez(简单) nm(普通) hd(困难)\n"
+    "              ex(专家) ma(大师) apd(附加)\n"
     "\n"
     "群聊命令（.emu 前缀）:\n"
     "  .emu                    识别刚才发的截图\n"
     "  .emu register           注册账号\n"
     "  .emu b20                查询 B20 排行\n"
     "  .emu 我的ma31            个人 MA 31 排行\n"
-    "  .emu 难度排行ma31         全局 MA 31 排行\n"
+    "  .emu 难度排行ex28         全局 EX 28 排行\n"
     "\n"
     "帮助 /help /emu help\n"
     "状态 /emu status"

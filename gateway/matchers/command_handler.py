@@ -156,9 +156,9 @@ async def _dispatch(
     elif cmd == EmuCommand.B20:
         await _handle_b20(bot, event, msg)
     elif cmd == EmuCommand.MY_DIFFICULTY:
-        await _handle_my_difficulty(bot, event, msg, parsed.level)
+        await _handle_my_difficulty(bot, event, msg, parsed.level, parsed.difficulty)
     elif cmd == EmuCommand.GLOBAL_DIFFICULTY:
-        await _handle_global_difficulty(bot, event, msg, parsed.level)
+        await _handle_global_difficulty(bot, event, msg, parsed.level, parsed.difficulty)
     elif cmd == EmuCommand.REGISTER:
         await _handle_register(bot, event, msg)
     elif cmd == EmuCommand.HELP:
@@ -512,6 +512,7 @@ async def _handle_b20(
 
 async def _handle_my_difficulty(
     bot: Bot, event: MessageEvent, msg: IncomingMessage, level: int | None,
+    difficulty: str | None = None,
 ) -> None:
     """Return personal difficulty ranking."""
     if _runtime is None or level is None:
@@ -521,6 +522,8 @@ async def _handle_my_difficulty(
     from pjsk_core.domain.charts import Difficulty
     from pjsk_runtime.runtime import Runtime
     runtime: Runtime = _runtime  # type: ignore[assignment]
+
+    diff = Difficulty(difficulty) if difficulty else Difficulty.MASTER
 
     qq = QqNumber(msg.external_user_id)
     try:
@@ -536,15 +539,17 @@ async def _handle_my_difficulty(
 
     try:
         ranking = await runtime.query_difficulty_ranking.query_personal(
-            user.id, Difficulty.MASTER, level,
+            user.id, diff, level,
         )
     except Exception:
         _logger.exception("Personal difficulty ranking failed")
         await send_text_reply(bot, event, TextReply(text="查询失败，请稍后重试"))
         return
 
+    diff_label = difficulty.upper() if difficulty else "MA"
+
     if not ranking.entries:
-        await send_text_reply(bot, event, TextReply(text=f"MA {level} 暂无成绩"))
+        await send_text_reply(bot, event, TextReply(text=f"{diff_label} {level} 暂无成绩"))
         return
 
     # ── Assemble JS payload → render image → fallback text ──
@@ -577,7 +582,7 @@ async def _handle_my_difficulty(
             ImageReply(image_bytes=png, mime_type="image/png"),
         )
     else:
-        lines = [f"个人 MA {level} 排行", ""]
+        lines = [f"个人 {diff_label} {level} 排行", ""]
         for i, e in enumerate(ranking.entries[:20], 1):
             status_str = e.status.value.upper() if e.status else "未游玩"
             acc_str = f"ACC {e.accuracy:.2f}%" if e.accuracy is not None else ""
@@ -589,6 +594,7 @@ async def _handle_my_difficulty(
 
 async def _handle_global_difficulty(
     bot: Bot, event: MessageEvent, msg: IncomingMessage, level: int | None,
+    difficulty: str | None = None,
 ) -> None:
     """Return global difficulty ranking."""
     if _runtime is None or level is None:
@@ -599,9 +605,12 @@ async def _handle_global_difficulty(
     from pjsk_runtime.runtime import Runtime
     runtime: Runtime = _runtime  # type: ignore[assignment]
 
+    diff = Difficulty(difficulty) if difficulty else Difficulty.MASTER
+    diff_label = difficulty.upper() if difficulty else "MA"
+
     try:
         ranking = await runtime.query_difficulty_ranking.query_global(
-            Difficulty.MASTER, level,
+            diff, level,
         )
     except Exception:
         _logger.exception("Global difficulty ranking failed")
@@ -609,7 +618,7 @@ async def _handle_global_difficulty(
         return
 
     if not ranking.entries:
-        await send_text_reply(bot, event, TextReply(text=f"MA {level} 暂无排行数据"))
+        await send_text_reply(bot, event, TextReply(text=f"{diff_label} {level} 暂无排行数据"))
         return
 
     # ── Assemble JS payload → render image → fallback text ──
@@ -642,11 +651,11 @@ async def _handle_global_difficulty(
             ImageReply(image_bytes=png, mime_type="image/png"),
         )
     else:
-        lines = [f"MA {level} 全局排行（定数降序）", ""]
+        lines = [f"{diff_label} {level} 全局排行（定数降序）", ""]
         for i, e in enumerate(ranking.entries[:20], 1):
             lines.append(
                 f"[{i}] {e.song_title} · 定数 {e.community_constant} · "
-                f"MA {e.official_level}"
+                f"{diff_label} {e.official_level}"
             )
         await send_text_reply(bot, event, TextReply(text="\n".join(lines)))
 
