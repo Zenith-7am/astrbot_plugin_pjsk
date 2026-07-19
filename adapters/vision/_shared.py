@@ -35,6 +35,7 @@ _REJECTED_SONG_TITLES: frozenset[str] = frozenset({
     # UI labels that models sometimes misread as the song title.
     # These are NEVER valid song names — reject them immediately.
     "スコア",    # "Score" — result screen header
+    "ハイスコア", # "High Score" — result screen label (catches Qwen/Gemini hallucination)
     "リザルト",   # "Result" — result screen tab
     "楽曲",      # "Song" — UI section label
     "クリア",    # "Clear" — clear status label
