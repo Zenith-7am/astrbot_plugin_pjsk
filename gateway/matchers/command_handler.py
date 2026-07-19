@@ -22,6 +22,7 @@ from gateway.commands import (
     ParsedTrigger,
     build_help_text,
     build_status_text,
+    load_help_png,
     parse_trigger,
     qq_allowed,
 )
@@ -162,7 +163,16 @@ async def _dispatch(
     elif cmd == EmuCommand.REGISTER:
         await _handle_register(bot, event, msg)
     elif cmd == EmuCommand.HELP:
-        await send_text_reply(bot, event, TextReply(text=build_help_text()))
+        png = load_help_png()
+        if png is not None:
+            from gateway.adapters.reply_sender import send_image_reply
+            from pjsk_core.application.replies import ImageReply
+            await send_image_reply(
+                bot, event,
+                ImageReply(image_bytes=png, mime_type="image/png"),
+            )
+        else:
+            await send_text_reply(bot, event, TextReply(text=build_help_text()))
     elif cmd == EmuCommand.STATUS:
         await send_text_reply(
             bot, event,

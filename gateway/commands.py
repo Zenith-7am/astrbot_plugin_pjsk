@@ -147,7 +147,7 @@ def parse_trigger(text: str, *, is_group: bool) -> ParsedTrigger | None:
     return None
 
 
-# ── Help text ────────────────────────────────────────────────────────────────
+# ── Help text / image ───────────────────────────────────────────────────────
 
 _HELP = (
     "PJSK Emu Bot\n"
@@ -172,9 +172,40 @@ _HELP = (
     "状态 /emu status"
 )
 
+_HELP_PNG: bytes | None = None
+_HELP_PNG_PATHS: list[str] = []
+
 
 def build_help_text() -> str:
     return _HELP
+
+
+def load_help_png() -> bytes | None:
+    """Return the pre-rendered help menu PNG bytes (cached in memory).
+
+    Searches *project_root*/assets/help_menu.png and
+    /opt/pjsk-astrbot/shared/assets/help_menu.png.
+    """
+    global _HELP_PNG
+
+    if _HELP_PNG is not None:
+        return _HELP_PNG
+
+    if not _HELP_PNG_PATHS:
+        # Delayed init so callers don't pay the import-time stat cost.
+        _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        _HELP_PNG_PATHS.extend([
+            os.path.join(_project_root, "assets", "help_menu.png"),
+            "/opt/pjsk-astrbot/shared/assets/help_menu.png",
+        ])
+
+    for p in _HELP_PNG_PATHS:
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                _HELP_PNG = f.read()
+            return _HELP_PNG
+
+    return None
 
 
 def build_status_text(bot_count: int) -> str:
