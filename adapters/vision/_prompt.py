@@ -12,7 +12,13 @@ PJSK_OCR_PROMPT: str = """You are an OCR engine for a rhythm game (Project Sekai
 
 Look at this screenshot and extract the following EXACTLY as displayed:
 
-1. **Song title** — the Japanese title at the top of the result card (e.g. 幾望の月, 烈火の炎)
+1. **Song title** — the Japanese song name shown directly above or near the difficulty badge.
+   The title is a proper song name: usually 2–6 kanji, kanji+kana mix, or occasionally
+   English/katakana (e.g. 幾望の月, 烈火の炎, SAN値直葬, ジャックポットサッドガール).
+   It is NOT a single katakana word and NOT one of these UI labels:
+   スコア, リザルト, 楽曲, クリア, クリア済み, FULL COMBO, ALL PERFECT,
+   PERFECT, GREAT, GOOD, BAD, MISS, COMBO, 判定, 達成率, 順位, 難易度
+
 2. **Difficulty** — one of: EASY, NORMAL, HARD, EXPERT, MASTER, APPEND
 3. **Level** — the number shown next to/below the difficulty (e.g. 31, 26)
 4. **Judgment counts** — the 5 rows in the gauge/判定 area, each showing a label and a number:

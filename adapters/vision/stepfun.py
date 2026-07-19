@@ -11,14 +11,13 @@ import httpx
 
 from adapters.vision._http import map_request_error, map_status_error
 from adapters.vision._prompt import PJSK_OCR_PROMPT
-from adapters.vision._shared import _DIFF_MAP, _encode_base64
+from adapters.vision._shared import _encode_base64, _parse_ocr_json
 from adapters.vision.gemini import Secret
 from pjsk_core.domain.ocr import (
     EngineIdentity,
     OcrObservation,
     VisionResponseError,
 )
-from pjsk_core.domain.scores import Judgements
 
 STEPFUN_OCR_PROMPT = PJSK_OCR_PROMPT  # Re-export for test verification
 
@@ -107,30 +106,9 @@ class StepFunVisionEngine:
     def _parse_response(self, data: dict[str, Any]) -> OcrObservation:
         try:
             text = data["choices"][0]["message"]["content"]
-            parsed = json.loads(text)
-
-            difficulty = _DIFF_MAP.get(parsed.get("difficulty", "").upper())
-            if difficulty is None:
-                raise VisionResponseError(
-                    f"Unknown difficulty: {parsed.get('difficulty')}"
-                )
-
-            return OcrObservation(
-                song_title=str(parsed.get("song_title", "")),
-                difficulty=difficulty,
-                displayed_level=int(parsed.get("level", 0)),
-                judgements=Judgements(
-                    perfect=int(parsed.get("perfect", 0)),
-                    great=int(parsed.get("great", 0)),
-                    good=int(parsed.get("good", 0)),
-                    bad=int(parsed.get("bad", 0)),
-                    miss=int(parsed.get("miss", 0)),
-                ),
-                engine=f"stepfun-{self._model}",
-                elapsed_ms=0,
-            )
-        except (KeyError, IndexError, json.JSONDecodeError,
-                ValueError, TypeError, AttributeError) as e:
+        except (KeyError, IndexError, TypeError) as e:
             raise VisionResponseError(
                 f"Cannot parse StepFun response: {e}"
             ) from e
+
+        return _parse_ocr_json(text, self.identity.engine_id)

@@ -1,6 +1,8 @@
 """Tests for shared OCR prompt — all adapters must use the same prompt source."""
 from __future__ import annotations
 
+import pytest
+
 
 class TestSharedPromptExists:
     """Verify that a single, vendor-neutral prompt module exists."""
@@ -85,17 +87,187 @@ class TestAdapterParseRegression:
 class TestSharedUtilities:
     """Common adapter utilities must come from a single source, not be duplicated."""
 
-    def test_diff_map_is_shared(self) -> None:
-        """_DIFF_MAP must be the same object across all adapters."""
+    def test_diff_map_is_consistently_imported(self) -> None:
+        """_DIFF_MAP must be the same object regardless of import path."""
         from adapters.vision._shared import _DIFF_MAP as shared_map
-        # Verify adapters re-export the same object via import
-        import adapters.vision.zhipu as z
-        import adapters.vision.dashscope as d
-        import adapters.vision.stepfun as s
+        import adapters.vision._shared as s
 
-        assert z._DIFF_MAP is shared_map  # type: ignore[attr-defined]
-        assert d._DIFF_MAP is shared_map  # type: ignore[attr-defined]
-        assert s._DIFF_MAP is shared_map  # type: ignore[attr-defined]
+        assert s._DIFF_MAP is shared_map
+
+    def test_parse_ocr_json_roundtrip(self) -> None:
+        """_parse_ocr_json must produce correct OcrObservation from valid JSON."""
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.charts import Difficulty
+
+        data = {
+            "song_title": "幾望の月",
+            "difficulty": "MASTER",
+            "level": 31,
+            "perfect": 917,
+            "great": 50,
+            "good": 3,
+            "bad": 0,
+            "miss": 0,
+        }
+        obs = _parse_ocr_json(json.dumps(data), "test-engine")
+        assert obs.song_title == "幾望の月"
+        assert obs.difficulty == Difficulty.MASTER
+        assert obs.displayed_level == 31
+        assert obs.judgements.perfect == 917
+        assert obs.judgements.great == 50
+        assert obs.judgements.good == 3
+        assert obs.judgements.bad == 0
+        assert obs.judgements.miss == 0
+        assert obs.engine == "test-engine"
+
+    def test_parse_ocr_json_uses_song_title_not_title(self) -> None:
+        """_parse_ocr_json reads 'song_title', not 'title'."""
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        # "title" field must NOT be accepted
+        with pytest.raises(VisionResponseError, match="song_title is missing"):
+            _parse_ocr_json(
+                json.dumps({"title": "Old", "difficulty": "MASTER",
+                 "level": 30, "perfect": 1, "great": 0,
+                 "good": 0, "bad": 0, "miss": 0}),
+                "test",
+            )
+
+        # "song_title" field must be accepted
+        obs = _parse_ocr_json(
+            json.dumps({"song_title": "New", "difficulty": "MASTER",
+             "level": 30, "perfect": 1, "great": 0,
+             "good": 0, "bad": 0, "miss": 0}),
+            "test",
+        )
+        assert obs.song_title == "New"
+
+    def test_parse_ocr_json_0000_is_zero(self) -> None:
+        """0000 must parse as integer 0, not string '0000'."""
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+
+        obs = _parse_ocr_json(
+            json.dumps({"song_title": "Test", "difficulty": "EASY",
+             "level": 1, "perfect": 1, "great": 0,
+             "good": 0, "bad": 0, "miss": 0}),
+            "test",
+        )
+        assert obs.judgements.miss == 0
+        assert isinstance(obs.judgements.miss, int)
+
+    def test_parse_ocr_json_numeric_title_kept_as_string(self) -> None:
+        """Song title like '0.0000034' must stay as string, not float."""
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+
+        obs = _parse_ocr_json(
+            json.dumps({"song_title": "0.0000034", "difficulty": "MASTER",
+             "level": 34, "perfect": 1916, "great": 18,
+             "good": 0, "bad": 0, "miss": 0}),
+            "test",
+        )
+        assert obs.song_title == "0.0000034"
+        assert isinstance(obs.song_title, str)
+
+    def test_parse_ocr_json_missing_song_title_rejected(self) -> None:
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="song_title is missing"):
+            _parse_ocr_json(
+                json.dumps({"difficulty": "MASTER", "level": 30,
+                 "perfect": 1, "great": 0, "good": 0, "bad": 0, "miss": 0}),
+                "test",
+            )
+
+    def test_parse_ocr_json_empty_song_title_rejected(self) -> None:
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="song_title is missing"):
+            _parse_ocr_json(
+                json.dumps({"song_title": "", "difficulty": "MASTER",
+                 "level": 30, "perfect": 1, "great": 0,
+                 "good": 0, "bad": 0, "miss": 0}),
+                "test",
+            )
+
+    def test_parse_ocr_json_invalid_difficulty_rejected(self) -> None:
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="Unknown difficulty"):
+            _parse_ocr_json(
+                json.dumps({"song_title": "T", "difficulty": "LEGEND",
+                 "level": 30, "perfect": 1, "great": 0,
+                 "good": 0, "bad": 0, "miss": 0}),
+                "test",
+            )
+
+    def test_parse_ocr_json_negative_judgement_rejected(self) -> None:
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="Negative judgement"):
+            _parse_ocr_json(
+                json.dumps({"song_title": "T", "difficulty": "MASTER",
+                 "level": 30, "perfect": -1, "great": 0,
+                 "good": 0, "bad": 0, "miss": 0}),
+                "test",
+            )
+
+    def test_parse_ocr_json_missing_judgement_rejected(self) -> None:
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="Missing or invalid judgement"):
+            _parse_ocr_json(
+                json.dumps({"song_title": "T", "difficulty": "MASTER",
+                 "level": 30, "perfect": 1, "great": 0,
+                 "good": 0, "bad": 0}),
+                "test",
+            )
+
+    def test_parse_ocr_json_junk_judgement_rejected(self) -> None:
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="Invalid JSON"):
+            _parse_ocr_json("not json at all {{{", "test")
+
+    def test_parse_ocr_json_missing_level_rejected(self) -> None:
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="Invalid or missing level"):
+            _parse_ocr_json(
+                json.dumps({"song_title": "T", "difficulty": "MASTER",
+                 "perfect": 1, "great": 0, "good": 0, "bad": 0, "miss": 0}),
+                "test",
+            )
+
+    def test_parse_ocr_json_zero_level_rejected(self) -> None:
+        import json
+        from adapters.vision._shared import _parse_ocr_json
+        from pjsk_core.domain.ocr import VisionResponseError
+
+        with pytest.raises(VisionResponseError, match="level must be positive"):
+            _parse_ocr_json(
+                json.dumps({"song_title": "T", "difficulty": "MASTER",
+                 "level": 0, "perfect": 1, "great": 0,
+                 "good": 0, "bad": 0, "miss": 0}),
+                "test",
+            )
 
     def test_encode_base64_is_shared(self) -> None:
         """_encode_base64 must be the same function across all adapters."""

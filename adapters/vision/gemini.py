@@ -10,11 +10,10 @@ from pjsk_core.domain.ocr import (
     OcrObservation,
     VisionResponseError,
 )
-from pjsk_core.domain.scores import Judgements
 
 from adapters.vision._http import map_request_error, map_status_error
 from adapters.vision._prompt import PJSK_OCR_PROMPT
-from adapters.vision._shared import _DIFF_MAP, _encode_base64
+from adapters.vision._shared import _encode_base64, _parse_ocr_json
 
 GEMINI_OCR_PROMPT = PJSK_OCR_PROMPT  # Re-export for test verification
 
@@ -116,33 +115,12 @@ class GeminiVisionEngine:
         """
         try:
             text = data["candidates"][0]["content"]["parts"][0]["text"]
-            parsed = json.loads(text)
-
-            difficulty = _DIFF_MAP.get(parsed.get("difficulty", "").upper())
-            if difficulty is None:
-                raise VisionResponseError(
-                    f"Unknown difficulty: {parsed.get('difficulty')}"
-                )
-
-            return OcrObservation(
-                song_title=str(parsed.get("title", "")),
-                difficulty=difficulty,
-                displayed_level=int(parsed.get("level", 0)),
-                judgements=Judgements(
-                    perfect=int(parsed.get("perfect", 0)),
-                    great=int(parsed.get("great", 0)),
-                    good=int(parsed.get("good", 0)),
-                    bad=int(parsed.get("bad", 0)),
-                    miss=int(parsed.get("miss", 0)),
-                ),
-                engine=f"gemini-{self._model}",
-                elapsed_ms=0,
-            )
-        except (KeyError, IndexError, json.JSONDecodeError,
-                ValueError, TypeError, AttributeError) as e:
+        except (KeyError, IndexError, TypeError) as e:
             raise VisionResponseError(
                 f"Cannot parse Gemini response: {e}"
             ) from e
+
+        return _parse_ocr_json(text, self.identity.engine_id)
 
 
 def _build_request_body(image: bytes, prompt: str) -> dict[str, Any]:
@@ -169,7 +147,7 @@ def _build_request_body(image: bytes, prompt: str) -> dict[str, Any]:
             "responseSchema": {
                 "type": "OBJECT",
                 "properties": {
-                    "title": {"type": "STRING"},
+                    "song_title": {"type": "STRING"},
                     "difficulty": {"type": "STRING"},
                     "level": {"type": "INTEGER"},
                     "perfect": {"type": "INTEGER"},
@@ -179,7 +157,7 @@ def _build_request_body(image: bytes, prompt: str) -> dict[str, Any]:
                     "miss": {"type": "INTEGER"},
                 },
                 "required": [
-                    "title", "difficulty", "level",
+                    "song_title", "difficulty", "level",
                     "perfect", "great", "good", "bad", "miss",
                 ],
             },

@@ -34,8 +34,8 @@ class TestGeminiJsonResponseMode:
         schema = body["generationConfig"]["responseSchema"]
         assert schema["type"] == "OBJECT"
         props = schema["properties"]
-        assert "title" in props
-        assert props["title"]["type"] == "STRING"
+        assert "song_title" in props
+        assert props["song_title"]["type"] == "STRING"
         assert "difficulty" in props
         assert "level" in props
         assert props["level"]["type"] == "INTEGER"
@@ -49,7 +49,7 @@ class TestGeminiJsonResponseMode:
 
         body = _build_request_body(b"fake-image", "test prompt")
         required = body["generationConfig"]["responseSchema"]["required"]
-        assert "title" in required
+        assert "song_title" in required
         assert "difficulty" in required
         assert "level" in required
         for key in ("perfect", "great", "good", "bad", "miss"):
@@ -82,7 +82,7 @@ class TestJsonModeParseCompatibility:
             "candidates": [{
                 "content": {"parts": [{
                     "text": json.dumps({
-                        "title": "幾望の月",
+                        "song_title": "幾望の月",
                         "difficulty": "MASTER",
                         "level": 31,
                         "perfect": 917,
