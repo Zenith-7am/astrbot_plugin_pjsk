@@ -12,13 +12,25 @@ PJSK_OCR_PROMPT: str = """You are an OCR engine for a rhythm game (Project Sekai
 
 Look at this screenshot and extract the following EXACTLY as displayed:
 
-1. **Song title** — the Japanese song name shown directly above or near the difficulty badge.
-   The title is a proper song name: usually 2–6 kanji, kanji+kana mix, or occasionally
-   English/katakana (e.g. 幾望の月, 烈火の炎, SAN値直葬, ジャックポットサッドガール).
-   It is NOT a single katakana word and NOT one of these UI labels
-   (responses with these as song_title will be rejected):
+1. **Song title** — the text shown directly above or near the difficulty badge.
+   CRITICAL: Transcribe the song title EXACTLY as it appears — do NOT guess, normalise,
+   or judge whether it "looks like" a real song name.  The game includes many unusual
+   titles that are nonetheless real:
+   - Decimal numbers: 0.0000034, 8.32
+   - Integers: 39, 1925
+   - Single characters: Q
+   - Mixed scripts: CR詠ZY, M@GICAL☆CURE!
+   - Leading symbols: ＊ハロー、プラネット。, 88☆彡
+   - Bracketed: 「１」, 『んっあっあっ。』
+   - Very short: アイ, はぐ
+   Output the song title character-for-character, even if it looks like a number,
+   a typo, or a random symbol.
+
+   The title is NEVER one of these UI labels (responses with these as song_title
+   will be rejected):
    スコア, リザルト, 楽曲, クリア, クリア済み, FULL COMBO, ALL PERFECT,
-   PERFECT, GREAT, GOOD, BAD, MISS, COMBO, 判定, 達成率, 順位, 難易度
+   PERFECT, GREAT, GOOD, BAD, MISS, COMBO, 判定, 達成率, 順位, 難易度,
+   ハイスコア
 
 2. **Difficulty** — one of: EASY, NORMAL, HARD, EXPERT, MASTER, APPEND
 3. **Level** — the number shown next to/below the difficulty (e.g. 31, 26)

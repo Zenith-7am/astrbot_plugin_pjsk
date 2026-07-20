@@ -29,6 +29,17 @@ class TestSharedPromptExists:
         # Must list the difficulty enum
         assert "APPEND" in PJSK_OCR_PROMPT
 
+    def test_prompt_acknowledges_unusual_song_titles(self) -> None:
+        """Prompt must include numeric/decimal/symbol song name examples
+        so models don't hallucinate when the title doesn't look conventional."""
+        from adapters.vision._prompt import PJSK_OCR_PROMPT
+
+        assert "0.0000034" in PJSK_OCR_PROMPT
+        assert "39" in PJSK_OCR_PROMPT
+        assert "CR詠ZY" in PJSK_OCR_PROMPT
+        assert "character-for-character" in PJSK_OCR_PROMPT
+        assert "Transcribe" in PJSK_OCR_PROMPT
+
 
 class TestAllAdaptersUseSharedPrompt:
     """Every vision adapter must reference the shared prompt, not inline text."""
