@@ -38,7 +38,8 @@ TARBALL="/tmp/pjsk-release-${RELEASE_ID}.tar.gz"
 cd "$REPO_ROOT"
 # Use git archive to guarantee only tracked files are included.
 # Untracked files (artifacts, temp scripts, .venv, etc.) are never packaged.
-git archive --format=tar.gz --output="$TARBALL" HEAD
+# -c core.autocrlf=false prevents Windows git from injecting CRLF into the tarball.
+git -c core.autocrlf=false archive --format=tar.gz --output="$TARBALL" HEAD
 echo "=== Tarball: $(du -h "$TARBALL" | cut -f1) ==="
 
 echo "=== Uploading to VPS ==="
