@@ -28,6 +28,7 @@ class TestHealthResponse:
         assert state["onebot"] == "disconnected"
         assert state["runtime"] == "unknown"
         assert state["database"] == "unknown"
+        assert state["renderer"] == "unknown"
         assert "gateway_version" in state
         assert "uptime_seconds" in state
         for v in state.values():
@@ -45,7 +46,7 @@ class TestHealthResponse:
     def test_build_health_all_fields_present(self) -> None:
         state = build_health(bot_count=2)
         for field in ("status", "gateway", "onebot", "runtime", "database",
-                       "gateway_version", "uptime_seconds"):
+                       "renderer", "gateway_version", "uptime_seconds"):
             assert field in state, f"Missing field: {field}"
 
     def test_health_endpoint_returns_200(self) -> None:
@@ -60,6 +61,7 @@ class TestHealthResponse:
         assert "onebot" in body
         assert "runtime" in body
         assert "database" in body
+        assert "renderer" in body
         assert "gateway_version" in body
         assert "uptime_seconds" in body
 
@@ -140,6 +142,7 @@ class TestHealthWithRuntime:
         assert state["onebot"] == "disconnected"
         assert state["runtime"] == "unknown"
         assert state["database"] == "unknown"
+        assert state["renderer"] == "unknown"
         assert "gateway_version" in state
         assert "uptime_seconds" in state
         for v in state.values():
@@ -157,7 +160,7 @@ class TestHealthWithRuntime:
     def test_build_health_all_fields_present(self) -> None:
         state = build_health(bot_count=2)
         for field in ("status", "gateway", "onebot", "runtime", "database",
-                       "gateway_version", "uptime_seconds"):
+                       "renderer", "gateway_version", "uptime_seconds"):
             assert field in state, f"Missing field: {field}"
 
     def test_health_endpoint_returns_200(self) -> None:
@@ -172,6 +175,7 @@ class TestHealthWithRuntime:
         assert "onebot" in body
         assert "runtime" in body
         assert "database" in body
+        assert "renderer" in body
         assert "gateway_version" in body
         assert "uptime_seconds" in body
 

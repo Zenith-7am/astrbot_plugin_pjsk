@@ -28,12 +28,15 @@ def set_runtime(runtime: Any) -> None:
 def build_health(
     bot_count: int = 0,
     database_ok: bool | None = None,
+    renderer_ok: bool | None = None,
 ) -> dict[str, Any]:
     """Build health response.
 
     bot_count: 0=disconnected, >0=connected.
     database_ok: result of a live ``SELECT 1`` probe.  ``None`` means
         the probe was skipped (no connection available to test).
+    renderer_ok: result of a renderer route-smoke test.  ``None`` means
+        skipped, ``True`` means routes verified, ``False`` means stale/broken.
     """
     uptime = time.monotonic() - _START_TIME
     connected = bot_count > 0
@@ -73,6 +76,14 @@ def build_health(
     else:
         database_status = "unknown"
 
+    # ── Renderer ─────────────────────────────────────────────────────────
+    if renderer_ok is True:
+        renderer_status = "ok"
+    elif renderer_ok is False:
+        renderer_status = "error"
+    else:
+        renderer_status = "unknown"
+
     # ── Overall status ───────────────────────────────────────────────────
     if not connected:
         overall = "degraded"
@@ -91,6 +102,7 @@ def build_health(
         "onebot": onebot_status,
         "runtime": runtime_status,
         "database": database_status,
+        "renderer": renderer_status,
         "gateway_version": GATEWAY_VERSION,
         "uptime_seconds": round(uptime, 1),
     }
@@ -122,4 +134,32 @@ def register_health_route(app: FastAPI) -> None:
                 except Exception:
                     database_ok = False
 
-        return build_health(bot_count=bot_count, database_ok=database_ok)
+        # Renderer probe — verify the renderer is the one we deployed, not
+        # a stale leftover process masking as healthy.  A 404 on any expected
+        # route means the renderer is running old code or is otherwise broken.
+        import httpx
+        renderer_ok: bool | None = None
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+                resp = await client.get("http://127.0.0.1:3000/health")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    functions = data.get("functions", [])
+                    if len(functions) >= 2:
+                        # Smoke-test one route — 404 means stale renderer
+                        route_check = await client.post(
+                            "http://127.0.0.1:3000/render/b20",
+                            json={},
+                        )
+                        renderer_ok = route_check.status_code != 404
+                    else:
+                        renderer_ok = False
+                else:
+                    renderer_ok = False
+        except Exception:
+            renderer_ok = False
+
+        return build_health(
+            bot_count=bot_count, database_ok=database_ok,
+            renderer_ok=renderer_ok,
+        )

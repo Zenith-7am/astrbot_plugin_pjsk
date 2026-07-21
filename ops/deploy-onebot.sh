@@ -187,11 +187,43 @@ ssh "$VPS" bash -lc "
     set -euo pipefail
     systemctl restart '${RENDER_SERVICE}'
     sleep 3
-    # Verify renderer health before restarting gateway
-    if ! curl -sf --max-time 5 http://127.0.0.1:3000/health > /dev/null; then
-        echo 'ERROR: renderer health check failed — aborting deploy'
+
+    # Verify renderer health (must return valid JSON with functions list)
+    HEALTH=\$(curl -sf --max-time 5 http://127.0.0.1:3000/health 2>/dev/null || echo '')
+    if [ -z \"\$HEALTH\" ]; then
+        echo 'ERROR: renderer health endpoint unreachable — aborting deploy'
         exit 1
     fi
+    FUNC_COUNT=\$(echo \"\$HEALTH\" | python3 -c \"
+import sys, json
+d = json.load(sys.stdin)
+print(len(d.get('functions', [])))
+\" 2>/dev/null || echo '0')
+    if [ \"\$FUNC_COUNT\" -lt 2 ]; then
+        echo \"ERROR: renderer loaded only \$FUNC_COUNT functions (expected >=2) — aborting deploy\"
+        exit 1
+    fi
+    echo \"Renderer: \$FUNC_COUNT functions loaded\"
+
+    # Smoke-test route registration for every loaded function.
+    # 404 = route is MISSING (old/stale renderer); 500/200 = route exists (data
+    # errors are expected with empty payload).  This catches the failure mode
+    # where a leftover old render-service holds port 3000 and the new
+    # pjsk-render cannot bind.
+    RENDER_ROUTES=\$(echo \"\$HEALTH\" | python3 -c \"
+import sys, json
+print(' '.join(json.load(sys.stdin).get('functions', [])))
+\")
+    for route in \$RENDER_ROUTES; do
+        HTTP_CODE=\$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST \"http://127.0.0.1:3000/render/\$route\" \
+            -H 'Content-Type: application/json' -d '{}' 2>/dev/null || echo '000')
+        if [ \"\$HTTP_CODE\" = '404' ]; then
+            echo \"ERROR: /render/\$route returned 404 — route not registered (stale renderer?) — aborting deploy\"
+            exit 1
+        fi
+        echo \"  /render/\$route → \$HTTP_CODE\"
+    done
     echo 'Renderer OK'
 "
 
@@ -208,7 +240,7 @@ ssh "$VPS" bash -lc "
         if [ -n \"\$RESP\" ]; then
             echo \"\$RESP\" | python3 -m json.tool 2>/dev/null || echo \"\$RESP\"
             # Verify core health (OneBot may take 30s+ to reconnect after restart)
-            STATUS_OK=\$(echo \"\$RESP\" | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('database')=='ok' and d.get('runtime')=='ready' else 1)\" 2>/dev/null && echo 1 || echo 0)
+            STATUS_OK=\$(echo \"\$RESP\" | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('database')=='ok' and d.get('runtime')=='ready' and d.get('renderer')!='error' else 1)\" 2>/dev/null && echo 1 || echo 0)
             if [ \"\$STATUS_OK\" = \"1\" ]; then
                 echo '=== Deploy SUCCESS ==='
                 echo \"Release: ${RELEASE_ID}\"
