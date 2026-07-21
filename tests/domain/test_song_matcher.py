@@ -127,6 +127,54 @@ class TestSongCandidateAliases:
         assert result[0].source == TitleSource.ALIAS
 
 
+class TestPunctuationNormalization:
+    """Fullwidth punctuation (!, ?, ~) should normalize to halfwidth
+    so that OCR variants like "モア!" match DB "モア！"."""
+
+    def test_fullwidth_exclamation(self) -> None:
+        """！(U+FF01) normalizes to !(U+0021) for exact match."""
+        candidates = _make_candidates("モア！ジャンプ！モア！")
+        # OCR reads with halfwidth ! (no spaces — this is the pure punctuation case)
+        result = match_song("モア!ジャンプ!モア!", candidates)
+        assert len(result) == 1
+        assert result[0].method == SongMatchMethod.EXACT
+
+    def test_fullwidth_question(self) -> None:
+        """？(U+FF1F) normalizes to ?(U+003F) for exact match."""
+        candidates = _make_candidates("え？ああ、そう。")
+        # OCR reads with halfwidth ?
+        result = match_song("え?ああ、そう。", candidates)
+        assert len(result) == 1
+        assert result[0].method == SongMatchMethod.EXACT
+
+    def test_wave_dash_to_tilde(self) -> None:
+        """～(U+FF5E) normalizes to ~(U+007E) for exact match."""
+        candidates = _make_candidates("い～やい～やい～や")
+        # OCR reads with tilde
+        result = match_song("い~やい~やい~や", candidates)
+        assert len(result) == 1
+        assert result[0].method == SongMatchMethod.EXACT
+
+
+class TestKanaNormalization:
+    """Hiragana characters OCR-misread inside katakana words
+    should normalize so that "ヒマん" matches "ヒマン"."""
+
+    def test_hiragana_n_in_katakana_word(self) -> None:
+        """ん (hiragana) normalizes to ン (katakana) in OCR text."""
+        candidates = _make_candidates("ヒマン=ヒダイ焦燥曲")
+        result = match_song("ヒマん=ヒダイ焦燥曲", candidates)
+        assert len(result) == 1
+        assert result[0].method == SongMatchMethod.EXACT
+
+    def test_multiple_hiragana_in_katakana(self) -> None:
+        """All hiragana chars in OCR text normalize to katakana."""
+        candidates = _make_candidates("コンニチハ")
+        result = match_song("こんにちは", candidates)
+        assert len(result) == 1
+        assert result[0].method == SongMatchMethod.EXACT
+
+
 class TestEmptyInput:
     def test_empty_raw_title_returns_empty(self) -> None:
         candidates = _make_candidates("Test")

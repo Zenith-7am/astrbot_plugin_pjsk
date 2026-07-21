@@ -44,7 +44,22 @@ class SongMatch:
 # ── Normalization ────────────────────────────────────────────────────────
 
 _OCR_CORRECTIONS = str.maketrans({"口": "ク", "一": "ー", "才": "オ"})
+
+# Fullwidth punctuation that NFKC leaves alone — normalize to halfwidth
+# so "モア!" (OCR) matches "モア！" (DB title).
+_FULLWIDTH_PUNCT = str.maketrans({
+    "！": "!",     # ！ → !
+    "？": "?",     # ？ → ?
+})
+
 _RE_WHITESPACE = re.compile(r"\s+")
+
+# Hiragana block: U+3041–U+3096 ; Katakana block: U+30A1–U+30F6
+# OCR sometimes substitutes hiragana for katakana in otherwise-katakana words
+# (e.g. ん for ン).  Normalize OCR-side only to heal these.
+_HIRAGANA_FIRST = ord("ぁ")
+_HIRAGANA_LAST = ord("ゖ")
+_KATAKANA_OFFSET = 0x60
 
 # Keywords that mark difficulty labels in score screenshots
 _DIFFICULTY_KEYWORDS = (
@@ -75,13 +90,24 @@ _SOURCE_PRIORITY = {
 
 def _normalize_text(text: str) -> str:
     text = unicodedata.normalize("NFKC", text)
+    text = text.translate(_FULLWIDTH_PUNCT)
     text = text.casefold()
     text = _RE_WHITESPACE.sub(" ", text)
     return text.strip()
 
 
 def _normalize_ocr_text(text: str) -> str:
-    return _normalize_text(text).translate(_OCR_CORRECTIONS)
+    text = _normalize_text(text)
+    text = text.translate(_OCR_CORRECTIONS)
+    # Heal hiragana→katakana substitutions in OCR output
+    chars: list[str] = []
+    for ch in text:
+        cp = ord(ch)
+        if _HIRAGANA_FIRST <= cp <= _HIRAGANA_LAST:
+            chars.append(chr(cp + _KATAKANA_OFFSET))
+        else:
+            chars.append(ch)
+    return "".join(chars)
 
 
 # ── Step helpers ─────────────────────────────────────────────────────────
